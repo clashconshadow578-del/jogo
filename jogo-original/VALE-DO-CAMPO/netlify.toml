@@ -1,0 +1,7 @@
+# Publicação na Netlify (site existente: basta conectar o repositório ou arrastar a pasta dist/)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"

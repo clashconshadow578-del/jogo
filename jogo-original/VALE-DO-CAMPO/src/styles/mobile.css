@@ -1,0 +1,72 @@
+/* Controles de toque: joystick virtual e botões de ação. */
+#joy {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+#knob {
+  position: absolute;
+  left: 40px;
+  top: 40px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+#btns {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.btn {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px;
+  touch-action: none;
+  padding: 0;
+}
+#btnA {
+  width: 76px;
+  height: 76px;
+  font-size: 16px;
+}
+#btnB {
+  width: 58px;
+  height: 58px;
+  font-size: 12px;
+}
+.btn {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition:
+    transform 0.08s,
+    background 0.15s,
+    border-color 0.15s;
+}
+.btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.3);
+}
+#btnR {
+  width: 58px;
+  height: 58px;
+  font-size: 12px;
+}
+#btnR.on {
+  background: rgba(255, 196, 64, 0.55);
+  border-color: #ffd166;
+  box-shadow: 0 0 14px #ffd16699;
+}

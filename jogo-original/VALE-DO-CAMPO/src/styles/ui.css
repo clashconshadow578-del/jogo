@@ -1,0 +1,286 @@
+/* Interface DOM: HUD, barra de energia, hotbar, menu, clima, avisos, diálogo, painel hidrológico, seta de casa. */
+#hud {
+  position: fixed;
+  top: 8px;
+  right: 10px;
+  text-align: right;
+  font-size: 13px;
+  line-height: 1.35;
+  text-shadow: 0 1px 3px #000;
+  pointer-events: none;
+}
+#energy {
+  width: 120px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  margin: 4px 0 0 auto;
+  overflow: hidden;
+}
+#energyBar {
+  height: 100%;
+  transition: width 0.2s;
+}
+#hotbar {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+}
+.slot {
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid #555;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  padding: 2px;
+}
+.slot.sel {
+  border-color: #ffd166;
+  box-shadow: 0 0 8px #ffd16699;
+}
+.slot b {
+  font-size: 14px;
+}
+#menuBtn {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid #666;
+  color: #fff;
+  font-size: 22px;
+}
+#menu {
+  position: fixed;
+  top: 58px;
+  left: 8px;
+  width: 240px;
+  background: rgba(10, 10, 10, 0.9);
+  padding: 12px;
+  border-radius: 10px;
+  display: none;
+  font-size: 14px;
+}
+#menu label {
+  display: block;
+  margin-bottom: 8px;
+}
+#weatherBtn,
+#weatherPanel {
+  display: none !important;
+}
+#weatherBtn {
+  position: fixed;
+  top: 8px;
+  left: 58px;
+  z-index: 8;
+  width: 44px;
+  height: 42px;
+  border: 1px solid #8fa5ac;
+  border-radius: 9px;
+  background: rgba(15, 36, 44, 0.83);
+  color: white;
+  font-size: 23px;
+}
+#weatherPanel {
+  display: none;
+  position: fixed;
+  top: 58px;
+  left: 8px;
+  z-index: 15;
+  width: min(285px, 90vw);
+  max-height: 75vh;
+  overflow: auto;
+  padding: 12px;
+  background: rgba(15, 29, 35, 0.96);
+  border: 1px solid #7797a3;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px #0009;
+}
+#weatherPanel h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+#weatherOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+#weatherOptions button {
+  font-size: 12px;
+  padding: 11px 5px;
+  border-radius: 8px;
+  border: 1px solid #647782;
+  background: #273c46;
+  color: white;
+}
+#weatherOptions button.active {
+  border: 2px solid #ffdc83;
+  background: #435a57;
+}
+#weatherPanel p {
+  font-size: 11px;
+  color: #c6d8d9;
+}
+#menu button {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 0;
+  background: #c0392b;
+  color: #fff;
+  width: 100%;
+  font-size: 14px;
+}
+#toast {
+  position: fixed;
+  top: 32%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.72);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  white-space: normal;
+  max-width: min(94vw, 760px);
+  width: max-content;
+  text-align: center;
+}
+#dlg {
+  position: fixed;
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%);
+  width: min(440px, 92%);
+  background: rgba(30, 18, 6, 0.92);
+  border: 2px solid #d9a441;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: none;
+  font-size: 15px;
+}
+#hydro {
+  position: fixed;
+  top: 56px;
+  left: 8px;
+  max-width: 210px;
+  background: rgba(10, 24, 40, 0.78);
+  border: 1px solid #4a8fc4;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+#hydro button {
+  margin: 5px 4px 0 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: #2a6fa8;
+  color: #fff;
+  font-size: 11px;
+  touch-action: none;
+}
+#fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+#energyBar {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(0, 0, 0, 0.12));
+}
+#home {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 7;
+  opacity: 0;
+  transition: opacity 0.3s;
+  will-change: transform;
+}
+#homeArrow {
+  position: absolute;
+  left: -13px;
+  top: -17px;
+  width: 26px;
+  height: 34px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75));
+}
+#homeArrow::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-bottom: 34px solid #ffd166;
+}
+#homeTxt {
+  position: absolute;
+  left: -45px;
+  top: 22px;
+  width: 90px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow:
+    0 1px 3px #000,
+    0 0 6px #000;
+  white-space: nowrap;
+}
+
+/* Tela cheia: botão discreto no canto superior direito (abaixo do relógio) e o mesmo comando dentro do menu. */
+#fsBtn {
+  position: fixed;
+  top: max(58px, calc(env(safe-area-inset-top) + 58px));
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 8;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+#fsBtn.on {
+  background: rgba(70, 120, 60, 0.6);
+}
+#fsMenuBtn {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #666;
+  border-radius: 6px;
+  background: #302719;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}

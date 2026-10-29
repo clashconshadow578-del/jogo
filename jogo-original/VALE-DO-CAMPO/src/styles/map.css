@@ -1,0 +1,85 @@
+/* Tela do mapa do vale (ui/MapUI.js). */
+#mapOv {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+  background: rgba(6, 12, 10, 0.9);
+  color: #fff;
+  font:
+    600 14px system-ui,
+    Segoe UI,
+    Arial,
+    sans-serif;
+}
+#mapOv .mt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+}
+#mapX {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #8fa5ac;
+  background: rgba(15, 36, 44, 0.9);
+  color: #fff;
+  font-size: 17px;
+  padding: 0;
+}
+#mapW {
+  width: 96vw;
+  height: calc(100vh - 110px);
+  display: flex;
+}
+#mapC {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 2px solid #d9c38a;
+  border-radius: 6px;
+  background: #10201a;
+  box-shadow:
+    0 0 0 2px #3b2c14,
+    0 8px 30px #000a;
+}
+#mapOv .ml {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.92;
+}
+#mapX {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+  font-weight: 700;
+  background: #b03a2e;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  z-index: 2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#mapOv .ml i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+  border: 1px solid #0006;
+}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Vale do Campo V56 — Floresta Amazônica</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="/src/styles/main.css">
+<link rel="stylesheet" href="/src/styles/ui.css">
+<link rel="stylesheet" href="/src/styles/mobile.css">
+<link rel="stylesheet" href="/src/styles/skin.css">
+<link rel="stylesheet" href="/src/styles/map.css">
+<link rel="stylesheet" href="/src/styles/fatal.css">
+</head>
+<body>
+<div id="sideArt" aria-hidden="true"></div>
+<canvas id="c"></canvas>
+<div id="hud"></div><div id="vida"><div class="e"></div><div class="f"></div><div class="t"></div></div><div id="stam"><div class="f"></div><div class="t"></div></div>
+<button id="menuBtn" aria-label="Menu"></button><button id="invBtn" aria-label="Inventário">🎒</button><button id="weatherBtn" aria-label="Escolher clima">⛅</button><div id="weatherPanel"><h3>🌤️ Controle do clima</h3><div id="weatherOptions"></div><p>Manual: mantém o clima escolhido. Automático: sorteio diário por estação.</p></div>
+<button id="fsBtn" aria-label="Tela cheia (F)" title="Tela cheia (F)">⛶</button>
+<div id="hydro"><div id="hydroInfo">🌊 …</div></div>
+<div id="menu">
+  <button id="fsMenuBtn" type="button">⛶ Tela cheia</button>
+  <label>Intensidade da iluminação
+    <input id="lum" type="range" min="0" max="1" step="0.05" value="1" style="width:100%">
+  </label>
+  <label>Sombras<select id="shadowQ" style="display:block;width:100%;margin:5px 0 10px;background:#302719;color:white;padding:7px;border-radius:6px"><option value="full">Completas</option><option value="lite">Leves (rápido)</option><option value="off">Desligadas (mais rápido)</option></select></label>
+  <label>Resolução<select id="resolution" style="display:block;width:100%;margin-top:5px;background:#302719;color:white;padding:7px;border-radius:6px"><option value="auto">Automática</option><option value="1">1x (mais rápida)</option><option value="2">2x</option><option value="3">3x (mais nítida)</option></select></label>
+  <label>Qualidade gráfica<select id="quality" style="display:block;width:100%;margin-top:5px;background:#302719;color:white;padding:7px;border-radius:6px"><option value="low">Baixa</option><option value="medium">Média</option><option value="high">Alta</option><option value="ultra">Ultra</option></select></label>
+  <label><input type="checkbox" id="rays" checked> Feixes solares</label>
+  <label><input type="checkbox" id="particles" checked> Partículas e vaga-lumes</label>
+  <label><input type="checkbox" id="chunks"> Cache do chão (experimental, mais rápido)</label>
+  <label>Volume da chuva <input id="rainVol" type="range" min="0" max="1" step="0.05" value="0.55" style="width:100%"></label><label>Volume dos trovões <input id="thunderVol" type="range" min="0" max="1" step="0.05" value="0.65" style="width:100%"></label><label><input type="checkbox" id="flashes" checked> Clarões de relâmpagos</label><button id="resetBtn">Novo jogo</button>
+</div>
+<div id="hotbar"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="btns">
+  <button class="btn" id="btnH" style="display:none;width:58px;height:58px;font-size:12px">Entrar</button>
+  <button class="btn" id="btnB" style="display:none">Dormir</button>
+  <button class="btn" id="btnR">Correr</button>
+  <button class="btn" id="btnA">Usar</button>
+</div>
+<div id="toast"></div>
+<div id="dlg"></div>
+<div id="fade"></div>
+<div id="home"><div id="homeArrow"></div><div id="homeTxt"></div></div>
+<div id="inv"><div class="ttl">Inventário</div><button class="cls" id="invX" aria-label="Fechar"></button><div class="grid" id="invG"></div><div class="info" id="invI"></div><div class="coin" id="invC"></div></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

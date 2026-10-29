@@ -1,0 +1,303 @@
+# Mapa de migração: <script> <índices> <módulo> [@funçãoDeInicialização]
+# "split" distribui os declaradores de uma mesma declaração entre módulos.
+# Os índices vêm de audit/index.txt (ordem dos comandos de cada <script>).
+
+# ---------------- s00: volume geral (patch do AudioContext) ----------------
+s00 0-6 systems/audio/MasterVolume @installMasterVolume
+
+# ---------------- s02: script principal ----------------
+s02 0 core/SaveManager
+s02 1-2 config/constants
+s02 3-4 config/settings
+s02 5 config/settings @loadGraphicsSettings
+s02 6-7 config/settings
+s02 8 world/World
+s02 9 config/constants
+s02 10-12 world/Instances
+s02 13 core/NewGame
+s02 14 world/Instances
+s02 15 core/TimeManager
+s02 16 world/Instances
+s02 17 world/InstanceStore
+s02 18 world/InstanceStore @openInstanceStore
+s02 19-21 world/WorldGen
+s02 22-24 world/Instances
+s02 25-35 world/BackgroundSim
+s02 36-38 world/Instances
+s02 39 world/Instances @installHomeGuards
+s02 40-43 world/Instances
+s02 44 world/Instances @installInstanceUpdate
+s02 45-48 world/Instances
+s02 49 config/constants
+s02 50-52 world/WorldData
+s02 53 world/WorldGen
+s02 54-57 world/hydrology/Hydrology
+s02 58 world/WeatherSystem
+s02 59 world/WeatherSystem @installOrographicRain
+s02 60 world/Instances
+s02 61-62 world/WorldData
+s02 63 config/constants
+s02 64-68 world/GrassSystem
+s02 69 config/constants
+s02 70 config/balance
+s02 71 systems/InventorySystem
+s02 72 config/balance
+s02 73 systems/InventorySystem
+s02 74-75 config/balance
+s02 76 world/HouseInterior
+s02 77-78 entities/NPC
+s02 79 rendering/LightingSystem
+s02 80 split ground,obj,wet,crops=world/World S=core/GameState
+s02 81 split sleeping=core/GameState dlgOpen=ui/Dialog toastT=ui/Toast hudSig=ui/HUD hbSig=ui/Hotbar
+s02 82 core/InputManager
+s02 83-85 rendering/Canvas
+s02 86-87 rendering/Canvas @initCanvas
+s02 88-89 rendering/Canvas
+s02 90-92 rendering/Canvas @initCanvas
+s02 93 rendering/Canvas
+s02 94-95 rendering/Canvas @initCanvas
+s02 96-97 rendering/Canvas
+s02 98-99 rendering/Canvas @initCanvas
+s02 100 rendering/Canvas
+s02 101 core/GameLoop
+s02 102-103 utils/MathUtils
+s02 104 core/TimeManager
+s02 105 rendering/Effects
+s02 106-107 rendering/Canvas
+s02 108-109 rendering/Canvas @initCanvas
+s02 110 rendering/Canvas
+s02 111-115 rendering/Canvas @initCanvas
+s02 116-118 ui/dom
+s02 119 utils/Random
+s02 120-123 core/SaveMigrations
+s02 124-125 world/Village
+s02 126 core/NewGame
+s02 127 utils/compression
+s02 128 core/NewGame
+s02 129-134 utils/compression
+s02 135 split KEY2=core/SaveManager INV0=systems/InventorySystem
+s02 136-138 core/SaveManager
+s02 139-140 core/SaveMigrations
+s02 141-142 systems/CollisionSystem
+s02 143-145 systems/audio/AudioSystem
+s02 146-149 systems/audio/AnimalSounds
+s02 150-153 systems/audio/AmbientSounds
+s02 154-156 systems/FarmingSystem
+s02 157-171 entities/animals/AnimalSocial
+s02 172-173 systems/audio/AudioSystem
+s02 174 systems/InteractionSystem
+s02 175 entities/NPC
+s02 176 entities/Player
+s02 177 ui/Toast
+s02 178-179 ui/Dialog
+s02 180 systems/FarmingSystem
+s02 181-182 world/village/Quests
+s02 183 world/village/Quests @initQuests
+s02 184-187 world/village/Quests
+s02 188 world/village/Quests @initQuests
+s02 189 split qIdx=world/village/Quests vcam=rendering/Renderer
+s02 190-191 world/village/Quests
+s02 192-193 world/village/Quests @initQuests
+s02 194-197 world/village/Quests
+s02 198 world/village/Quests @initQuests
+s02 199 world/village/Quests
+s02 200-207 world/village/Vendor
+s02 208-209 entities/farm/Chickens
+s02 210 entities/farm/Chickens @loadChickenSprites
+s02 211-226 entities/farm/Chickens
+s02 227 entities/farm/Worms
+s02 228 entities/farm/Worms @loadWormSprite
+s02 229-237 entities/farm/Worms
+s02 238 world/World
+s02 239 entities/farm/FarmFoxes
+s02 240 entities/farm/FarmFoxes @loadFoxSprite
+s02 241-247 entities/farm/FarmFoxes
+s02 248-255 entities/farm/Nests
+s02 256-257 entities/farm/Chickens
+s02 258-259 systems/InteractionSystem
+s02 260 core/TimeManager
+s02 261 utils/MathUtils
+s02 262-270 world/GrassSystem
+s02 271 entities/PlayerMovement
+s02 272 entities/cow/Cow
+s02 273 world/GrassSystem
+s02 274 core/GameUpdate
+s02 275 ui/MobileControls
+s02 276-278 entities/PlayerMovement
+s02 279-280 world/WeatherSystem
+s02 281-284 world/WeatherSystem @loadWeather
+s02 285-288 world/WeatherSystem
+s02 289-291 systems/audio/WeatherAudio
+s02 292-296 world/WeatherSystem
+s02 297-302 world/RainSystem
+s02 303-304 world/World
+s02 305 world/WeatherSystem
+s02 306-307 world/RainSystem
+s02 308-309 rendering/WeatherRenderer
+s02 310 rendering/LightingSystem
+s02 311 core/TimeManager
+s02 312 rendering/Effects
+s02 313-314 rendering/ShadowSystem
+s02 315 rendering/Canvas
+s02 316-319 rendering/LightingSystem
+s02 320-323 rendering/ShadowSystem
+s02 324 rendering/LightingSystem
+s02 325-329 rendering/LakeRenderer
+s02 330 systems/FarmingSystem
+s02 331 rendering/SpriteUtils
+s02 332 systems/FarmingSystem
+s02 333 systems/FarmingSystem @loadCropSprites
+s02 334-335 systems/FarmingSystem
+s02 336-338 world/Trees
+s02 339 world/Trees @loadTreeSprites
+s02 340-343 world/Trees
+s02 344-345 rendering/Sprites
+s02 346 rendering/Sprites @loadSprites
+s02 347 rendering/Sprites
+s02 348-351 world/Mushrooms
+s02 352-353 rendering/Sprites
+s02 354-365 world/HouseInterior
+s02 366-367 systems/CollisionSystem
+s02 368-383 world/WaterSystem
+s02 384 entities/Player
+s02 385-388 rendering/LakeRenderer
+s02 389-393 rendering/TileRenderer
+s02 394 world/Trees
+s02 395 rendering/Sprites
+s02 396 rendering/Characters
+s02 397-398 entities/Player
+s02 399 entities/Player @loadLegacyPlayerSprite
+s02 400-402 entities/Player
+s02 403-405 entities/cow/CowRenderer
+s02 406-407 entities/cow/CowRenderer @initCowPixelSprite
+s02 408 entities/cow/CowRenderer
+s02 409-410 entities/cow/CowRenderer @initCowPixelSprite
+s02 411-412 entities/cow/Cow
+s02 413 utils/Random
+s02 414-418 entities/ai/Steering
+s02 419-434 entities/cow/Cow
+s02 435-443 entities/NPC
+s02 444-445 entities/cow/CowRenderer
+s02 446 entities/cow/CowRenderer @loadCowSprite
+s02 447-449 entities/cow/CowRenderer
+s02 450 entities/cow/Herd
+s02 451-470 entities/cow/CowGenetics
+s02 471-473 entities/wild/Fauna
+s02 474 entities/wild/Fauna @loadFaunaSprites
+s02 475-505 entities/wild/Fauna
+s02 506-508 entities/wild/Jaguar
+s02 509-510 entities/wild/Jaguar @loadJaguarSprite
+s02 511-541 entities/wild/Jaguar
+s02 542-543 entities/wild/Anaconda
+s02 544-545 entities/wild/Anaconda @loadAnacondaSprite
+s02 546-547 entities/wild/Anaconda
+s02 548 entities/wild/Anaconda @registerAnacondaStates
+s02 549-566 entities/wild/Anaconda
+s02 567-570 entities/wild/Fauna
+s02 571 entities/cow/Herd
+s02 572 entities/cow/Herd @initFounderCow
+s02 573-575 entities/cow/Herd
+s02 576-577 entities/cow/Herd @initGestationBadge
+s02 578-583 entities/cow/Herd
+s02 584 rendering/Renderer
+s02 585 rendering/Atmosphere
+s02 586 ui/HUD
+s02 587-589 systems/InventorySystem
+s02 590 ui/Hotbar
+s02 591 ui/MobileControls
+s02 592-593 ui/MobileControls @initJoystick
+s02 594 ui/MobileControls
+s02 595-596 ui/MobileControls @initJoystick
+s02 597-601 ui/MobileControls @initActionButtons
+s02 602-604 core/InputManager @initKeyboard
+s02 605-606 ui/MenuUI
+s02 607-612 ui/MenuUI @initMenu
+s02 613 split HN=config/constants HKEY=world/hydrology/Hydrology HKEY_OLD=world/hydrology/Hydrology
+s02 614-622 world/hydrology/Hydrology
+s02 623 utils/Noise
+s02 624-636 world/hydrology/RiverFlow
+s02 637-669 world/hydrology/Fluvial
+s02 670-676 entities/wild/FaunaWater
+s02 677-681 world/hydrology/Hydrology
+s02 682-686 world/hydrology/Puddles
+s02 687-691 world/hydrology/Hydrology
+s02 692-696 world/Vegetation
+s02 697-703 world/Seasons
+s02 704-707 world/hydrology/Hydrology
+s02 708-709 world/Vegetation
+s02 710-711 world/hydrology/Hydrology
+s02 712-714 entities/PlayerMovement @installTerrainSpeed
+s02 715-726 world/ecology/TreeEcology
+s02 727-732 systems/Woodcutting
+s02 733 systems/Woodcutting @initAxeBar
+s02 734-737 systems/Woodcutting
+s02 738-739 world/GrassSystem
+s02 740-745 core/Bootstrap @bootLoadGame
+s02 746-753 ui/MenuUI @initSettingsControls
+s02 754 config/settings
+s02 755-765 ui/MenuUI @initSettingsControls
+s02 766-767 core/Bootstrap @bootUI
+s02 768-770 core/SaveManager @initAutosave
+s02 771-773 ui/HomeArrow
+s02 774-775 core/GameLoop
+s02 776 core/GameLoop @startLoop
+
+# ---------------- s03: música lofi ----------------
+s03 0-14 systems/audio/LofiMusic @initLofi!
+
+# ---------------- s04: carcaças e decomposição ----------------
+s04 0-14 entities/Carcass
+
+# ---------------- s05: relevo ----------------
+s05 0-1 rendering/Relief
+
+# ---------------- s06: skin do personagem + animações de ação ----------------
+s06 0 entities/PlayerSprite
+s06 1 entities/PlayerSprite @loadPlayerSprite
+s06 2-7 entities/PlayerSprite
+s06 8-9 entities/PlayerSprite @installActionAnimations
+
+# ---------------- s07: pesca ----------------
+s07 0-1 systems/Fishing
+s07 2-3 rendering/Torch @registerTorchItem
+s07 4-19 systems/Fishing
+
+# ---------------- s08: noite, tocha e lobisomem ----------------
+s08 0 rendering/Torch
+s08 1 entities/Werewolf
+s08 2-6 rendering/Torch
+s08 7 rendering/Torch @installNightDarkness
+s08 8-9 rendering/Torch
+s08 10 rendering/Torch @installTorchSprite
+s08 11 rendering/Torch
+s08 12 rendering/Torch @installTorchPost
+s08 13 rendering/Torch
+s08 14-22 entities/Werewolf
+s08 23-24 rendering/Torch
+s08 25 rendering/Torch @installTorchUpdate
+
+# ---------------- s09: gigante triste ----------------
+s09 0-8 entities/Giant
+s09 9 entities/Giant @loadGolemSprite
+s09 10 entities/Giant
+
+# ---------------- s10: inventário ----------------
+s10 0-10 ui/InventoryUI @initInventoryUI!
+
+# ---------------- s11: mapa ----------------
+s11 0-30 ui/MapUI @initMapUI!
+
+# ---------------- s12: alelopatia e névoa ----------------
+s12 0-1 world/Allelopathy
+s12 2 world/Allelopathy @initAllelopathy
+s12 3-41 world/Allelopathy @initAllelopathy
+
+# ---------------- s13: floresta amazônica, troncos, abelhas ----------------
+s13 0-34 features/amazon/AmazonTrees @initAmazonTrees
+s13 35-50 features/amazon/AmazonRender @installAmazonRender
+s13 51-78 features/amazon/AmazonItems @installAmazonItems
+s13 79-120 features/amazon/AmazonEcology @installAmazonEcology
+s13 121-172 features/amazon/FallenLogs @installFallenLogs
+s13 173-178 features/amazon/Litter @initLitter
+s13 179-217 features/amazon/Bees @installBees
+s13 218-223 features/amazon/AmazonBoot @bootAmazon
