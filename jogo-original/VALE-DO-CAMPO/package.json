@@ -1,0 +1,21 @@
+{
+  "name": "vale-do-campo",
+  "version": "0.64.0",
+  "private": true,
+  "type": "module",
+  "description": "Jogo de fazenda e ecologia em pixel art (Canvas 2D)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:regression": "node tests/regression/run-regression.mjs",
+    "format": "prettier --write \"src/**/*.js\""
+  },
+  "devDependencies": {
+    "vite": "^8.0.0"
+  },
+  "dependencies": {
+    "pixi.js": "^8.22.0"
+  }
+}
