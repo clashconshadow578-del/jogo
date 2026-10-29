@@ -75,7 +75,7 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 | Fase | O que muda | Risco | Como saber que deu certo |
 |---|---|---|---|
 | **0 — Preparação** *(feita)* | Vite funcionando, `package.json` recriado, `pixi.js` instalado (ainda não usado), backup etiquetado | Nenhum | Build ok, 96 testes ok, jogo abre sem erro |
-| **1 — Tomada de desenho** | Criar `rendering/pixi/` com a "tomada": inicia o Pixi atrás do `?pixi`, com plano B em Canvas. **O jogo ainda desenha tudo em Canvas** | Muito baixo | Com e sem `?pixi` a imagem é idêntica |
+| **1 — Tomada de desenho** *(feita)* | Criar `rendering/pixi/` com a "tomada": inicia o Pixi atrás do `?pixi`, com plano B em Canvas. **O jogo ainda desenha tudo em Canvas** | Muito baixo | Com e sem `?pixi` a imagem é idêntica |
 | **2 — Chão (tiles)** | Chão de grama parada vira sprites/tint na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Imagens iguais (tolerância de poucos níveis por cor); FPS medido melhor |
 | **3 — Grama pisoteada e rios** | `drawTrampledGrass`, `Hydrology` | Médio | Idem + teste `grass-idle-paths` |
 | **4 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
@@ -108,3 +108,21 @@ npm run build        # gera a pasta dist/ (a que vai para o Netlify)
 - Cache do chão desligado de propósito pelo autor original (a tela piscava em algumas placas de vídeo). Precisa teste em aparelhos reais.
 - Os testes de imagem rodam sem placa de vídeo real; só o seu celular dirá o FPS verdadeiro.
 - O estilo "pixel art nítido" exige configurar o Pixi sem suavização (`scaleMode: 'nearest'`) e sem arredondar posições em subpixel.
+
+## 10. Referência dos testes de imagem (antes da Fase 2)
+
+`npm run test:regression -- basic` já mostra diferenças contra o original, **de propósito** (a grama e os saves foram alterados depois da
+migração). Por isso, a regra para as próximas fases é: **os números de pixels diferentes devem continuar exatamente iguais** (ou, no
+caso da Fase 2 em diante, só mudar dentro do que combinarmos).
+
+Referência medida na Fase 1 (idêntica com e sem a ponte do PixiJS): `00_start` 153258 · `01_idle60` 153114 · `02_walk_right` 170478 ·
+`03_walk_down` 172805 · `04_diag` 160039 · `05_action` 160611 · `06_inventory` 122904 · `07_map` 1544 · `08_later` 155100.
+
+Para rodar esse teste é preciso o Playwright (`npm install --no-save playwright`) e o navegador Chromium.
+
+## 11. Fase 1 (feita): o que foi criado
+
+- `src/rendering/pixi/PixiBridge.js`: com `?pixi` na URL, liga o PixiJS (WebGL) fora da tela; sem `?pixi`, não faz nada e nem baixa o PixiJS.
+  Se o WebGL falhar, só avisa no console e o jogo segue em Canvas 2D.
+- `tests/core/pixiBridge.test.js`: teste do interruptor. Total de testes: 97.
+- Como conferir no navegador: abra `?pixi` e, no console, `window.VDC_PIXI.renderer` deve mostrar `webgl`.

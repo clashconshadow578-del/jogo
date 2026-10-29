@@ -8,6 +8,7 @@
 import { loadWorldData } from './world/WorldData.js';
 import { boot } from './core/Game.js';
 import { installDebug } from './core/debug.js';
+import { initPixi } from './rendering/pixi/PixiBridge.js';
 
 function showFatalError(err) {
   console.error('[Vale do Campo] falha ao iniciar:', err);
@@ -29,6 +30,7 @@ async function start() {
     return;
   }
   boot();
+  initPixi(); // só faz algo com ?pixi na URL (fase 1: liga o WebGL, ainda sem desenhar)
   const env = import.meta.env || {};
   if (env.DEV || /[?&]debug\b/.test(location.search)) installDebug();
 }
