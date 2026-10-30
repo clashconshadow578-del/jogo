@@ -6,6 +6,7 @@
 
 import { GRASS, MH, MW, OX, OY, TREE, TS } from '../config/constants.js';
 import { FASE, HEL, PLANTS, SAM, plantBlurb } from '../config/plants.js';
+import { occBegin, occEnd } from '../rendering/Occlusion.js';
 import { toolFx } from '../config/progression.js';
 import { extensible } from '../core/extensions.js';
 import { S } from '../core/GameState.js';
@@ -165,7 +166,11 @@ function drawMato(tx, ty, t, i) {
   const id = gid(px, py - 2),
     bend = id < 0 ? 0 : grassBendX[id] / 110,
     lean = bend === 0 ? 0 : Math.round(bend * 2.5 + Math.sin(t * 14) * Math.min(1, Math.abs(bend)) * 0.8);
-  ctx.drawImage(m.img, Math.round(px - m.w / 2) + lean, py - m.h);
+  const dx = Math.round(px - m.w / 2) + lean,
+    dy = py - m.h,
+    g = occBegin(dx, dy, m.w, m.h); // se o personagem está atrás da planta, só um círculo dela fica translúcido
+  g.drawImage(m.img, dx, dy);
+  occEnd(g);
 }
 
 /** Compatibilidade com o teste de desempenho (core/Bench.js): o mato agora é sempre uma sprite pronta. */

@@ -93,6 +93,18 @@ export const NUT_PISO = 0.2;
  */
 export const COBERTURA = [0, 0.12, 0.3, 0.7, 1];
 
+/**
+ * Escala da sprite por fase (índice 0-4), para as duas espécies: as fases 3 e 4 ficam 15% maiores para o sub-bosque parecer mais cheio.
+ * É aplicada uma vez, quando a sprite carrega (rendering/Sprites.js), sem suavização: o pixel art e o alfa 0/255 não mudam.
+ */
+export const ESCALA_FASE = [1, 1, 1, 1.15, 1.15];
+
+/** Escala de uma sprite do mato pelo nome (`helikonia_3`, `samambaia_4`...); 1 para qualquer outra imagem. */
+export function plantSpriteScale(nome) {
+  const m = /^(?:helikonia|samambaia)_([1-4])$/.exec(nome);
+  return m ? ESCALA_FASE[+m[1]] : 1;
+}
+
 /** Fase 0-4 (0 = sem planta visível) para a quantidade de mato (0-255). */
 export function plantStage(m) {
   if (m <= FASE[0]) return 0;

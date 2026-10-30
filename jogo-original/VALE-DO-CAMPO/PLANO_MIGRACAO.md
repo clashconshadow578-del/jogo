@@ -429,3 +429,11 @@ carcaça. Tudo pelas mesmas regras dos selvagens, por meio dos "espelhos" de `en
 desmaio por muitas picadas (6 h de jogo, indefeso), coração batendo com vida baixa, onça que não recua depois de atacar e renascimento dentro da casa ao morrer.
 Teste novo: `tests/browser/fazenda.mjs`. Armadilha de teste: `updateFauna` limita o passo a 0,05 s; passos maiores deixam os predadores mais lentos que as galinhas.
 
+
+## 28. Plantas maiores e círculo translúcido atrás de árvores e plantas (feito)
+
+Pedido do dono: (1) as fases 3 e 4 do mato 15% maiores, para uma floresta mais cheia; (2) quando o personagem passa atrás de uma árvore, planta ou mato alto, **só um círculo ao redor
+dele** fica translúcido, com a borda em degradê, e não a árvore inteira (antes a copa das árvores grandes da Amazônia ficava 58% translúcida por inteiro). Detalhes em `docs/PLANTAS.md`.
+`rendering/Occlusion.js` desenha a planta ou árvore num canvas auxiliar, fura com uma máscara em degradê e a coloca na cena (funciona igual no PixiJS e em `?canvas`);
+o canvas auxiliar fica fora do atlas (`__dyn`, `PixiCtx.js`). Números em `config/occlusion.js` e `ESCALA_FASE` em `config/plants.js`. Teste novo: `tests/browser/oclusao.mjs`
+(compara o quadro com e sem o círculo: muda só dentro do raio) e `tests/assets/plants.test.js`.

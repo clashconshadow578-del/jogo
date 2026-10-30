@@ -64,7 +64,10 @@ Os números ficam em `src/config/plants.js` e são os únicos a mexer para equil
 
 ## Sprites
 
-`public/assets/sprites/plants/helikonia_1..4.png` e `samambaia_1..4.png` (16 a 34 px de largura, fundo transparente). Saem de
+`public/assets/sprites/plants/helikonia_1..4.png` e `samambaia_1..4.png` (16 a 34 px de largura, fundo transparente). **As fases 3 e 4 das duas
+espécies são ampliadas em 15% quando carregam** (`ESCALA_FASE` em `config/plants.js`, aplicada por `bakeScaled` em `rendering/SpriteUtils.js`, sem
+suavização: o pixel art e o alfa 0/255 continuam iguais) para o sub-bosque parecer mais cheio; ficam com 32x25 e 39x38 (helicônia) e 32x28 e 39x38
+(samambaia). Os PNGs em si não mudam. Para mudar o tamanho, edite só `ESCALA_FASE`. Saem de
 `tools/plants/folha-plantas.jpg` por `python3 tools/plants/make-plants.py` (Pillow, numpy, scipy), que remove o xadrez gravado e as legendas.
 Para trocar a arte, edite a folha (mesma grade 2 × 4: linha de cima helicônia, de baixo samambaia) ou substitua os PNGs mantendo os nomes;
 `npm test` confere que são RGBA com alfa só 0/255 e que cada fase é maior que a anterior.
@@ -77,5 +80,21 @@ Observação: a folha original traz flores vermelhas na fase 4 das duas linhas.
 | `src/config/plants.js` | dados da vida real, parâmetros de jogo, fases (`plantStage`) e texto da inspeção |
 | `src/world/PlantSpecies.js` | espécie por tile, ritmo de crescimento, ciclo diário, palatabilidade |
 | `src/world/Vegetation.js` | `drawMato` (sprite por espécie e fase), `cutMato`, `inspectMato` |
+| `src/rendering/Occlusion.js` | círculo translúcido quando o personagem passa atrás da planta (ver abaixo) |
 | `src/world/hydrology/Hydrology.js` | aplica o ritmo da espécie ao crescimento e chama o ciclo diário |
 | `tests/assets/plants.test.js`, `tests/browser/plants.mjs` | testes das sprites e do comportamento |
+
+## Quando o personagem passa atrás de uma planta ou árvore
+
+Árvores (comuns e as grandes da Amazônia) e plantas do mato que estão **na frente** do personagem (desenhadas depois dele na ordem Y) **não ficam
+translúcidas por inteiro**: só um círculo ao redor do tronco do personagem fica, com a borda em degradê (máscara em `smoothstep`; no centro some
+78% do desenho, na borda 0%). Os números ficam em `src/config/occlusion.js` (`raio` 26 px, `nucleo` 8 px, `forca` 0,78, `centroY` 11 px acima
+dos pés, `margem` 16 px).
+
+Como funciona (igual no PixiJS e em `?canvas`, que não têm "apagar com máscara"): `rendering/Renderer.js` liga o círculo (`occLigar`) logo depois de
+desenhar o personagem; `drawMato`, `drawTree` (`TreeRenderer.js`) e a `drawTree` da Amazônia (`AmazonRender.js`) pedem o contexto com
+`occBegin(x, y, w, h)`. Se o círculo não toca o retângulo da planta (o caso comum), recebem o próprio `ctx` e nada muda. Se toca, recebem um canvas
+auxiliar do mesmo tamanho, desenham nele como sempre (as mesmas coordenadas do mundo), `occEnd` o fura com a máscara (`destination-out`) e o coloca
+na cena, na mesma posição e ordem. Os canvases auxiliares são reaproveitados por tamanho (nada é criado por quadro) e marcados com `__dyn` para
+ficar fora do atlas do PixiJS (senão cada quadro recopiaria uma página inteira de 1024x1024).
+Teste: `tests/browser/oclusao.mjs` (PixiJS; `CANVAS=1` roda em `?canvas`).

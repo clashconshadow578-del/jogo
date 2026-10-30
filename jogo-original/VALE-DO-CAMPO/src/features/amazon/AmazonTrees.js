@@ -179,7 +179,6 @@ class AmzArvore extends ArvoreRealista {
     this.estagio = 'broto';
     this.tamanhoRaiz = 0.3;
     this.tamanhoCopa = 0.3;
-    this.fade = 0;
     this.nIso = 0;
     this.aguaInterna = 60;
     this.nutrientesInternos = 40;

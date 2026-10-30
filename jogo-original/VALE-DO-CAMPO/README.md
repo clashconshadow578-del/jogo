@@ -33,7 +33,7 @@ de regressão comparam as duas versões pixel a pixel e comparam o save byte a b
 
 Ecossistema vivo (percepção, caça, presa-jogador, indicadores): [`docs/ECOSSISTEMA_VIVO.md`](docs/ECOSSISTEMA_VIVO.md).
 
-O mato (helicônia e samambaia: dados da vida real, regras de jogo e como inspecionar): [`docs/PLANTAS.md`](docs/PLANTAS.md).
+O mato (helicônia e samambaia: dados da vida real, regras de jogo, como inspecionar e o círculo translúcido quando o personagem passa atrás de árvores e plantas): [`docs/PLANTAS.md`](docs/PLANTAS.md).
 
 Pisoteio, trilhas de fauna e mato fechado: [`docs/PISOTEIO.md`](docs/PISOTEIO.md).
 

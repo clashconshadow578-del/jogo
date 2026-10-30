@@ -8,7 +8,9 @@ import { MW, TS, VH, VW } from '../../config/constants.js';
 import { S } from '../../core/GameState.js';
 import { sunInfo } from '../../core/TimeManager.js';
 import { amzDrops, amzSp, BOLT, clamp, FALL, M, PT, SPN } from './AmazonTrees.js';
+import { OCLUSAO } from '../../config/occlusion.js';
 import { ctx } from '../../rendering/Canvas.js';
+import { occBegin, occEnd } from '../../rendering/Occlusion.js';
 import { vcam } from '../../rendering/Renderer.js';
 import { casterShadow } from '../../rendering/ShadowSystem.js';
 import { drawWeather } from '../../rendering/WeatherRenderer.js';
@@ -87,12 +89,9 @@ export function installAmazonRender() {
         const dx = Math.round(x - m.w / 2),
           dy = Math.round(y - m.h + 2),
           step = H > 150 ? 3 : H > 70 ? 2 : 1;
-        /* copa translúcida quando o jogador está atrás dela */
-        const pf = S.px > x - m.w * 0.48 && S.px < x + m.w * 0.48 && S.py < y - 3 && S.py > y - H ? 1 : 0;
-        a.fade += (pf - a.fade) * 0.12;
-        const alpha = 1 - 0.58 * a.fade * (a.st >= 4 ? 1 : 0);
-        const al0 = ctx.globalAlpha;
-        if (alpha < 0.99) ctx.globalAlpha = al0 * alpha;
+        /* se o jogador está atrás da árvore, só um círculo ao redor dele fica translúcido (rendering/Occlusion.js) */
+        const mg = OCLUSAO.margem,
+          g = occBegin(dx - mg, dy, m.w + 2 * mg, m.h);
         const flutter = (sp.flut || 0) * (0.25 + w * 1.2),
           cbRow = m.cbRow || H * 0.5,
           rw = m.rw,
@@ -111,18 +110,19 @@ export function installAmazonRender() {
             rs = r;
             rO = ro;
           } else if (ro !== rO) {
-            ctx.drawImage(m.img, 0, rs, m.w, r - rs, dx + rO, dy + rs, m.w, r - rs);
+            g.drawImage(m.img, 0, rs, m.w, r - rs, dx + rO, dy + rs, m.w, r - rs);
             rs = r;
             rO = ro;
           } // junta fatias com mesmo deslocamento
         }
-        if (rs >= 0) ctx.drawImage(m.img, 0, rs, m.w, H - rs, dx + rO, dy + rs, m.w, H - rs);
+        if (rs >= 0) g.drawImage(m.img, 0, rs, m.w, H - rs, dx + rO, dy + rs, m.w, H - rs);
         if (a.burn) {
-          ctx.globalAlpha = 0.35 * alpha;
-          ctx.fillStyle = '#120a05';
-          ctx.fillRect(dx, dy, m.w, m.h);
+          g.globalAlpha = 0.35;
+          g.fillStyle = '#120a05';
+          g.fillRect(dx, dy, m.w, m.h);
+          g.globalAlpha = 1;
         }
-        ctx.globalAlpha = al0;
+        occEnd(g);
       },
   );
 

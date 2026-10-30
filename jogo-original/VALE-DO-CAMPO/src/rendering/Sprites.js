@@ -6,7 +6,8 @@
 
 import { OXP, OYP } from '../config/constants.js';
 import { ctx } from './Canvas.js';
-import { bakeImg } from './SpriteUtils.js';
+import { plantSpriteScale } from '../config/plants.js';
+import { bakeImg, bakeScaled } from './SpriteUtils.js';
 import { assetUrl } from '../utils/assets.js';
 import { hash2 } from '../utils/MathUtils.js';
 
@@ -80,9 +81,10 @@ export function loadSprites() {
   for (const n in SPR_DATA) {
     const m = (SPR[n] = { ready: false, w: 0, h: 0, img: new Image() });
     m.img.onload = () => {
+      const k = plantSpriteScale(n); // fases 3 e 4 do mato: 15% maiores
+      m.img = k === 1 ? bakeImg(m.img) : bakeScaled(m.img, k);
       m.w = m.img.width;
       m.h = m.img.height;
-      m.img = bakeImg(m.img);
       m.ready = true;
     };
     m.img.src = SPR_DATA[n];

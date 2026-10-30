@@ -102,6 +102,8 @@ import * as m90 from '../world/Trees.js';
 import * as m91 from '../world/Vegetation.js';
 import * as mPlantSpecies from '../world/PlantSpecies.js';
 import * as mPlantsCfg from '../config/plants.js';
+import * as mOcclCfg from '../config/occlusion.js';
+import * as mOcclusion from '../rendering/Occlusion.js';
 import * as mTrails from '../world/Trails.js';
 import * as mFarmPrey from '../entities/farm/FarmPrey.js';
 import * as mTrampling from '../config/trampling.js';
@@ -243,6 +245,8 @@ const MODULES = {
   'world/Vegetation': m91,
   'world/PlantSpecies': mPlantSpecies,
   'config/plants': mPlantsCfg,
+  'config/occlusion': mOcclCfg,
+  'rendering/Occlusion': mOcclusion,
   'world/Trails': mTrails,
   'entities/farm/FarmPrey': mFarmPrey,
   'config/trampling': mTrampling,

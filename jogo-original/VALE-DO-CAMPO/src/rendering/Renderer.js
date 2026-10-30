@@ -36,6 +36,7 @@ import { terrainDraw, terrainServed } from './TerrainCache.js';
 import { drawTile, pixiPlanEnd, pixiPlanTiles } from './TileRenderer.js';
 import { pixiGroundDraw } from './pixi/PixiGround.js';
 import { getPixi } from './pixi/PixiBridge.js';
+import { occLigar, occReset } from './Occlusion.js';
 import { drawLightning, drawWeather } from './WeatherRenderer.js';
 import { drawDust, drawPrints, drawTrampledGrass } from '../world/GrassSystem.js';
 import { renderInterior } from '../world/HouseInterior.js';
@@ -168,17 +169,22 @@ const layerEntities = extensible(function layerEntities(v, ents) {
   const { t, gx0, gx1, gy0, gy1 } = v;
   const ML = hydroMatoList(gx0, gx1, gy0, gy1);
   let mi = 0; // mato cobre os pés do personagem, da vaca e do aldeão
+  occReset();
   for (const en of ents) {
     while (mi < ML.length && ML[mi].k <= en.k) {
       if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
       mi++;
     }
-    if (!semDesenho(en)) drawEntity(en);
+    if (!semDesenho(en)) {
+      drawEntity(en);
+      if (en.draw === drawPlayer) occLigar(S.px, S.py); // o que vem depois está na frente do personagem: fica furado ao redor dele
+    }
   }
   while (mi < ML.length) {
     if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
     mi++;
   }
+  occReset();
 });
 
 /** Passe 2: sombras de contato, ordem Y, reflexos, bordas do lago e o desenho de cada entidade (o mato cobre os pés), nesta ordem. */

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
-import { FASE, HEL, PLANTS, SAM, plantBlurb, plantStage } from '../../src/config/plants.js';
+import { ESCALA_FASE, FASE, HEL, PLANTS, SAM, plantBlurb, plantSpriteScale, plantStage } from '../../src/config/plants.js';
 
 const dir = fileURLToPath(new URL('../../public/assets/sprites/plants/', import.meta.url));
 
@@ -75,4 +75,15 @@ test('plantas: fases pelo mato e dados da vida real completos', () => {
   assert.ok(PLANTS[HEL].florescerMorre > 0 && PLANTS[SAM].florescerMorre === 0, 'só o caule da helicônia morre depois de florir');
   assert.match(plantBlurb(HEL, 4), /Helicônia/);
   assert.equal(plantBlurb(0, 2), '');
+});
+
+test('plantas: as fases 3 e 4 das duas espécies são 15% maiores; as outras sprites não mudam', () => {
+  assert.deepEqual(ESCALA_FASE, [1, 1, 1, 1.15, 1.15]);
+  for (const e of ['helikonia', 'samambaia']) {
+    assert.equal(plantSpriteScale(`${e}_1`), 1);
+    assert.equal(plantSpriteScale(`${e}_2`), 1);
+    assert.equal(plantSpriteScale(`${e}_3`), 1.15);
+    assert.equal(plantSpriteScale(`${e}_4`), 1.15);
+  }
+  for (const outro of ['house', 'rock27', 'plant', 'helikonia_5', 'xhelikonia_3']) assert.equal(plantSpriteScale(outro), 1, outro);
 });

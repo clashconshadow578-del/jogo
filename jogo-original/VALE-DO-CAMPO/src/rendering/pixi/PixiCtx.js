@@ -204,9 +204,14 @@ function novaPagina() {
 
 function elegivel(src) {
   if (src instanceof HTMLImageElement) return src.complete && src.naturalWidth > 0;
-  // canvases pequenos que não são as camadas do tamanho da tela (luz, atmosfera), que são redesenhadas todo quadro
+  // canvases pequenos que não são as camadas do tamanho da tela (luz, atmosfera), que são redesenhadas todo quadro;
+  // `__dyn` marca os canvases auxiliares que mudam todo quadro (rendering/Occlusion.js): ter textura própria evita recopiar uma página do atlas inteira
   return (
-    src instanceof HTMLCanvasElement && src.width > 0 && src.height > 0 && !(src.width === VW && src.height === VH)
+    src instanceof HTMLCanvasElement &&
+    src.width > 0 &&
+    src.height > 0 &&
+    !src.__dyn &&
+    !(src.width === VW && src.height === VH)
   );
 }
 

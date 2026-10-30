@@ -13,6 +13,8 @@ import { TREEPAL } from '../world/Seasons.js';
 import { treeModel } from '../world/Trees.js';
 import { climate } from '../world/WeatherSystem.js';
 import { ctx } from './Canvas.js';
+import { occBegin, occEnd } from './Occlusion.js';
+import { OCLUSAO } from '../config/occlusion.js';
 
 const drawTree = extensible(function drawTree(x, y, tx, ty) {
   const m = tx != null && treeModel(tx, ty);
@@ -26,6 +28,8 @@ const drawTree = extensible(function drawTree(x, y, tx, ty) {
     dy = Math.round(y - m.h + 2);
   // Cada linha da copa balança com um deslocamento inteiro `o`. Linhas vizinhas com o mesmo `o` saem num único
   // drawImage (mesmos pixels, bem menos chamadas — importante no celular, onde cada chamada tem custo fixo).
+  const M = OCLUSAO.margem,
+    g = occBegin(dx - M, dy, m.w + 2 * M, m.h); // se o personagem está atrás da árvore, só um círculo dela fica translúcido
   let rs = 0,
     rO = 0;
   for (let r = 0; r < m.h; r++) {
@@ -33,12 +37,13 @@ const drawTree = extensible(function drawTree(x, y, tx, ty) {
       o = Math.round(sw * Math.pow(f, 1.5) + Math.sin(t * 6 + r * 0.45 + ph) * 0.4 * f * (0.3 + w));
     if (r === 0) rO = o;
     else if (o !== rO) {
-      ctx.drawImage(m.img, 0, rs, m.w, r - rs, dx + rO, dy + rs, m.w, r - rs);
+      g.drawImage(m.img, 0, rs, m.w, r - rs, dx + rO, dy + rs, m.w, r - rs);
       rs = r;
       rO = o;
     }
   }
-  if (m.h > 0) ctx.drawImage(m.img, 0, rs, m.w, m.h - rs, dx + rO, dy + rs, m.w, m.h - rs);
+  if (m.h > 0) g.drawImage(m.img, 0, rs, m.w, m.h - rs, dx + rO, dy + rs, m.w, m.h - rs);
+  occEnd(g);
 });
 
 function drawTreeOld(x, y) {
