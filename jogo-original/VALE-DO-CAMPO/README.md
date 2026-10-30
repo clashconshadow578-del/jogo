@@ -138,7 +138,7 @@ VALE-DO-CAMPO/
 │   │   ├── hydrology/       hidrologia, correnteza, dinâmica fluvial, poças
 │   │   ├── ecology/         ecologia das árvores
 │   │   └── village/         missões e vendedor
-│   ├── rendering/           canvas, renderizador, iluminação, sombras, tiles, lago, tocha, atmosfera
+│   ├── rendering/           canvas, renderizador (passes), entidades (Entities.js), árvores (TreeRenderer.js), iluminação, sombras, tiles, lago, tocha, atmosfera, pixi/ (ponte experimental)
 │   ├── entities/            jogador, aldeã, lobisomem, gigante, carcaças
 │   │   ├── cow/             vaca, rebanho, genética, desenho
 │   │   ├── farm/            galinhas, ninhos, minhocas, raposas da fazenda
@@ -371,7 +371,7 @@ import { TS, OX, OY } from '../../config/constants.js';
 import { sleeping } from '../../core/GameState.js';
 import { update } from '../../core/GameUpdate.js';
 import { ctx } from '../../rendering/Canvas.js';
-import { entityProviders } from '../../rendering/Renderer.js';
+import { entityProviders } from '../../rendering/Entities.js';
 import { hydroSave, hydroLoad } from '../../world/hydrology/Hydrology.js';
 import { newGame } from '../../core/NewGame.js';
 import { INST } from '../../world/Instances.js';
@@ -463,6 +463,23 @@ VDC.run('climate.day = S.day; climate.kind = 3; climate.start = 0; climate.end =
 VDC.run('dormir(false)')                      // dorme e avança o dia
 VDC.modules['world/Instances'].INST           // qualquer módulo
 ```
+
+### Chaves da URL (para testes)
+
+Acrescente no fim do endereço do jogo (ex.: `http://localhost:5173/?fps`; para juntar duas, use `&`: `?fps&cpu`). Sem nenhuma chave, o jogo roda normal.
+
+| Chave | O que faz |
+|---|---|
+| `?debug` | libera o `VDC` no console (no `npm run dev` já fica ativo) |
+| `?fps` | mostra fps, tempo de lógica, de desenho e de interface, resolução e qualidade |
+| `?bench` | teste de desempenho automático (uns 5 min; não grava o seu save; no fim há o botão "Recarregar o jogo") |
+| `?pixi` | liga o PixiJS (WebGL): só a grama parada do chão (experimental, não deixa o jogo mais rápido) |
+| `?pixi&pixi2d` | a mesma lógica do `?pixi`, sem WebGL (usado só nos testes) |
+| `?matocache` | mato em imagens prontas (experimental; deixou o celular lento: fica desligado) |
+| `?cpu` | todos os canvases 2D desenham na CPU e não na placa de vídeo (experimental; pode ser melhor ou pior, compare com o `?fps`) |
+| `?safe` | desliga as otimizações opcionais (grama parada, fluxo do rio, camadas da atmosfera) |
+| `?cache` / `?nocache` | liga / desliga o cache do chão (desligado por padrão: piscava em algumas placas de vídeo) |
+| `?desync` | canvas "desincronizado" (pisca em alguns aparelhos; só para teste) |
 
 ## 16. Solução de problemas
 

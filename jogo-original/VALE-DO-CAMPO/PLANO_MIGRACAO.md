@@ -76,10 +76,10 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 | **2 — Chão (tiles)** *(feita, experimental: só com `?pixi`)* | A grama parada do chão vira textura na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Lógica idêntica (0 pixels); com WebGL, diferenças mínimas no navegador de teste; **FPS ainda não medido no celular** |
 | **3 — Mato em imagens prontas** *(feita, mas DESLIGADA por padrão até medir no celular: `?matocache` liga; ver seções 13 e 14)* | `Vegetation.drawMato`: cada tile de mato vira uma imagem pequena, refeita só quando o vento muda a inclinação das lâminas | Baixo | **Idêntico, pixel a pixel** (133 quadros) e 21-37% menos chamadas de desenho por quadro |
 | **4 — Passes de desenho** *(feita)* | `render()` dividido em 3 passes (`passGround`, `passEntities`, `passFinish`), cada um com plano B em Canvas: é a "tomada" por camada da seção 4. Nenhum pixel muda | Muito baixo | Idêntico: regressão visual com os mesmos números nos 4 cenários; 24 posições da câmera com 0 diferenças (seção 15) |
-| **5 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y; clima e partículas. **É o que mais pesa no celular: ~13 ms de ~52** (seção 14). Começa separando o desenho da lógica nos arquivos que ainda misturam os dois (seção 7) | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
-| **6 — Luz e névoa** | `LightingSystem`, `Torch`, vinheta viram filtros/sprites | Alto | Regressão visual, teste noturno |
-| **7 — Sombras, relevo e água** *(adiada)* | Sombras de contato, relevo, hidrologia/poças/lago e grama pisoteada: camadas translúcidas, guardadas prontas quando estáticas. **No celular custam quase nada** (dentro do ruído da medição, seção 14): só vale fazer se uma nova medição mudar isso | Médio | Diferenças de arredondamento de 1-2 níveis; conferir no celular |
-| **8 — Limpeza** | Tirar o desenho antigo só das camadas já provadas; Pixi vira padrão | Baixo | Todos os testes + teste em celular real |
+| **5 — Entidades** *(feita: separação)* | A coleta das entidades foi para `rendering/Entities.js` e o desenho das árvores para `rendering/TreeRenderer.js`, fora do `Renderer.js` e da lógica. **Sprites do PixiJS para as entidades: não feitos** (seção 19) | Muito baixo | Idêntico (seção 16) |
+| **6 — Luz e névoa** *(feita: etapas)* | O acabamento do quadro virou 4 etapas extensíveis (luz, sobreposições, céu, vinheta). A luz continua em Canvas | Muito baixo | Idêntico (seção 17) |
+| **7 — Sombras, relevo e água** *(feita: camadas)* | Chão, relevo, água, sombras, margens e entidades viraram camadas extensíveis. Nenhum desenho foi trocado (no celular essas camadas custam quase nada, seção 14) | Muito baixo | Idêntico (seção 18) |
+| **8 — Limpeza e padrão** *(feita)* | Padrão decidido pelos dados: **continua Canvas 2D**; o PixiJS fica como opção (`?pixi`). Chave experimental `?cpu`. Plano e README fechados (seção 19) | Baixo | Seção 19 |
 
 A interface (HUD, inventário, menus) já é HTML/CSS e **não muda**. O `MapUI` (mapa) pode ficar em Canvas.
 
@@ -350,3 +350,54 @@ prontas as camadas translúcidas estáticas (sombras, relevo, água)": os dados 
 separação em camadas**, sem trocar nenhum desenho por outro (zero risco para a imagem).
 
 **Prova:** 97 testes · build · 24 posições da câmera com 0 diferenças · regressão visual com os mesmos números nos 4 cenários.
+
+## 19. Fase 8 (feita) e o estado final da migração
+
+### Onde chegamos
+
+| Peça | Estado |
+|---|---|
+| Git, backup (`backup-original-v64`), Vite, 97 testes, build | feito |
+| Quadro desenhado em 3 passes, 4 etapas de acabamento e 6 camadas, todos extensíveis (`Renderer.js`, seções 15, 17, 18) | feito |
+| Entidades e árvores fora do `Renderer.js` e da lógica (`Entities.js`, `TreeRenderer.js`, seção 16) | feito |
+| Ponte do PixiJS (`?pixi`) e grama parada do chão no PixiJS (seções 11 e 12) | feito, experimental |
+| Mato em imagens prontas (`?matocache`, seção 13) | feito, desligado (deixou o celular lento) |
+| Medidas no celular (`?fps`, `?bench`, seção 14) | feito |
+| **PixiJS desenhando o jogo inteiro** | **não feito, de propósito (abaixo)** |
+
+### O padrão do jogo continua Canvas 2D (decidido pelos dados)
+
+1. Nos 3 testes no celular, nada do que o PixiJS fez (a grama parada na GPU) mudou o fps; o micro-teste deu 60 fps em Canvas 2D e em WebGL.
+2. Com `?pixi` ainda existe uma diferença pequena num quadro de teste (`tests/perf/pixi-equal.mjs`: 4 a 12 pixels na linha de baixo de uma perdiz, no topo do mapa).
+   O estado do jogo é idêntico nas duas variantes (mesmo tempo, mesmos números aleatórios, mesmos bichos) e o desenho só difere nessa linha; a causa não foi
+   achada. Como o ganho é zero, não compensa investigar agora. Isso só existe no modo `?pixi`.
+3. **Regra para o PixiJS virar o padrão (fica escrita):** a regressão visual (`npm run test:regression`) com os mesmos números **e** fps melhor no celular
+   (`?fps` com e sem `?pixi`, na mesma cena). Sem as duas coisas, não vira.
+
+### Por que as entidades não viraram sprites do PixiJS
+
+- A ordem de desenho precisa ser exata: árvores, plantas, bichos, jogador e centenas de tiles de mato são intercalados pela ordem Y (o mato cobre os pés).
+  Trocar só um pedaço por sprites do PixiJS quebra a ordem, e copiar o resultado do PixiJS para o Canvas a cada intercalação custa mais do que ganha.
+- Boa parte das entidades é desenhada com retângulos e formas (desenho "procedural"), não com sprites prontos.
+- As medidas mostraram que a espera do quadro não vem só da quantidade de operações: sem um teste no celular a cada passo, qualquer troca seria um palpite.
+
+### O que seria um PixiJS "de verdade" (um projeto à parte, não uma fase pequena)
+
+1. **Um atlas único** com todos os sprites (uma textura só): o PixiJS junta numa chamada tudo o que usa a mesma textura.
+2. **Mato, sombras de contato, relevo e hidrologia como sprites de atlas** (hoje são milhares de retângulos por quadro), refeitos só quando mudam.
+3. **Entidades desenhadas por sprites e texturas dinâmicas** (as feitas à mão viram uma textura pequena por entidade), todas na mesma lista ordenada por Y.
+4. O PixiJS vira o desenhista principal e o Canvas 2D passa a só fabricar texturas.
+5. A **luz** num shader (hoje: mapa de luz e várias camadas `multiply`/`screen`/`lighter`).
+
+Cada passo precisa de teste no celular (`?bench`) e da comparação de imagens. **Os encaixes já estão prontos:** cada passe e cada camada pode ser trocada sozinha
+(`passX.extend(...)`, `layerX.extend(...)`) e volta para o Canvas se o PixiJS falhar.
+
+### Opção experimental `?cpu`
+
+Faz **todos** os canvases 2D desenharem na CPU (`willReadFrequently: true`, em `core/CpuCanvas.js`). No celular testado, o tempo do quadro é ~65% de espera pela
+placa de vídeo; num jogo de pixel art com milhares de operações pequenas, desenhar na CPU às vezes é mais rápido. Pode ser melhor ou pior: compare com `?fps`.
+Sem a chave, o navegador não é tocado. No navegador de teste a imagem é idêntica (24 posições da câmera, 0 diferenças).
+
+### Chaves da URL
+
+A lista completa está no `README.md` (seção 15).

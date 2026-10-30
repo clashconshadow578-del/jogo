@@ -9,6 +9,7 @@
  */
 import { Q } from '../config/settings.js';
 import { RS } from '../rendering/Canvas.js';
+import { CPU_CANVAS } from './CpuCanvas.js';
 
 const BENCH = typeof location !== 'undefined' && /[?&]bench\b/.test(location.search);
 const FPS_ON = typeof location !== 'undefined' && /[?&](fps|bench)\b/.test(location.search);
@@ -67,9 +68,23 @@ function fpsSample(ms, upd = 0, ui = 0) {
   const px = window.VDC_PIXI;
   const pixi = px && px.ok ? 'ligado, grama: ' + (px.coveredTiles || 0) + ' tiles' : 'desligado';
   el.textContent =
-    Math.round((frames * 1000) / (now - t0)) + ' fps · lógica ' + (sumU / frames).toFixed(1) + ' ms · desenho ' + (sum / frames).toFixed(1) +
-    ' ms · interface ' + (sumI / frames).toFixed(1) + ' ms (pico de desenho ' + max.toFixed(0) + ')\n' +
-    'resolução x' + RS + ' · qualidade ' + Q() + ' · PixiJS ' + pixi;
+    Math.round((frames * 1000) / (now - t0)) +
+    ' fps · lógica ' +
+    (sumU / frames).toFixed(1) +
+    ' ms · desenho ' +
+    (sum / frames).toFixed(1) +
+    ' ms · interface ' +
+    (sumI / frames).toFixed(1) +
+    ' ms (pico de desenho ' +
+    max.toFixed(0) +
+    ')\n' +
+    'resolução x' +
+    RS +
+    ' · qualidade ' +
+    Q() +
+    ' · PixiJS ' +
+    pixi +
+    (CPU_CANVAS ? ' · canvas na CPU' : '');
   frames = 0;
   sum = 0;
   sumU = 0;

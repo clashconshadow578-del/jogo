@@ -129,6 +129,7 @@ import * as m123 from '../entities/PlayerHurt.js';
 import * as m124 from '../rendering/AnimalStatus.js';
 import * as m125 from '../rendering/Entities.js';
 import * as m126 from '../rendering/TreeRenderer.js';
+import * as m127 from '../rendering/Ablate.js';
 import * as m115 from '../entities/farm/Eggs.js';
 import * as m116 from '../entities/farm/Chickens.js';
 import * as m117 from '../entities/cow/Cow.js';
@@ -270,6 +271,7 @@ const MODULES = {
   'rendering/AnimalStatus': m124,
   'rendering/Entities': m125,
   'rendering/TreeRenderer': m126,
+  'rendering/Ablate': m127,
 };
 const SETTERS = {
   qDrop: ['config/settings', 'setQDrop'],

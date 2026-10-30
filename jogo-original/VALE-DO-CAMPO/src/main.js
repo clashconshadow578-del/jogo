@@ -5,6 +5,7 @@
  * 2. Executa a sequência de inicialização (core/Game.js), que inicia o laço do jogo.
  * 3. Com `?debug` na URL (ou no servidor de desenvolvimento), expõe `window.VDC` para o console.
  */
+import './core/CpuCanvas.js'; // tem que ser o primeiro: troca o getContext antes de qualquer canvas existir (só com ?cpu)
 import { loadWorldData } from './world/WorldData.js';
 import { boot } from './core/Game.js';
 import { installDebug } from './core/debug.js';
@@ -34,7 +35,8 @@ async function start() {
   boot();
   // só faz algo com ?pixi na URL: liga o PixiJS (WebGL) e avisa na tela se deu certo, para conferir no celular
   initPixi().then((info) => {
-    if (pixiRequested(location.search)) toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
+    if (pixiRequested(location.search))
+      toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
   });
   if (benchRequested(location.search)) startBench(); // só com ?bench: teste de desempenho automático (core/Bench.js)
   const env = import.meta.env || {};
