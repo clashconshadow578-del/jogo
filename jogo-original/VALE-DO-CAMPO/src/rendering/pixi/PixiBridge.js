@@ -54,8 +54,16 @@ export function initPixi(search = location.search) {
   return started;
 }
 
-/** O PixiJS pronto ({ PIXI, app }) ou null (sem ?pixi, ainda carregando, ou sem WebGL). */
+let enabled = true;
+
+/** Liga/desliga o uso do PixiJS nas camadas migradas sem recarregar a página (teste de desempenho, core/Bench.js). */
+export function setPixiEnabled(value) {
+  enabled = !!value;
+  return enabled;
+}
+
+/** O PixiJS pronto ({ PIXI, app }) ou null (sem ?pixi, ainda carregando, desligado, ou sem WebGL). */
 export function getPixi() {
   const v = typeof window !== 'undefined' ? window.VDC_PIXI : null;
-  return v && v.ok ? v : null;
+  return enabled && v && v.ok ? v : null;
 }

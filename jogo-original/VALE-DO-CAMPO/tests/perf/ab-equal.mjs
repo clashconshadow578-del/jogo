@@ -1,9 +1,9 @@
 // Compara dois modos do jogo (A e B) quadro a quadro, pixel a pixel, no mesmo ambiente determinístico.
 // Serve para provar que uma otimização NÃO muda a imagem. Padrão (fase 3, mato em imagens prontas):
-//   A = &matolive (desenho original do mato, lâmina por lâmina)   B = (padrão: mato em imagens prontas)
+//   A = (padrão: desenho original do mato, lâmina por lâmina)   B = &matocache (mato em imagens prontas)
 // Cenas: posições aleatórias do mapa e cantos, vento fraco a muito forte, 4 níveis de qualidade, andando (o mato treme perto
 // do jogador) e chuva. Sai com código 1 se qualquer quadro diferir.
-// Uso: NODE_PATH=$(npm root -g) [DENSE=24] node tests/perf/ab-equal.mjs ["&matolive" ["&outroParametro"]]
+// Uso: NODE_PATH=$(npm root -g) [DENSE=24] node tests/perf/ab-equal.mjs ["" ["&matocache"]]
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -12,7 +12,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 
 const root = new URL('../../', import.meta.url).pathname;
 const env = fs.readFileSync(new URL('../regression/deterministic-env.js', import.meta.url), 'utf8');
-const [qsA = '&matolive', qsB = ''] = process.argv.slice(2);
+const [qsA = '', qsB = '&matocache'] = process.argv.slice(2);
 const srv = await startServer(root, 0);
 const port = srv.address().port;
 const b = await chromium.launch();

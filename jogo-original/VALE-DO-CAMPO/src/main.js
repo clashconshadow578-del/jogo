@@ -10,6 +10,7 @@ import { boot } from './core/Game.js';
 import { installDebug } from './core/debug.js';
 import { initPixi, pixiRequested } from './rendering/pixi/PixiBridge.js';
 import { toast } from './ui/Toast.js';
+import { benchRequested, startBench } from './core/Bench.js';
 
 function showFatalError(err) {
   console.error('[Vale do Campo] falha ao iniciar:', err);
@@ -35,6 +36,7 @@ async function start() {
   initPixi().then((info) => {
     if (pixiRequested(location.search)) toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
   });
+  if (benchRequested(location.search)) startBench(); // só com ?bench: teste de desempenho automático (core/Bench.js)
   const env = import.meta.env || {};
   if (env.DEV || /[?&]debug\b/.test(location.search)) installDebug();
 }

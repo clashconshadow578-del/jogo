@@ -134,7 +134,7 @@ function hydroMatoList(x0, x1, y0, y1) {
 
 /**
  * Desenho original do mato, lâmina por lâmina (cerca de 1.200 chamadas por quadro numa fazenda). Fica como reserva do
- * desenho em imagens prontas (abaixo) e como referência dos testes (?matolive).
+ * desenho em imagens prontas (abaixo) e como referência dos testes (padrão; ?matocache liga as imagens prontas).
  * `ws` (balanço do vento) e `rs` (tremor quando o jogador está perto) vêm de drawMato.
  */
 function drawMatoLive(tx, ty, t, i, ws, rs) {
@@ -172,10 +172,22 @@ const MATO_COLORS = ['#2f7a34', '#3f9a42', '#58b04c'],
   MS_OX = 6,
   MS_OY = 10,
   MATO_CAP = 3000, // imagens guardadas ao mesmo tempo (cerca de 3 KB cada); passou disso, recomeça
-  MATO_LIVE = typeof location !== 'undefined' && /[?&]matolive\b/.test(location.search);
+  MATO_NOVAS = 24; // imagens NOVAS por quadro: criar centenas de uma vez congelava o jogo por segundos; o resto sai pelo desenho original
+
+// DESLIGADO por padrão até ser medido no celular (as imagens pequenas podem custar mais que os retângulos numa placa de vídeo
+// real): ?matocache liga; ?bench (core/Bench.js) liga e desliga para comparar.
+let matoLive = !(typeof location !== 'undefined' && /[?&]matocache\b/.test(location.search));
+
+/** Liga (false) ou desliga (true) o desenho original do mato lâmina por lâmina; usado pelo teste de desempenho. */
+export function setMatoLive(value) {
+  matoLive = !!value;
+  return matoLive;
+}
 
 const matoSpr = new Map(),
   leanBuf = new Int8Array(16);
+let matoQuadro = -1, // `t` do quadro atual (igual para todas as chamadas do mesmo quadro)
+  matoOrcamento = 0;
 
 // Parâmetros fixos das lâminas de um tile (posição, altura, cor): dependem só do tile, da quantidade de mato e da qualidade.
 function matoEntry(tx, ty, i, m255, qb, old) {
@@ -216,11 +228,19 @@ function drawMato(tx, ty, t, i) {
     y = ty * TS,
     ws = Math.sin(t * 1.3 + tx * 0.7 + ty * 0.4) * (0.6 + climate.wind * 0.6),
     rs = Math.hypot(x + 8 - S.px, y + 8 - S.py) < 22 ? Math.sin(t * 14) * 1.3 : 0;
-  if (MATO_LIVE || rs !== 0 || ctx !== mainCtx || ctx.globalAlpha !== 1 || ctx.globalCompositeOperation !== 'source-over')
+  if (matoLive || rs !== 0 || ctx !== mainCtx || ctx.globalAlpha !== 1 || ctx.globalCompositeOperation !== 'source-over')
     return drawMatoLive(tx, ty, t, i, ws, rs);
   const m255 = mato[i],
     qb = Q() > 1 ? 2 : Q() > 0 ? 1 : 0;
   let e = matoSpr.get(i);
+  if (!e) {
+    if (t !== matoQuadro) {
+      matoQuadro = t;
+      matoOrcamento = MATO_NOVAS;
+    }
+    if (matoOrcamento <= 0) return drawMatoLive(tx, ty, t, i, ws, rs); // imagem nova fica para um dos próximos quadros
+    matoOrcamento--;
+  }
   if (!e || e.sig !== m255 * 4 + qb) e = matoEntry(tx, ty, i, m255, qb, e);
   const P = e.P,
     n = e.n;

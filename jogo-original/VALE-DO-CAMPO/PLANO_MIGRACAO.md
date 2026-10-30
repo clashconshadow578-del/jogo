@@ -77,7 +77,7 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 | **0 — Preparação** *(feita)* | Vite funcionando, `package.json` recriado, `pixi.js` instalado (ainda não usado), backup etiquetado | Nenhum | Build ok, 96 testes ok, jogo abre sem erro |
 | **1 — Tomada de desenho** *(feita)* | Criar `rendering/pixi/` com a "tomada": inicia o Pixi atrás do `?pixi`, com plano B em Canvas. **O jogo ainda desenha tudo em Canvas** | Muito baixo | Com e sem `?pixi` a imagem é idêntica |
 | **2 — Chão (tiles)** *(feita, experimental: só com `?pixi`)* | A grama parada do chão vira textura na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Lógica idêntica (0 pixels); com WebGL, diferenças mínimas no navegador de teste; **FPS ainda não medido no celular** |
-| **3 — Mato em imagens prontas** *(feita; trocou de lugar com a antiga fase 3, ver seção 13)* | `Vegetation.drawMato`: cada tile de mato vira uma imagem pequena, refeita só quando o vento muda a inclinação das lâminas | Baixo | **Idêntico, pixel a pixel** (133 quadros) e 21-37% menos chamadas de desenho por quadro |
+| **3 — Mato em imagens prontas** *(feita, mas DESLIGADA por padrão até medir no celular: `?matocache` liga; ver seções 13 e 14)* | `Vegetation.drawMato`: cada tile de mato vira uma imagem pequena, refeita só quando o vento muda a inclinação das lâminas | Baixo | **Idêntico, pixel a pixel** (133 quadros) e 21-37% menos chamadas de desenho por quadro |
 | **4 — Sombras, relevo e água** *(antiga fase 3 + medição)* | Sombras de contato, relevo, hidrologia/poças/lago e grama pisoteada: camadas translúcidas, guardadas prontas quando estáticas | Médio | Diferenças de arredondamento de 1-2 níveis; conferir no celular |
 | **5 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y; clima e partículas | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
 | **6 — Luz e névoa** | `LightingSystem`, `Torch`, vinheta viram filtros/sprites | Alto | Regressão visual, teste noturno |
@@ -178,13 +178,17 @@ A grama pisoteada (que seria a Fase 3) nem aparece entre os maiores. Por isso a 
 **Fase 3 (feita): mato em imagens prontas.** O mato é feito só de retângulos **opacos** de 1 pixel de largura, então cada tile vira uma imagem
 pequena (28x26 px) copiada com 1 chamada no lugar de 3 a 13. A imagem só é refeita quando o vento muda a inclinação de alguma lâmina (um
 número inteiro de pixels). Fica no desenho original (lâmina por lâmina) quando: o jogador está perto (o mato treme todo quadro), a inclinação
-passa de 6 px, o desenho não é no canvas principal (cache do chão) ou há transparência/modo de mistura ligados. `?matolive` força o desenho
-original (usado nos testes).
-- **Prova:** `tests/perf/ab-equal.mjs` compara o desenho original com o novo em 133 quadros (posições do mapa, vento de 0 a 4,5, 4 níveis de
+passa de 6 px, o desenho não é no canvas principal (cache do chão) ou há transparência/modo de mistura ligados. **Desligada por padrão**:
+`?matocache` liga as imagens prontas (sem isso o jogo usa o desenho original, lâmina por lâmina).
+- **Prova:** `tests/perf/ab-equal.mjs` (padrão: A = original, B = `&matocache`) compara o desenho original com o novo em 133 quadros (posições do mapa, vento de 0 a 4,5, 4 níveis de
   qualidade, andando, chuva e noite; ~520 tiles de mato por quadro): **0 pixels diferentes**. Estragando o código de propósito (imagem
   deslocada 1 px) o teste reprova todos os quadros, então ele detecta erro. O jogo normal também ficou idêntico aos registros anteriores.
 - **Ganho medido** (chamadas de desenho por quadro): fazenda 3.956 → 2.884 (**-27%**), rio 4.959 → 3.928 (-21%), floresta 4.038 → 2.549 (**-37%**).
   Só o mato: 1.239 → 160, 1.183 → 152, 1.722 → 221.
+- **Problema achado depois (e corrigido):** criar centenas de imagens pequenas de uma vez congelava o jogo por segundos ao entrar numa área
+  nova (no navegador de teste: 3 s num quadro). Agora são criadas no máximo 24 por quadro; o resto sai pelo desenho original (idêntico), então
+  a imagem continua exata. Mesmo assim o ganho **só vale se for medido no aparelho**: o número de chamadas cai, mas imagens pequenas podem
+  custar mais que retângulos numa placa de vídeo real. Por isso o recurso fica desligado até o `?bench` (seção 14) mostrar que ajuda.
 - **Não é PixiJS:** não precisa de WebGL, funciona sem `?pixi`. As imagens prontas são exatamente o tipo de recurso que o PixiJS usará nas
   fases seguintes (texturas/sprites em vez de desenhar tudo a cada quadro).
 
@@ -192,3 +196,17 @@ original (usado nos testes).
 arredondamento de 1-2 níveis em vez de idêntico) · 5 = entidades (árvores, animais, jogador) como sprites do PixiJS · 6 = luz e névoa em shader
 · 7 = PixiJS vira o padrão. A razão: o PixiJS ganha de verdade quando substitui **milhares de chamadas por quadro** por objetos que ficam na
 placa de vídeo; as camadas que ainda são feitas de muitas chamadas pequenas (mato, sombras, relevo, água) vêm primeiro.
+
+## 14. Teste de desempenho no aparelho (`?bench`)
+
+O que mais faltava era medir **no celular**. Abra o jogo com `?bench` no fim do endereço (ex.: `...app.github.dev/?bench`). Sem tocar em nada,
+o jogo roda sozinho cerca de 2,5 minutos e mostra uma tabela: em 3 lugares (onde você está, rio e floresta) mede **fps**, **tempo de
+desenho** e **pior quadro** com cada recurso ligado ou desligado (jogo padrão, mato em imagens, grama na GPU, cache do chão) e, na primeira
+cena, o que mais pesa (qualidade mínima, sem raios e partículas, resolução x1). No fim, um resumo diz se o aparelho é limitado por
+**pixels** (placa de vídeo/tela) ou pelo **processador** (JavaScript), e mostra a placa de vídeo, o tamanho da tela e se há WebGL.
+
+Segurança do seu jogo: durante o teste **nada é gravado** (o jogo salva sozinho a cada minuto e ao esconder a aba; isso fica bloqueado), os
+toques são ignorados e a resolução fica fixa. No fim aparece o botão **Recarregar o jogo**, que volta ao último save exatamente como estava.
+
+Como usar a tabela: tire um print e me mande. Com os números do seu aparelho eu decido o que fica ligado por padrão e qual é a Fase 4.
+Observação: o navegador de teste do desenvolvimento não tem placa de vídeo; os números dele não valem para o seu celular.
