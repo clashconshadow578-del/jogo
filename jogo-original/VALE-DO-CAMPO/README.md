@@ -473,8 +473,9 @@ Acrescente no fim do endereço do jogo (ex.: `http://localhost:5173/?fps`; para 
 | `?debug` | libera o `VDC` no console (no `npm run dev` já fica ativo) |
 | `?fps` | mostra fps, tempo de lógica, de desenho e de interface, resolução e qualidade |
 | `?bench` | teste de desempenho automático (uns 5 min; não grava o seu save; no fim há o botão "Recarregar o jogo") |
-| `?pixi` | liga o PixiJS (WebGL): só a grama parada do chão (experimental, não deixa o jogo mais rápido) |
-| `?pixi&pixi2d` | a mesma lógica do `?pixi`, sem WebGL (usado só nos testes) |
+| `?canvas` | desliga o PixiJS e desenha tudo em Canvas 2D (plano B; o PixiJS é o desenhista padrão) |
+| `?copia` | copia o quadro do PixiJS para o canvas do jogo (só para testes que leem pixels) |
+| `?pixi` | só mostra um aviso na tela dizendo se o PixiJS ligou |
 | `?matocache` | mato em imagens prontas (experimental; deixou o celular lento: fica desligado) |
 | `?cpu` | todos os canvases 2D desenham na CPU e não na placa de vídeo (experimental; pode ser melhor ou pior, compare com o `?fps`) |
 | `?safe` | desliga as otimizações opcionais (grama parada, fluxo do rio, camadas da atmosfera) |

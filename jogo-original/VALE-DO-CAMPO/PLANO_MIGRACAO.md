@@ -351,53 +351,37 @@ separação em camadas**, sem trocar nenhum desenho por outro (zero risco para a
 
 **Prova:** 97 testes · build · 24 posições da câmera com 0 diferenças · regressão visual com os mesmos números nos 4 cenários.
 
-## 19. Fase 8 (feita) e o estado final da migração
+## 19. Estado final: o jogo é desenhado pelo PixiJS
 
-### Onde chegamos
+Depois da Fase 8 o dono do jogo pediu que **tudo** fosse PixiJS, e foi feito (seções 20 a 22). Esta seção ficou só como história: a Fase 8
+decidiu manter o Canvas como padrão porque o PixiJS ainda desenhava só a grama; isso **não vale mais**.
 
-| Peça | Estado |
+## 20. Etapas da migração real (feitas)
+
+| Etapa | O que foi feito |
 |---|---|
-| Git, backup (`backup-original-v64`), Vite, 97 testes, build | feito |
-| Quadro desenhado em 3 passes, 4 etapas de acabamento e 6 camadas, todos extensíveis (`Renderer.js`, seções 15, 17, 18) | feito |
-| Entidades e árvores fora do `Renderer.js` e da lógica (`Entities.js`, `TreeRenderer.js`, seção 16) | feito |
-| Ponte do PixiJS (`?pixi`) e grama parada do chão no PixiJS (seções 11 e 12) | feito, experimental |
-| Mato em imagens prontas (`?matocache`, seção 13) | feito, desligado (deixou o celular lento) |
-| Medidas no celular (`?fps`, `?bench`, seção 14) | feito |
-| **PixiJS desenhando o jogo inteiro** | **não feito, de propósito (abaixo)** |
+| 1 | O PixiJS liga sozinho (`?canvas` na URL volta ao Canvas puro, plano B). |
+| 2 | **Contexto PixiJS** (`rendering/pixi/PixiCtx.js`): objeto com as mesmas chamadas do Canvas 2D que o jogo usa (retângulos, imagens, gradientes, caminhos, traços, recorte, texto, rotação, transparência, modos de mistura). O código de desenho antigo roda nele **sem ser reescrito** e a ordem de desenho é a mesma. |
+| 3 | Sombras de contato, mato e todas as entidades no PixiJS. |
+| 4 | O quadro inteiro numa passagem só (luz, clima, atmosfera, vinheta, balões, brilhos). |
+| 5 | A tela é o canvas do PixiJS (`#pixiView`), sem cópia. Só os testes automáticos (e `?copia`) copiam o quadro para o canvas do jogo para poder ler pixels. |
+| 6 | Interior da casa no PixiJS (recorte por máscara dentro da cena). |
+| 7 | **Desempenho:** um **atlas único** (páginas de 1024x1024) com todas as imagens, retângulos coloridos e pedaços das imagens grandes; partículas do PixiJS no lugar de sprites. O quadro caiu de ~10.000 lotes para ~14 e de ~550 ms para ~17 ms de desenho no navegador de teste. No celular do dono: de 7 fps para 40 fps. |
 
-### O padrão do jogo continua Canvas 2D (decidido pelos dados)
+Cuidados que o contexto PixiJS toma: cada canvas tem um número de versão (`__v`, sobe a cada escrita) e o atlas só recopia o que mudou; canvases que
+o jogo redesenha várias vezes por quadro (luz) recebem uma "foto" por uso, porque a GPU só desenha no fim do quadro; o que o contexto não sabe desenhar
+é **registrado** (`window.VDC_LAYER_STATS.motivos`) e o quadro segue.
 
-1. Nos 3 testes no celular, nada do que o PixiJS fez (a grama parada na GPU) mudou o fps; o micro-teste deu 60 fps em Canvas 2D e em WebGL.
-2. Com `?pixi` ainda existe uma diferença pequena num quadro de teste (`tests/perf/pixi-equal.mjs`: 4 a 12 pixels na linha de baixo de uma perdiz, no topo do mapa).
-   O estado do jogo é idêntico nas duas variantes (mesmo tempo, mesmos números aleatórios, mesmos bichos) e o desenho só difere nessa linha; a causa não foi
-   achada. Como o ganho é zero, não compensa investigar agora. Isso só existe no modo `?pixi`.
-3. **Regra para o PixiJS virar o padrão (fica escrita):** a regressão visual (`npm run test:regression`) com os mesmos números **e** fps melhor no celular
-   (`?fps` com e sem `?pixi`, na mesma cena). Sem as duas coisas, não vira.
+## 21. O que ainda é Canvas (e por que não aparece na tela)
 
-### Por que as entidades não viraram sprites do PixiJS
+O Canvas 2D só **fabrica imagens**, nunca desenha a cena: mapas de luz e sombras projetadas (`LightingSystem`, `Atmosphere`), os sprites montados uma vez no
+carregamento (`bakeImg`, variantes de cor) e as imagens guardadas do atlas (gradientes, elipses, textos). Trocar isso por texturas de render do PixiJS e
+filtros é um trabalho à parte (reescrever a luz), sem ganho visível. Com `?canvas` o jogo inteiro volta ao desenho antigo em Canvas.
 
-- A ordem de desenho precisa ser exata: árvores, plantas, bichos, jogador e centenas de tiles de mato são intercalados pela ordem Y (o mato cobre os pés).
-  Trocar só um pedaço por sprites do PixiJS quebra a ordem, e copiar o resultado do PixiJS para o Canvas a cada intercalação custa mais do que ganha.
-- Boa parte das entidades é desenhada com retângulos e formas (desenho "procedural"), não com sprites prontos.
-- As medidas mostraram que a espera do quadro não vem só da quantidade de operações: sem um teste no celular a cada passo, qualquer troca seria um palpite.
+## 22. Como conferir
 
-### O que seria um PixiJS "de verdade" (um projeto à parte, não uma fase pequena)
+- `npm test` e `npm run build`;
+- `tests/perf/layer-equal.mjs` (PixiJS x `?canvas`, quadro a quadro; `INSIDE=1` testa o interior; `PRE="setAblate({...})"` desliga etapas);
+- `?fps` no celular (compare também com `?canvas`);
+- diferenças conhecidas: ~1% dos pixels com 3+ níveis (arredondamento de transparência, a onça sai nítida) e ~15% perto do rio (água animada).
 
-1. **Um atlas único** com todos os sprites (uma textura só): o PixiJS junta numa chamada tudo o que usa a mesma textura.
-2. **Mato, sombras de contato, relevo e hidrologia como sprites de atlas** (hoje são milhares de retângulos por quadro), refeitos só quando mudam.
-3. **Entidades desenhadas por sprites e texturas dinâmicas** (as feitas à mão viram uma textura pequena por entidade), todas na mesma lista ordenada por Y.
-4. O PixiJS vira o desenhista principal e o Canvas 2D passa a só fabricar texturas.
-5. A **luz** num shader (hoje: mapa de luz e várias camadas `multiply`/`screen`/`lighter`).
-
-Cada passo precisa de teste no celular (`?bench`) e da comparação de imagens. **Os encaixes já estão prontos:** cada passe e cada camada pode ser trocada sozinha
-(`passX.extend(...)`, `layerX.extend(...)`) e volta para o Canvas se o PixiJS falhar.
-
-### Opção experimental `?cpu`
-
-Faz **todos** os canvases 2D desenharem na CPU (`willReadFrequently: true`, em `core/CpuCanvas.js`). No celular testado, o tempo do quadro é ~65% de espera pela
-placa de vídeo; num jogo de pixel art com milhares de operações pequenas, desenhar na CPU às vezes é mais rápido. Pode ser melhor ou pior: compare com `?fps`.
-Sem a chave, o navegador não é tocado. No navegador de teste a imagem é idêntica (24 posições da câmera, 0 diferenças).
-
-### Chaves da URL
-
-A lista completa está no `README.md` (seção 15).

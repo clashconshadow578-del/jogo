@@ -131,13 +131,14 @@ function shape() {
   return g;
 }
 
-/** Máscara (para clip) com o caminho atual do contexto. Fora da cena: por isso a escala da tela (RS) entra na matriz dela. */
+/** Máscara (para clip) com o caminho atual do contexto. Fica na cena (filha de `root`): o PixiJS não a desenha, só a usa para recortar. */
 function maskPath(c) {
   let g;
   if (mused < mpool.length) g = mpool[mused++];
   else {
     g = new PIXI.Graphics();
     mpool.push(g);
+    root.addChild(g);
     mused++;
   }
   g.clear();
@@ -145,7 +146,7 @@ function maskPath(c) {
   g.fill(0xffffff);
   tmpM ||= new PIXI.Matrix();
   const m = c.m;
-  tmpM.set(m[0] * RS, m[1] * RS, m[2] * RS, m[3] * RS, m[4] * RS, m[5] * RS);
+  tmpM.set(m[0], m[1], m[2], m[3], m[4], m[5]);
   g.setFromMatrix(tmpM);
   return g;
 }
