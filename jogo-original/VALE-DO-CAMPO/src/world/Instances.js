@@ -55,6 +55,7 @@ import {
   setGrassDirty,
   soilCompact,
 } from './GrassSystem.js';
+import { resetPlants } from './PlantSpecies.js';
 import { fvAdvance, fvApply, fvPack } from './hydrology/Fluvial.js';
 import {
   bio,
@@ -187,6 +188,7 @@ const unpackChunk = extensible(function unpackChunk(r) {
 });
 
 function resetRuntime() {
+  resetPlants();
   grassWear.fill(0);
   grassBendX.fill(0);
   grassBendY.fill(0);

@@ -385,3 +385,16 @@ filtros é um trabalho à parte (reescrever a luz), sem ganho visível. Com `?ca
 - `?fps` no celular (compare também com `?canvas`);
 - diferenças conhecidas: ~1% dos pixels com 3+ níveis (arredondamento de transparência, a onça sai nítida) e ~15% perto do rio (água animada).
 
+## 23. O mato virou helicônia e samambaia (feito)
+
+Pedido do dono: sair a grama de lâminas e entrar duas plantas amazônicas em 4 fases (folha de sprites própria), com dados da vida real.
+
+- **Sprites:** `tools/plants/make-plants.py` recorta `folha-plantas.jpg` (que traz o xadrez gravado e as legendas) em 8 PNGs RGBA
+  (`public/assets/sprites/plants/`), alfa só 0/255. Entram no atlas do PixiJS como qualquer outra imagem.
+- **Desenho:** `drawMato` (`world/Vegetation.js`) escolhe a sprite por espécie e fase e usa só `ctx.drawImage`, então roda igual no PixiJS e em `?canvas`.
+  Saiu todo o desenho lâmina por lâmina, o cache de imagens do mato (`?matocache`) e as lâminas do chão (`GrassSystem.js`, `TileRenderer.js`): o chão é
+  a textura lisa + trilhas de terra batida. A simulação de pisoteio, dobra e pasto continua igual (o pisoteio mata o mato; a vaca pasta por ela).
+- **Regras:** `config/plants.js` (dados) e `world/PlantSpecies.js` (espécie por tile, fase, crescimento, ciclo de vida). Detalhes em `docs/PLANTAS.md`.
+- **Prova:** `npm test` (101), `tests/browser/plants.mjs` (espécie estável, fases, ciclo da helicônia, inspeção, sem erros), build, e capturas no PixiJS e em `?canvas`.
+- **Fora do escopo / pendente:** a regressão pixel a pixel contra o `legacy/` deixa de valer onde há mato e no chão pisoteado (README, seção 7); as duas linhas da folha trazem
+  flores vermelhas na fase 4, inclusive a "samambaia" (arte original; na vida real ela não floresce).

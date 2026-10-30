@@ -30,7 +30,7 @@ import { toast } from '../ui/Toast.js';
 import { nearBed, nearDoor, useDoor } from '../world/HouseInterior.js';
 import { INST } from '../world/Instances.js';
 import { shroom } from '../world/Mushrooms.js';
-import { cutMato } from '../world/Vegetation.js';
+import { cutMato, inspectMato } from '../world/Vegetation.js';
 import { qAdd, qClose, qIdx, vilTalkNear } from '../world/village/Quests.js';
 import { useBezerro, useChicken } from '../world/village/Vendor.js';
 import { crops, ground, obj, wet } from '../world/World.js';
@@ -189,7 +189,7 @@ const actionA = extensible(function actionA() {
       beep(380, 0.05);
       qAdd('plant');
     }
-  }
+  } else inspectMato(i); // com as mãos (item que não é ferramenta): olha o mato e lê o que a planta é na vida real
 });
 
 function actionB() {

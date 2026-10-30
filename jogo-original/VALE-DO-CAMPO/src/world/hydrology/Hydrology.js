@@ -26,6 +26,7 @@ import { flowInit } from './RiverFlow.js';
 import { INST } from '../Instances.js';
 import { shroom, shroomRoll } from '../Mushrooms.js';
 import { seasonPhase, SEASONS, seasonUpdate, TINT, TINTSTR } from '../Seasons.js';
+import { growthRate, plantDaily } from '../PlantSpecies.js';
 import { crowd, drawSapling, treeDrop, treeFree } from '../Vegetation.js';
 import { climate, clouds, rainAt } from '../WeatherSystem.js';
 import { crops, ground, obj, wet } from '../World.js';
@@ -425,7 +426,10 @@ const hydroStep = extensible(function hydroStep() {
             (season === 3 ? 0.02 : 0);
           mato[i] = Math.max(
             0,
-            Math.min(255 * (0.3 + 0.7 * nut[i]), mato[i] + (g > 0 ? g * (0.25 + 1.5 * nut[i]) : g * (1.4 - nut[i]))),
+            Math.min(
+              255 * (0.3 + 0.7 * nut[i]),
+              mato[i] + (g > 0 ? g * (0.25 + 1.5 * nut[i]) * growthRate(i) : g * (1.4 - nut[i])), // helicônia rápida, samambaia lenta
+            ),
           );
         }
         if (mb0 <= 12 && mato[i] > 12) shroomRoll(i);
@@ -683,9 +687,11 @@ const hydroDaily = extensible(function hydroDaily() {
         0,
         Math.min(
           255 * (0.3 + 0.7 * nut[i]),
-          mato[i] + (sm[i] > 0.3 ? 28 * sg * (0.4 + sm[i]) * el * (0.25 + 1.5 * nut[i]) : s === 3 ? -6 : -3),
+          mato[i] +
+            (sm[i] > 0.3 ? 28 * sg * (0.4 + sm[i]) * el * (0.25 + 1.5 * nut[i]) * growthRate(i) : s === 3 ? -6 : -3),
         ),
       );
+      plantDaily(i); // a helicônia que floresceu perde o caule e rebrota; a samambaia sofre em solo encharcado
     }
     // morte de árvores agora é decidida pelo ecossistema (ecoDaily)
     if (seedAge[i] > 0) seedAge[i] += 15;

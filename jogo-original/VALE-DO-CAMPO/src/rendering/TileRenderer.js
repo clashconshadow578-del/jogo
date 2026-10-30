@@ -13,7 +13,7 @@ import { lakeDepthDraw, lakeEdge } from './LakeRenderer.js';
 import { LEGACY_GROUND } from '../config/groundStyle.js';
 import { SPR } from './Sprites.js';
 import { hash2 } from '../utils/MathUtils.js';
-import { idleGrassEnabled, idleGrassTile, markFusedTile, paintIdleBlades, tileStill } from '../world/GrassSystem.js';
+import { idleGrassEnabled, idleGrassTile, markFusedTile, tileStill } from '../world/GrassSystem.js';
 import { WTc, sapl, seedAge } from '../world/hydrology/Hydrology.js';
 import { FLM, FLX, FLY } from '../world/hydrology/RiverFlow.js';
 import { ground, wet } from '../world/World.js';
@@ -153,12 +153,12 @@ function drawFord(tx, ty, x, y, t) {
   if (fordLand(tx + 1, ty)) E(TS - 1, 0, 1, TS, TS - 2, 0, 1, TS, 3);
 }
 
-/* ===== Grama parada fundida: textura + variação de região + lâminas paradas, desenhadas UMA vez por tile ===== */
+/* ===== Chão parado fundido: textura + variação de região, desenhadas UMA vez por tile ===== */
 let fuseLayer = null,
   fuseCtx = null,
   fuseBaked = null;
 
-// Mantém a mesma ordem e fórmulas do desenho normal de drawTile (textura -> variação de região) + paintIdleBlades.
+// Mantém a mesma ordem e fórmulas do desenho normal de drawTile (textura -> variação de região).
 function bakeGrassFused(tex) {
   if (fuseLayer) return;
   fuseLayer = document.createElement('canvas');
@@ -182,7 +182,6 @@ function bakeGrassFused(tex) {
         c.fillStyle = `rgba(30,60,20,${(-terrainNoise * 0.016).toFixed(3)})`;
         c.fillRect(x, y, TS, TS);
       }
-      paintIdleBlades(c, tx, ty);
     }
 }
 

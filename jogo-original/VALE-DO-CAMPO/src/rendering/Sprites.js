@@ -40,6 +40,12 @@ const SPR_DATA = {
   wall: assetUrl('sprites/objects/interior/wall.webp'),
   floor: assetUrl('sprites/objects/interior/floor.webp'),
   door: assetUrl('sprites/objects/interior/door.webp'),
+  // o "mato": helicônia e samambaia amazônicas em 4 fases (config/plants.js; tools/plants/make-plants.py gera os PNGs)
+  ...Object.fromEntries(
+    ['helikonia', 'samambaia'].flatMap((e) =>
+      [1, 2, 3, 4].map((f) => [`${e}_${f}`, assetUrl(`sprites/plants/${e}_${f}.png`)]),
+    ),
+  ),
 };
 
 const SPR = {};

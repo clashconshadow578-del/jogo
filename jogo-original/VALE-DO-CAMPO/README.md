@@ -2,7 +2,7 @@
 
 Jogo de fazenda e ecologia em pixel art para navegador. Você cuida de uma fazenda em um vale de 1000 × 1000 tiles
 (10 × 10 regiões), planta, cria vacas e galinhas, pesca, corta árvores, explora a floresta amazônica e convive com
-um ecossistema simulado: rios que mudam de curso, chuva física, grama que guarda as trilhas, fauna selvagem com
+um ecossistema simulado: rios que mudam de curso, chuva física, mato de helicônias e samambaias amazônicas que cresce em 4 fases e solo que guarda as trilhas, fauna selvagem com
 predadores, ciclo de dia e noite com iluminação e sombras dinâmicas.
 
 Este repositório é a versão **modular** do arquivo único `Vale_do_Campo_V64.html` (preservado em
@@ -32,6 +32,8 @@ de regressão comparam as duas versões pixel a pixel e comparam o save byte a b
 17. [Limitações conhecidas](#17-limitações-conhecidas)
 
 Ecossistema vivo (percepção, caça, presa-jogador, indicadores): [`docs/ECOSSISTEMA_VIVO.md`](docs/ECOSSISTEMA_VIVO.md).
+
+O mato (helicônia e samambaia: dados da vida real, regras de jogo e como inspecionar): [`docs/PLANTAS.md`](docs/PLANTAS.md).
 
 Documentação técnica da migração (auditoria, inventário de funcionalidades, decisões e evidências):
 [`docs/AUDITORIA_E_MIGRACAO.md`](docs/AUDITORIA_E_MIGRACAO.md).
@@ -126,6 +128,7 @@ VALE-DO-CAMPO/
 │           ├── characters/      jogador (skin atual e antiga), golem
 │           ├── crops/           cenoura, abóbora e milho (3 fases cada)
 │           ├── ground/          grass.png: textura do chão de grama (256×256, repete sem emendas)
+│           ├── plants/          o mato: helicônia e samambaia, 4 fases cada (helikonia_1..4.png, samambaia_1..4.png)
 │           ├── objects/         casa, pedras, cogumelos, móveis do interior
 │           └── trees/           árvores por bioma e árvores amazônicas (8 fases × 3 espécies)
 ├── src/
@@ -155,6 +158,7 @@ VALE-DO-CAMPO/
 │   └── regression/          Comparação automática original × modular (npm run test:regression)
 ├── docs/AUDITORIA_E_MIGRACAO.md       Auditoria, inventário, decisões e evidências da migração
 ├── tools/ground/make-grass.py   Gera a textura do chão (opcional; o PNG já está no projeto)
+├── tools/plants/                folha original das plantas + make-plants.py, que recorta os 8 PNGs transparentes
 └── tools/migration/         Ferramenta (AST) usada uma única vez para gerar src/ a partir do HTML
 ```
 
@@ -264,7 +268,12 @@ lobisomem, interior da casa, dormir, troca de região), `touch` (celular em pais
 
 O chão de grama novo (seção 11) é uma mudança visual intencional, então nas comparações a versão modular roda com
 `window.__VDC_LEGACY_GROUND = true` (`src/config/groundStyle.js`), que volta à grama e à borda de lago antigas; todo o
-resto da cena continua idêntico pixel a pixel. Um passo final do teste roda o jogo normal e confere que a textura nova
+resto da cena continua idêntico pixel a pixel.
+
+**Atenção:** o mato de plantas amazônicas e a retirada das lâminas de grama do chão (seção 11, "O mato") também são
+mudanças visuais intencionais e **não** têm chave de volta ao antigo: nas áreas com mato e no chão pisoteado a comparação
+pixel a pixel com o `legacy/` deixa de valer. Para conferir o resto da cena use os testes de PixiJS x `?canvas`
+(`tests/perf/layer-equal.mjs`), que comparam as duas versões do desenho *atual*. Um passo final do teste roda o jogo normal e confere que a textura nova
 carrega e desenha sem erros.
 
 ## 8. Build de produção
@@ -322,6 +331,12 @@ mais antigas). Nunca renomeie uma chave sem ler a antiga primeiro, ou os jogador
 `tests/systems/saveFormat.test.js` usa um save real do original para garantir a compatibilidade.
 
 ## 11. Como adicionar sprites
+
+### O mato (helicônia e samambaia)
+
+O mato de cada tile é uma de duas plantas amazônicas, em 4 fases, desenhadas de `public/assets/sprites/plants/`
+(`world/Vegetation.js`); o chão **não tem mais lâminas de grama**, só a textura abaixo e as trilhas de terra batida.
+Dados, regras e como trocar as sprites: [`docs/PLANTAS.md`](docs/PLANTAS.md).
 
 ### Chão de grama
 
@@ -476,9 +491,8 @@ Acrescente no fim do endereço do jogo (ex.: `http://localhost:5173/?fps`; para 
 | `?canvas` | desliga o PixiJS e desenha tudo em Canvas 2D (plano B; o PixiJS é o desenhista padrão) |
 | `?copia` | copia o quadro do PixiJS para o canvas do jogo (só para testes que leem pixels) |
 | `?pixi` | só mostra um aviso na tela dizendo se o PixiJS ligou |
-| `?matocache` | mato em imagens prontas (experimental; deixou o celular lento: fica desligado) |
 | `?cpu` | todos os canvases 2D desenham na CPU e não na placa de vídeo (experimental; pode ser melhor ou pior, compare com o `?fps`) |
-| `?safe` | desliga as otimizações opcionais (grama parada, fluxo do rio, camadas da atmosfera) |
+| `?safe` | desliga as otimizações opcionais (chão parado, fluxo do rio, camadas da atmosfera) |
 | `?cache` / `?nocache` | liga / desliga o cache do chão (desligado por padrão: piscava em algumas placas de vídeo) |
 | `?desync` | canvas "desincronizado" (pisca em alguns aparelhos; só para teste) |
 

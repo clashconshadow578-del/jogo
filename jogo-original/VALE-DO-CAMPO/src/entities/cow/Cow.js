@@ -18,6 +18,7 @@ import { crossesFence } from '../../systems/FenceQuery.js';
 import { heldFood } from '../farm/Chickens.js';
 import { toast } from '../../ui/Toast.js';
 import { rr } from '../../utils/Random.js';
+import { palatability } from '../../world/PlantSpecies.js';
 import { GH, gid, GRASS_RES, grassDirty, grassGraze, grassWear, GW, setGrassDirty } from '../../world/GrassSystem.js';
 import { drinkSpots, lakeLevel, mato, nut, setLakeLevel, wl } from '../../world/hydrology/Hydrology.js';
 import { climate } from '../../world/WeatherSystem.js';
@@ -132,7 +133,9 @@ function grazeSpot() {
         (i < 0 ? 0 : (255 - grassGraze[i]) / 255 - (grassWear[i] / 255) * 1.5) +
         Math.random() * 0.35 -
         d / 260 +
-        (mato[Math.floor(y / TS) * MW + Math.floor(x / TS)] / 255) * 1.4; // prefere capim alto e intacto
+        (mato[Math.floor(y / TS) * MW + Math.floor(x / TS)] / 255) *
+          palatability(Math.floor(y / TS) * MW + Math.floor(x / TS)) *
+          1.4; // prefere mato alto e intacto (samambaia tem toxinas: a vaca a evita)
     if (sc > bs) {
       bs = sc;
       best = { x, y, fx: Math.cos(a) < 0 ? -1 : 1 };
