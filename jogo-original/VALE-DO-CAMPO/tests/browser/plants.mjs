@@ -56,8 +56,13 @@ if (R[1] && R[2]) ok(R[1] > R[2], 'ritmo: helicônia > samambaia');
 // 6) inspeção com as mãos mostra o nome e a descrição
 const ins = await run(p, `(() => { const i = window.__t[5]; mato[i] = 140; ground[i] = GRASS; const ok1 = inspectMato(i); return ok1 + '|' + document.body.innerText.slice(0, 0); })()`);
 ok(ins.startsWith('true'), 'inspectMato devolve true onde há mato');
-await p.waitForTimeout(300);
-const toastTxt = await p.evaluate(() => [...document.querySelectorAll('*')].map((e) => e.children.length === 0 ? e.textContent : '').filter((t) => /Helicônia|Samambaia/.test(t)).join(' || '));
+// o aviso de boas-vindas da floresta pode cobrir o primeiro: repete a inspeção até o texto da planta aparecer
+let toastTxt = '';
+for (let k = 0; k < 8 && !toastTxt; k++) {
+  await run(p, `inspectMato(window.__t[5])`);
+  await p.waitForTimeout(250);
+  toastTxt = await p.evaluate(() => [...document.querySelectorAll('*')].map((e) => e.children.length === 0 ? e.textContent : '').filter((t) => /Helicônia|Samambaia/.test(t)).join(' || '));
+}
 ok(/(Helicônia|Samambaia)/.test(toastTxt), 'o aviso mostra a planta: ' + toastTxt.slice(0, 80));
 
 // 7) a hidrologia roda sem erro com as espécies (vários passos e dias)

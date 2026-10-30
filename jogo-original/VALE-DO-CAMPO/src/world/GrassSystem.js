@@ -277,13 +277,25 @@ function drawTrampledGrass(tx, ty, t) {
       if (wear > 0.3 + jitter * 0.38) {
         const j2 = hash2(gx + 91, gy - 37),
           k = (jitter - 0.5) * 14;
-        const r0 = mixN(150, 206, cp),
-          g0 = mixN(112, 174, cp),
-          b0 = mixN(72, 120, cp);
+        // terra de trilha: marrom-terra (não clareia demais sob sol e neblina), mais clara só quando bem compactada
+        const r0 = mixN(118, 168, cp),
+          g0 = mixN(88, 130, cp),
+          b0 = mixN(56, 86, cp);
         ctx.fillStyle = `rgb(${(mixN(r0, r0 * 0.48 + 10, mw) + k) | 0},${(mixN(g0, g0 * 0.46 + 6, mw) + k * 0.8) | 0},${(mixN(b0, b0 * 0.5 + 4, mw) + k * 0.6) | 0})`;
-        ctx.fillRect(px0, py0, 4, 4);
+        const edge = wear - (0.3 + jitter * 0.38);
+        if (edge < 0.1) {
+          // borda da trilha: só alguns pedaços de 2x2 (mais quanto mais gasto), em vez de um quadrado reto de 4x4
+          const keep = 0.3 + (edge / 0.1) * 0.7;
+          for (let q = 0; q < 4; q++)
+            if (hash2(gx * 2 + (q & 1) + 11, gy * 2 + (q >> 1) - 5) < keep)
+              ctx.fillRect(px0 + (q & 1) * 2, py0 + (q >> 1) * 2, 2, 2);
+        } else ctx.fillRect(px0, py0, 4, 4);
+        if (j2 < 0.3) {
+          ctx.fillStyle = 'rgba(52,34,20,.3)';
+          ctx.fillRect(px0 + (((j2 * 40) | 0) % 3), py0 + (((j2 * 90) | 0) % 3), 2, 1);
+        } // textura da terra
         if (j2 > 0.86) {
-          ctx.fillStyle = mw > 0.4 ? 'rgba(40,26,16,.5)' : 'rgba(236,214,170,.55)';
+          ctx.fillStyle = mw > 0.4 ? 'rgba(40,26,16,.5)' : 'rgba(190,164,126,.5)';
           ctx.fillRect(px0 + 1 + (((j2 * 7) | 0) % 2), py0 + 1, 1, 1);
         } // pedrinhas
         if (mw > 0.5 && j2 > 0.6 && j2 < 0.75) {

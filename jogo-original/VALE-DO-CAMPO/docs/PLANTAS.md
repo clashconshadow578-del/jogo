@@ -13,6 +13,8 @@ mudou é **o que se vê e que cada espécie se comporta de um jeito**.
 
 A fase 4 só é alcançada em solo rico: o mato nunca passa de `255 × (0,3 + 0,7 × nutrientes)`, então precisa de nutrientes acima de ~0,5.
 
+**Começo do jogo:** o mato inicial nasce em manchas de 45 a 145 (fases 1 a 3), não numa camada única de brotos; assim as plantas já aparecem no primeiro minuto. Num save antigo o mato é o que já estava salvo.
+
 **Posição:** cada planta nasce num ponto sorteado dentro do tile (de -7 a +7 px na horizontal e de -5 a +5 na vertical, sorteio fixo por tile),
 então o mato não forma grade nem fica sempre no centro. A ordem de desenho segue o pé da planta (`matoDX`/`matoDY` em `world/Vegetation.js`).
 

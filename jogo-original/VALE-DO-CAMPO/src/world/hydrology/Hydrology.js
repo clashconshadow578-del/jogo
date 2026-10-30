@@ -126,7 +126,8 @@ const hydroInit = extensible(function hydroInit() {
       shade[i] = Math.max(-0.5, Math.min(0.5, elev[i + MW + 1] - elev[i - MW - 1]));
     } // relevo iluminado a noroeste
   shroom.fill(0);
-  mato.fill(40);
+  // mato inicial em manchas (fases 1 a 3 das plantas), não uma camada única de brotos: o jogo já começa com mato de vários tamanhos
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) mato[y * MW + x] = 45 + vnoise(x + wx0, y + wy0, 7, 2) * 100;
   seedAge.fill(0);
   sapl.fill(0);
   wl.fill(0);

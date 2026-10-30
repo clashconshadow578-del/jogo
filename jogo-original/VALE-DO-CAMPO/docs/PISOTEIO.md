@@ -14,6 +14,9 @@ Quem pisoteia: o jogador, a aldeã e as vacas (já existia) e **(novo)** a fauna
 (`config/trampling.js`): queixada 1,1 · cervo 1 · onça 0,9 · raposa 0,3 · lebre e galo-lira 0,1 · sucuri 0; filhote conta metade.
 Cervo e queixada deixam pegada de casco (como a vaca); as demais, pegada simples.
 
+**Aparência da trilha:** terra marrom (mais clara só quando bem compactada, escurecida com lama), com manchas de textura e borda irregular
+(pedaços de 2×2 px nas células menos gastas, em vez de quadrados retos de 4×4). Antes era um retângulo liso e claro que ficava quase branco sob sol e neblina.
+
 ## O que o pisoteio faz com as plantas
 
 A cada passo da hidrologia o desgaste médio do tile (`wearT`) e a compactação média (`cmpT`) são recalculados.
