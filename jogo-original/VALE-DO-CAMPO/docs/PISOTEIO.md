@@ -12,7 +12,7 @@ Cada tile de grama tem uma grade de 4×4 células (`world/GrassSystem.js`). A ca
 
 Quem pisoteia: o jogador, a aldeã e as vacas (já existia) e **(novo)** a fauna selvagem, cada espécie com o seu peso
 (`config/trampling.js`): queixada 1,1 · cervo 1 · onça 0,9 · raposa 0,3 · lebre e galo-lira 0,1 · sucuri 0; filhote conta metade.
-Com `?debug`, o desgaste de uma espécie aparece como pegada de casco (cervo, queixada) ou de pata.
+Cervo e queixada deixam pegada de casco (como a vaca); as demais, pegada simples.
 
 ## O que o pisoteio faz com as plantas
 
