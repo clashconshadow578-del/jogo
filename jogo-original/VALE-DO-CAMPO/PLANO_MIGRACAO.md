@@ -422,3 +422,10 @@ Pedido do dono: o mato alto esconde onça e sucuri, ataques mais fortes (sucuri 
 predadores que esgueiram, e agressividade que sobe com a fome. Detalhes e números em `docs/ECOSSISTEMA_VIVO.md` (seção "revisão"). Testes: `tests/browser/predadores.mjs` (novo),
 `ecosystem-a/b` ajustados ao novo equilíbrio e `tests/systems/ecosystem.test.js`. Nota: `ecosystem-b` conferência 18 ("a onça derruba o jogador") falha desde antes (branch original).
 
+## 27. Predadores caçam os animais da fazenda; fim da raposa especial (feito)
+
+A onça ataca bezerros e vacas, a sucuri bezerros e galinhas à beira da água, e a raposa **comum** (selvagem) caça galinhas; os animais morrem de verdade e deixam
+carcaça. Tudo pelas mesmas regras dos selvagens, por meio dos "espelhos" de `entities/farm/FarmPrey.js` (detalhes em `docs/ECOSSISTEMA_VIVO.md`). Também nesta rodada:
+desmaio por muitas picadas (6 h de jogo, indefeso), coração batendo com vida baixa, onça que não recua depois de atacar e renascimento dentro da casa ao morrer.
+Teste novo: `tests/browser/fazenda.mjs`. Armadilha de teste: `updateFauna` limita o passo a 0,05 s; passos maiores deixam os predadores mais lentos que as galinhas.
+

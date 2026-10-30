@@ -8,7 +8,8 @@ import { MH, MW, TREE, TS, WATER, WN } from '../../config/constants.js';
 import { S } from '../../core/GameState.js';
 import { nightF, sunInfo } from '../../core/TimeManager.js';
 import { turnTo, wpick } from '../ai/Steering.js';
-import { ECO, HUNT, PLAYER_PREY, aggression, huntDecision, huntFor } from '../../config/ecosystem.js';
+import { ECO, FARM_HUNT, HUNT, PLAYER_PREY, aggression, huntDecision, huntFor } from '../../config/ecosystem.js';
+import { farmGuards, farmPrey } from '../farm/FarmPrey.js';
 import {
   animalTarget as animalTargetOf,
   claimPlayerHunt,
@@ -86,6 +87,9 @@ const JG = {
     hare: { hp: 10, ctr: 0.5, hun: 0.3, n: 'uma lebre', w: 1 },
     grouse: { hp: 8, ctr: 0.3, hun: 0.2, n: 'um galo-lira', w: 0.8 },
     fox: { hp: 24, ctr: 1.6, hun: 0.35, n: 'uma raposa', w: 0.5 },
+    // animais da fazenda (entities/farm/FarmPrey.js): a onça ataca bezerros e vacas quando está com fome
+    calf: { hp: 28, ctr: 1.0, hun: 0.55, n: 'um bezerro', w: 1.6 },
+    cow: { hp: 55, ctr: 2.4, hun: 1, n: 'uma vaca', w: 1 },
   },
 };
 
@@ -188,8 +192,10 @@ function jagPrey(a, R, sport) {
   const HH = huntFor(HUNT.jaguar, aggression(a.hun));
   R = Math.max(R, HH.scanR);
   let best = null;
-  for (const p of fauna) {
+  for (const p of fauna.concat(farmPrey())) {
     const P = JG.prey[p.sp];
+    // fazenda: vaca adulta só com muita fome (é grande e o rebanho reage); bezerro com fome moderada
+    if (p.farm && a.hun < (p.sp === 'cow' ? FARM_HUNT.cowMinHun : FARM_HUNT.calfMinHun)) continue;
     if (
       !P ||
       p.state === 'dead' ||
@@ -202,8 +208,8 @@ function jagPrey(a, R, sport) {
       continue;
     if (Math.abs(p.x - a.x) > R || Math.abs(p.y - a.y) > R) continue;
     if (crossesFence(a.x, a.y, p.x, p.y)) continue; // cerca intransponível: presa inacessível
-    const bm = p.sp === 'boar' ? boarMates(p, 55) : 0;
-    if (bm >= 2 && a.hun < 0.85) continue; // bando de queixadas é perigoso demais
+    const bm = p.sp === 'boar' ? boarMates(p, 55) : p.farm ? farmGuards(p, 50) : 0;
+    if (bm >= 2 && a.hun < 0.85) continue; // bando de queixadas (ou vacas adultas juntas) é perigoso demais
     const r = evalPrey(a, p, {
       hunt: HH,
       vPred: FA_SP.jaguar.run,
@@ -260,7 +266,7 @@ function jagDecide(a, p) {
   const P = JG.prey[p.sp];
   if (!P) return 'skip';
   const HH = huntFor(HUNT.jaguar, aggression(a.hun)),
-    bm = p.sp === 'boar' ? boarMates(p, 55) : 0,
+    bm = p.sp === 'boar' ? boarMates(p, 55) : p.farm ? farmGuards(p, 50) : 0,
     r = evalPrey(a, p, {
       hunt: HH,
       vPred: FA_SP.jaguar.run,
@@ -496,6 +502,13 @@ function jagKill(p, f) {
   }
   if (Math.hypot(S.px - p.x, S.py - p.y) < 280) toast('🐆 A onça caçou ' + P.n + ' (mordida na nuca)');
   f.sport = false;
+  if (p.farm) {
+    // animal da fazenda: não é arrastado (a carcaça fica onde morreu); ela come ali mesmo
+    f.state = 'eat';
+    f.t = 45;
+    f.mv = false;
+    return;
+  }
   const c = faPick(f, 70, 'rest');
   f.gx = c ? c[0] : f.x;
   f.gy = c ? c[1] : f.y;

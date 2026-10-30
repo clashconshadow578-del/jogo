@@ -103,6 +103,7 @@ import * as m91 from '../world/Vegetation.js';
 import * as mPlantSpecies from '../world/PlantSpecies.js';
 import * as mPlantsCfg from '../config/plants.js';
 import * as mTrails from '../world/Trails.js';
+import * as mFarmPrey from '../entities/farm/FarmPrey.js';
 import * as mTrampling from '../config/trampling.js';
 import * as m92 from '../world/Village.js';
 import * as m93 from '../world/WaterSystem.js';
@@ -243,6 +244,7 @@ const MODULES = {
   'world/PlantSpecies': mPlantSpecies,
   'config/plants': mPlantsCfg,
   'world/Trails': mTrails,
+  'entities/farm/FarmPrey': mFarmPrey,
   'config/trampling': mTrampling,
   'world/Village': m92,
   'world/WaterSystem': m93,

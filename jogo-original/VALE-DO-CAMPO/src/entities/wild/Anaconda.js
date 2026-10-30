@@ -28,6 +28,7 @@ import { crossesFence } from '../../systems/FenceQuery.js';
 import { carcassFx } from '../Carcass.js';
 import { boarMates, FA_SP, FA_ST, faFlee, faFree, faRow, faShoreL, faShoreNear, faSpawn, fauna } from './Fauna.js';
 import { jagWater, TRAILS } from './Jaguar.js';
+import { farmPrey } from '../farm/FarmPrey.js';
 import { ctx } from '../../rendering/Canvas.js';
 import { bakeImg } from '../../rendering/SpriteUtils.js';
 import { toast } from '../../ui/Toast.js';
@@ -525,6 +526,8 @@ const ANA = {
     fox: { k: 0.34, n: 'uma raposa' },
     deer: { k: 0.85, n: 'um cervo' },
     boar: { k: 1, n: 'uma queixada' },
+    calf: { k: 0.8, n: 'um bezerro' }, // animais da fazenda na beira da água (entities/farm/FarmPrey.js)
+    chicken: { k: 0.12, n: 'uma galinha' },
   },
 };
 
@@ -663,7 +666,7 @@ function anaSpot(a, R, land) {
  */
 function anaPrey(a, R) {
   let best = null;
-  for (const p of fauna) {
+  for (const p of fauna.concat(farmPrey())) {
     const P = ANA.prey[p.sp];
     if (
       !P ||

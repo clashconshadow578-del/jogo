@@ -48,6 +48,8 @@ import { rr } from '../../utils/Random.js';
 import { DOOR } from '../../world/HouseInterior.js';
 import { bio, mato, om, prox, seedAge, sm } from '../../world/hydrology/Hydrology.js';
 import { TRAMPLE } from '../../config/trampling.js';
+import { FARM_PREY } from '../../config/ecosystem.js';
+import { farmPrey, farmUpdate } from '../farm/FarmPrey.js';
 import { COBERTURA, plantStage } from '../../config/plants.js';
 import { walkTrample } from '../../world/GrassSystem.js';
 import { animalSpeed, trailK } from '../../world/Trails.js';
@@ -233,6 +235,12 @@ const FA_SP = {
     tip: 'emboscadora solitária: espreita agachada, salta e morde a nuca da presa; nada, sobe em árvores e caça cervos e queixadas, sobretudo ao anoitecer; evita bandos grandes de queixadas',
   },
 };
+
+// Animais da fazenda como presas (entities/farm/FarmPrey.js): precisam das mesmas colunas que as espécies selvagens (velocidade, fôlego, porte).
+for (const k in FARM_PREY) {
+  const F = FARM_PREY[k];
+  FA_SP[k] = { n: F.n, e: F.e, role: 'presa (fazenda)', diet: 'herbívoro', sc: 1, sw: F.sw, hh: F.hh, walk: F.walk, run: F.run, fear: F.fear, stam: F.stam, col: '#fff', tip: '' };
+}
 
 const FA_ST = {
   flee: '💨',
@@ -651,7 +659,11 @@ function faRow(a) {
 }
 
 /* valor da refeição e perigo de revide das presas da raposa */
-const FOX_PREY = { hare: { value: 0.4, counter: 0.28 }, grouse: { value: 0.3, counter: 0.18 } };
+const FOX_PREY = {
+  hare: { value: 0.4, counter: 0.28 },
+  grouse: { value: 0.3, counter: 0.18 },
+  chicken: { value: 0.45, counter: 0.1 }, // galinha da fazenda: a raposa é uma raposa comum, caça o que ela detecta
+};
 
 /**
  * A raposa procura presas que ela DETECTA (visão/audição, com linha de visão) e avalia cada oportunidade:
@@ -662,7 +674,7 @@ function foxScan(a) {
   const I = FA_SP.fox,
     H = HUNT.fox;
   let best = null;
-  for (const p of fauna) {
+  for (const p of fauna.concat(farmPrey())) {
     const F = FOX_PREY[p.sp];
     if (!F || p.state === 'dead' || p.state === 'fly' || p.state === 'land' || p.state === 'fight' || p.hunter)
       continue;
@@ -880,10 +892,10 @@ function faKill(p, f) {
   f.cd = 10;
   f.hun = Math.max(0, f.hun - 0.75);
   if (Math.hypot(S.px - p.x, S.py - p.y) < 170)
-    toast('🦊 A raposa caçou ' + (p.sp === 'hare' ? 'uma lebre' : 'um galo-lira'));
+    toast('🦊 A raposa caçou ' + (p.sp === 'hare' ? 'uma lebre' : p.sp === 'chicken' ? 'uma galinha' : 'um galo-lira'));
 }
 
-const FA_BATTLE = { hare: { hp: 10, ctr: 2.6 }, grouse: { hp: 8, ctr: 1.6 }, fox: { hp: 24, bite: 3.6 } }; // batalha: vida e dano por segundo
+const FA_BATTLE = { hare: { hp: 10, ctr: 2.6 }, grouse: { hp: 8, ctr: 1.6 }, chicken: { hp: 5, ctr: 0.9 }, fox: { hp: 24, bite: 3.6 } }; // batalha: vida e dano por segundo
 
 function faBegin(p, f) {
   const B = FA_BATTLE[p.sp];
@@ -1628,6 +1640,7 @@ function updateFauna(dt) {
   }
   if (!S.jagDone && INST.cx === HOMEC.x && INST.cy === HOMEC.y) jagSeed(); // saves antigos: o casal aparece no mapa inicial
   faManage(dt);
+  farmUpdate(dt); // vacas e galinhas como presas dos predadores selvagens (espelhos)
   carcUpd(dt);
   fishUpd(dt);
   for (let i = fauna.length - 1; i >= 0; i--) {

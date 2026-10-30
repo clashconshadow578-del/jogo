@@ -81,6 +81,26 @@ Valores em `config/ecosystem.js` (`ECO`, `HUNT`, `PLAYER_PREY`, `CAMO`, `aggress
 - **Onça sem recuo.** O estado `retreat` (a onça correndo para longe ao ficar perto de gente) foi removido: predador não foge do jogador.
 - **Morreu, renasce em casa.** Ao morrer (animal ou lobisomem), o personagem renasce **dentro da casa, ao lado da cama** (`respawnInHouse`), de vida cheia, no dia seguinte.
 
+## Animais da fazenda como presas (vaca, bezerro, galinha)
+
+Antes só as duas "raposas da fazenda" (um sistema à parte, que saía da mata ao entardecer) pegavam galinhas, e a vaca não podia ser ferida. Agora **todos os
+predadores usam as mesmas regras de sempre** (percepção, camuflagem, fome, espreita, bote, luta, comer) e os animais da fazenda entram na lista de presas
+por meio de um "espelho" (`entities/farm/FarmPrey.js`):
+
+| Predador | Come | Condição |
+|---|---|---|
+| Onça | bezerro; vaca adulta | bezerro com fome ≥ 0,30; vaca só com fome ≥ 0,55 (e vacas juntas, até 50 px, protegem: ≥ 2 vizinhas afastam a onça não muito faminta) |
+| Sucuri | bezerro e galinha | só na beira da água |
+| Raposa (a comum, selvagem) | galinha | por percepção e fome, como lebre e galo-lira |
+
+- **Morte de verdade.** A vaca morta sai do rebanho (o jogo já tinha esse caminho: `dead` + `bReap`, que também faz a carcaça e devolve matéria ao solo; se morrer a
+  vaca fundadora, o próximo animal assume o lugar). A galinha sai do galinheiro e deixa penas e corpo no chão. O rebanho nunca fica sem nenhum animal: com só 1
+  vaca/boi, nenhum predador a escolhe. O predador come ali mesmo (a onça não arrasta animais da fazenda).
+- **Medo.** Vacas, bezerros e galinhas percebem os predadores (`FARM_FEAR`, mesma percepção dos selvagens), fogem e o grupo ao redor foge junto; durante um
+  ataque o animal fica parado até a luta acabar. A galinha só repara na raposa de bem perto (a raposa chega esgueirando, e no mato alto some: camuflagem).
+- **Proteção.** Cercas continuam barrando os predadores e a luz do dia/de perto os afasta, como com os selvagens.
+- A "raposa da fazenda" (`FarmFoxes.js`) **não é mais criada**: ao entardecer não surge nada especial. O módulo ficou só para limpar raposas de saves antigos.
+
 ## Indicadores
 
 Barras de fome e sede + idade compacta (`fmtAge`, `lifeStage`) sobre cada animal, com dados reais (`hun`/`thi`/`age`;

@@ -445,6 +445,7 @@ function cowLure(c, dt) {
 function updateCow(dt) {
   if (sleeping) return;
   const c = cow;
+  if (c.busy) return; // sendo atacada ou fugindo de um predador: quem move é entities/farm/FarmPrey.js
   if (!cowCanWalk(c.x, c.y)) {
     for (let r = 8; r <= 120; r += 8)
       for (let k = 0; k < 6.28; k += 0.5) {

@@ -124,7 +124,12 @@ export function animalTarget(a) {
     frozen: st === 'freeze',
     // a vegetação alta esconde quem está nela; a onça, parada ou espreitando no mato alto, quase some (camuflagem de felino emboscador)
     cover: a.sp === 'hare' || a.sp === 'grouse' || a.sp === 'jaguar' || a.sp === 'fox' ? coverAt(a.x, a.y) : 0,
-    camo: a.sp === 'jaguar' ? (a.mv && !stalkLike(st) ? 0.1 : 0.7) * coverAt(a.x, a.y) : a.camo || 0,
+    camo:
+      a.sp === 'jaguar'
+        ? (a.mv && !stalkLike(st) ? 0.1 : 0.7) * coverAt(a.x, a.y)
+        : a.sp === 'fox'
+          ? (a.mv && !stalkLike(st) ? 0.05 : 0.5) * coverAt(a.x, a.y) // a raposa também some no mato alto
+          : a.camo || 0,
     predator: a.sp === 'jaguar', // as presas sentem o cheiro dela de perto (ECO[presa].nose), mesmo escondida
     lit: false,
   };

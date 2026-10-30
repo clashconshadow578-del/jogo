@@ -41,15 +41,10 @@ function foxRandomForest() {
 }
 
 function foxSpawnDusk() {
-  const h = 6 + S.min / 60;
-  if (h >= 17.5 && h < 21 && foxDayStart !== S.day) {
-    foxDayStart = S.day;
-    for (let k = 0; k < 2; k++) {
-      const f = foxRandomForest();
-      fox.push({ x: f.x, y: f.y, st: 'caça', target: null, wander: null, prey: null, dir: 1, t: 0, fr: 0 });
-    }
-  }
-  if (h < 17 || h >= 21) {
+  // A raposa deixou de ser um sistema à parte: não há mais raposas "da fazenda" que saem da mata ao entardecer. A raposa selvagem comum
+  // (entities/wild/Fauna.js) é quem caça galinhas, como caça lebres: por percepção e fome (ver entities/farm/FarmPrey.js).
+  // Fica só a limpeza de raposas antigas de saves/regiões anteriores.
+  if (fox.length) {
     for (const f of fox) {
       if (f.prey) {
         f.prey.holder = null;
@@ -58,7 +53,7 @@ function foxSpawnDusk() {
       }
     }
     fox = [];
-  } // amanhecer: as raposas voltam para a mata
+  }
 }
 
 function nearestFreeChicken(f, r) {

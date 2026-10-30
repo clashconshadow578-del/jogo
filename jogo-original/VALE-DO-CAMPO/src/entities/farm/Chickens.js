@@ -330,6 +330,7 @@ const updateChx = extensible(function updateChx(dt) {
       continue;
     } // presa carregada pela raposa: a posição é da raposa
     c.age += dt;
+    if (c.busy) continue; // sendo atacada por um predador: fica parada (entities/farm/FarmPrey.js)
     if (dungTimer(c, dt, 150, 260)) dropFeces(c.x, c.y, 0.5, 'chicken');
     c.hunger = Math.max(0, c.hunger - 0.18 * dt);
     c.thirst = Math.max(0, c.thirst - 0.25 * dt);

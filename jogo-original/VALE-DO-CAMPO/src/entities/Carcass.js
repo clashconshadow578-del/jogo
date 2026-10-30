@@ -61,6 +61,11 @@ function cowDeadAdd(c) {
   });
 }
 
+/** Galinha morta por um predador: penas e o corpinho no chão (some depressa e devolve matéria ao solo como as outras carcaças). */
+function chxDeadAdd(c) {
+  CARC.push({ x: c.x, y: c.y, t: carcT(c.x, c.y) * 0.5, tot: 6, chk: 1, sz: 0.6, dir: c.dir < 0 ? -1 : 1, col: c.color || 'branca' });
+}
+
 function carcassDone(x, y) {
   let z = null;
   for (const q of ZONES)
@@ -207,6 +212,7 @@ function carcassFx(x, y, t) {
 }
 
 function drawCowCarc(c) {
+  if (c.chk) return drawChkCarc(c);
   const k = c.t < 2 ? c.t / 2 : 1,
     s = c.sz;
   ctx.save();
@@ -323,6 +329,28 @@ function drawProp(z, p) {
   ctx.restore();
 }
 
+const CHK_CARC = { preta: '#4a4850', vermelha: '#b86a38', branca: '#f4f2ea' };
+function drawChkCarc(c) {
+  const k = c.t < 2 ? c.t / 2 : 1;
+  ctx.save();
+  ctx.globalAlpha = k;
+  ctx.translate(Math.round(c.x), Math.round(c.y));
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 6, 2.2, 0, 0, 6.283);
+  ctx.fill();
+  ctx.fillStyle = CHK_CARC[c.col] || CHK_CARC.branca; // corpo e penas espalhadas
+  ctx.beginPath();
+  ctx.ellipse(0, -1, 4.5, 2.6, 0, 0, 6.283);
+  ctx.fill();
+  ctx.fillRect(-7, 0, 2, 1);
+  ctx.fillRect(5, -2, 2, 1);
+  ctx.fillRect(-2, 2, 1, 1);
+  ctx.fillStyle = '#9b2f2f';
+  ctx.fillRect(c.dir * 4, -2, 1, 1);
+  ctx.restore();
+}
+
 function carcDrawEnts(ents, cx, cy) {
   for (const c of CARC)
     if (c.x > cx - 40 && c.x < cx + VW + 40 && c.y > cy - 40 && c.y < cy + VH + 60)
@@ -335,4 +363,4 @@ function carcDrawEnts(ents, cx, cy) {
   }
 }
 
-export { CARC, FA_LF, ZONES, carcDrawEnts, carcT, carcUpd, carcassDone, carcassFx, cbIn, cbSpd, cowDeadAdd, faDie };
+export { CARC, FA_LF, ZONES, carcDrawEnts, carcT, carcUpd, carcassDone, carcassFx, cbIn, cbSpd, chxDeadAdd, cowDeadAdd, faDie };

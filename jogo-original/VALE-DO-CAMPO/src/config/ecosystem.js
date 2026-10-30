@@ -96,6 +96,7 @@ export const ECO = {
     displayMaxHun: 0.55,
   },
   chicken: {
+    nose: 40,
     sight: 125,
     nightMul: 0.4,
     hear: 55,
@@ -134,6 +135,8 @@ export const ECO = {
     avoidFor: 15,
     avoidR: 70,
   },
+  cow: { nose: 60, sight: 160, nightMul: 0.55, hear: 70, vigil: 0.7, courage: 0.3, herdAlarm: 0, alertFor: [1.2, 2.4], calmAfter: 6, avoidFor: 0, avoidR: 0 },
+  calf: { nose: 70, sight: 150, nightMul: 0.5, hear: 70, vigil: 0.7, courage: 0.1, herdAlarm: 0, alertFor: [1, 2], calmAfter: 6, avoidFor: 0, avoidR: 0 },
   jaguar: {
     sight: 195,
     nightMul: 0.78,
@@ -210,6 +213,23 @@ export const HUNT = {
     scanR: 70,
   },
 };
+
+/* ============ animais da fazenda como presas (vaca, bezerro, galinha) ============
+   hp/ctr/hun/n/w: como JG.prey (vida, dano que revida por s, valor da refeição 0..1, nome, peso na escolha) · run/walk/stam/sw/hh: como FA_SP
+   k: tamanho da refeição para a sucuri (0..1) · medo: raio-base (px) de cada presa diante de cada predador: [passeando, espreitando, caçando]
+   quem caça quem (config FARM_HUNT): onça → vaca (fome ≥ cowMinHun) e bezerro (fome ≥ calfMinHun); sucuri → bezerro e galinha na beira da água; raposa → galinha. */
+export const FARM_PREY = {
+  chicken: { n: 'uma galinha', e: '🐔', hp: 5, ctr: 0.5, hun: 0.2, w: 0.9, k: 0.12, run: 62, walk: 22, stam: 3, sw: 7, hh: 7, fear: 90 },
+  calf: { n: 'um bezerro', e: '🐄', hp: 28, ctr: 1.0, hun: 0.55, w: 1.6, k: 0.8, run: 70, walk: 20, stam: 5, sw: 14, hh: 12, fear: 110 },
+  cow: { n: 'uma vaca', e: '🐄', hp: 55, ctr: 2.4, hun: 1.0, w: 1.0, k: 1, run: 56, walk: 20, stam: 6, sw: 20, hh: 14, fear: 110 },
+};
+export const FARM_FEAR = {
+  // como o cervo e a lebre: percebem uma onça visível de longe e fogem cedo (a camuflagem no mato alto é que decide a emboscada)
+  chicken: { jaguar: [110, 200, 170], fox: [40, 70, 60], anaconda: [45, 60, 60] }, // raposa: a galinha só repara de bem perto (a raposa chega esgueirando)
+  calf: { jaguar: [150, 260, 220], anaconda: [45, 70, 70] },
+  cow: { jaguar: [140, 240, 200] },
+};
+export const FARM_HUNT = { cowMinHun: 0.55, calfMinHun: 0.3 };
 
 /** Quanto aumenta o alcance de visão/audição/faro dos animais sobre um jogador DESMAIADO (deitado, indefeso, cheirando a sangue): presa fácil. */
 export const KO_RANGE = 2.6;
