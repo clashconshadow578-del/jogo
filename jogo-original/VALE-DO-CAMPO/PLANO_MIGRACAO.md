@@ -205,18 +205,25 @@ mais que muitos retângulos** (cada uma vira uma textura na placa de vídeo). Pa
 **única textura grande e fixa** (um atlas), que é justamente o que o PixiJS faz bem. Por isso o mato em imagens fica **desligado**
 (`?matocache` liga) até ser refeito assim.
 
-**Próximo alvo:** em volta da casa o jogo cai para a metade (51 -> 25 fps). O `?bench` agora mede isso diretamente.
+**Próximo alvo:** em volta da casa o jogo cai para a metade (51 -> 25 fps). O `?bench` mede isso diretamente.
+
+**1º teste real (celular com GPU Samsung Xclipse 530, tela 1464x534, DPR 1,54, 8 núcleos):**
+- jogo padrão: **17 fps em todas as cenas** (~58 ms por quadro, com resolução e qualidade fixas no máximo); tempo de desenho em JavaScript ~19 ms;
+- grama na GPU (fase 2) e cache do chão **reduzem o JavaScript** (-2 a -5 ms por quadro) mas **o fps não muda**: o gargalo **não** é o JavaScript;
+- resolução x1 (4x menos pixels) **não ajuda**: não é a quantidade de pixels;
+- o que mais pesa: luz e sombras do sol (~10 ms), entidades (~10 ms), clima/atmosfera (~4), água, sombras de contato e qualidade (~3 cada).
+- Leitura provisória: o tempo vai para fora do JavaScript (placa de vídeo / driver, por **quantidade e tipo de operações**), sobretudo na luz
+  (várias camadas auxiliares e `multiply`) e no desenho das entidades. As imagens do jogo pesam só 18,8 MB: não é falta de memória de textura.
+
+**`?bench` ampliado (versão atual):** além de fps, **separa o tempo do quadro em lógica / desenho / interface / espera** (diz de uma vez se o
+limite é o processador ou a placa de vídeo), faz um **micro-teste** (as mesmas 2.200 operações em Canvas 2D e em WebGL/PixiJS, com o jogo
+pausado) e mede o **custo de cada tipo de operação do Canvas 2D** (retângulos, imagens, imagens espelhadas, elipses, gradientes, camadas cheias
+com `lighter` e `multiply`, vários canvases auxiliares). A tabela sai em 3 colunas para caber em telas baixas.
 
 **Como usar:** abra o jogo com `?bench` no fim do endereço (ex.: `...app.github.dev/?bench`). Sem tocar em nada, o jogo roda sozinho cerca de
-3 minutos e mostra uma tabela com **fps** (mediana por segundo), **tempo de desenho** e **pior quadro** em 3 lugares (onde você está, **em
-volta da casa** e o rio):
-- recursos opcionais: jogo padrão, grama na GPU (fase 2), cache do chão;
-- só em volta da casa, **uma etapa desligada de cada vez**: sombras de contato, mato, relevo, umidade do chão, água, luz e sombras do sol,
-  clima e atmosfera, entidades, qualidade mínima, sem raios e partículas, resolução x1.
-
-No fim mostra o **ranking do que mais pesa em volta da casa** (quantos milissegundos por quadro cada etapa custa naquele aparelho) e diz se
-o aparelho é limitado por **pixels** (placa de vídeo/tela) ou pelo **processador** (JavaScript). Também mostra a placa de vídeo, a tela e se
-há WebGL.
+3 minutos e mostra o resultado em 3 lugares (onde você está, **em volta da casa** e o rio). Em volta da casa desliga **uma etapa do desenho de
+cada vez** (sombras de contato, mato, relevo, umidade do chão, água, luz do sol, clima e atmosfera, entidades, qualidade mínima, sem raios e
+partículas, resolução x1) e mostra um **ranking** de quantos milissegundos por quadro cada uma custa **naquele aparelho**.
 
 **Segurança do seu jogo:** durante o teste **nada é gravado** (o jogo salva sozinho a cada minuto e ao esconder a aba; isso fica bloqueado),
 os toques são ignorados e a resolução fica fixa. No fim aparece o botão **Recarregar o jogo**, que volta ao último save como estava.

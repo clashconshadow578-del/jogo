@@ -24,8 +24,19 @@ let last = performance.now(),
   stableNeed = 20,
   probeAge = 99;
 
+let loopPausado = false;
+
+/** Pausa/retoma o laço do jogo (só o teste de desempenho usa, para medir o Canvas 2D e o WebGL sem o jogo rodando). */
+export function setLoopPaused(value) {
+  loopPausado = !!value;
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
+  if (loopPausado) {
+    last = now; // ao retomar, o primeiro quadro não vê um "salto" de tempo
+    return;
+  }
   const raw = now - last,
     dt = Math.max(0, Math.min(raw / 1000, 0.05));
   last = now;
@@ -71,10 +82,11 @@ function frame(now) {
       }
     }
   }
+  const tA = FPS_ON ? performance.now() : 0; // só com ?fps / ?bench (FpsMeter.js): mede lógica, desenho e interface de cada quadro
   update(dt);
-  const tFps = FPS_ON ? performance.now() : 0; // só com ?fps (FpsMeter.js)
+  const tB = FPS_ON ? performance.now() : 0;
   render();
-  if (FPS_ON) fpsSample(performance.now() - tFps);
+  const tC = FPS_ON ? performance.now() : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
@@ -84,6 +96,7 @@ function frame(now) {
   syncDoorUI();
   updHome();
   if ((frameNo & 3) === 0) renderHotbar();
+  if (FPS_ON) fpsSample(tC - tB, tB - tA, performance.now() - tC);
 }
 
 export function startLoop() {

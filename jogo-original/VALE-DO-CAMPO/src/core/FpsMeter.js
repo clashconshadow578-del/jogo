@@ -1,7 +1,7 @@
 /**
  * Contador de desempenho na tela, só com `?fps` na URL (para medir no celular, onde não há console).
  *
- * Mostra, a cada segundo: quadros por segundo, tempo de JavaScript gasto em desenhar o quadro (média e pico), a resolução
+ * Mostra, a cada segundo: quadros por segundo, tempo de JavaScript gasto na lógica do jogo, no desenho e na interface HTML (média; e o pico do desenho), a resolução
  * e a qualidade atuais (o jogo as reduz sozinho quando o aparelho não acompanha: compare sempre os três números) e, com
  * `?pixi`, quantos tiles de grama o PixiJS está cobrindo. O tempo de desenho NÃO inclui o trabalho da placa de vídeo;
  * o que a placa de vídeo faz aparece como queda de fps ou como o jogo reduzindo a resolução/qualidade.
@@ -25,13 +25,18 @@ const AQUECE_MS = 3000; // o começo do jogo monta imagens e baixa texturas: o p
 let el = null,
   frames = 0,
   sum = 0,
+  sumU = 0,
+  sumI = 0,
   max = 0,
   t0 = 0,
   tCriado = 0;
 
-/** Registra o tempo (ms) que o desenho de um quadro levou; atualiza o texto uma vez por segundo. */
-function fpsSample(ms) {
-  if (tap) tap(ms);
+/**
+ * Registra, em ms, o tempo que um quadro gastou desenhando (`ms`), na lógica do jogo (`upd`) e na interface HTML (`ui`);
+ * atualiza o texto uma vez por segundo.
+ */
+function fpsSample(ms, upd = 0, ui = 0) {
+  if (tap) tap(ms, upd, ui);
   if (BENCH) return; // no teste de desempenho o painel é o do Bench.js
   if (!el) {
     el = document.createElement('div');
@@ -44,6 +49,8 @@ function fpsSample(ms) {
   }
   frames++;
   sum += ms;
+  sumU += upd;
+  sumI += ui;
   if (ms > max) max = ms;
   const now = performance.now();
   if (now - t0 < 1000) return;
@@ -51,6 +58,8 @@ function fpsSample(ms) {
     el.textContent = 'medindo… (aguarde 3 s)';
     frames = 0;
     sum = 0;
+    sumU = 0;
+    sumI = 0;
     max = 0;
     t0 = now;
     return;
@@ -58,10 +67,13 @@ function fpsSample(ms) {
   const px = window.VDC_PIXI;
   const pixi = px && px.ok ? 'ligado, grama: ' + (px.coveredTiles || 0) + ' tiles' : 'desligado';
   el.textContent =
-    Math.round((frames * 1000) / (now - t0)) + ' fps · desenho ' + (sum / frames).toFixed(1) + ' ms (pico ' + max.toFixed(0) + ')\n' +
+    Math.round((frames * 1000) / (now - t0)) + ' fps · lógica ' + (sumU / frames).toFixed(1) + ' ms · desenho ' + (sum / frames).toFixed(1) +
+    ' ms · interface ' + (sumI / frames).toFixed(1) + ' ms (pico de desenho ' + max.toFixed(0) + ')\n' +
     'resolução x' + RS + ' · qualidade ' + Q() + ' · PixiJS ' + pixi;
   frames = 0;
   sum = 0;
+  sumU = 0;
+  sumI = 0;
   max = 0;
   t0 = now;
 }
