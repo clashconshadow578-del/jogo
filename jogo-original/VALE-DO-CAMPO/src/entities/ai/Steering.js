@@ -6,6 +6,7 @@
 
 import { MH, MW, TS } from '../../config/constants.js';
 import { blocked, solid } from '../../systems/CollisionSystem.js';
+import { animalSpeed, tilePathCost } from '../../world/Trails.js';
 
 const MAX_SUBSTEP = 3; // px por teste de colisão (um tile tem 16)
 
@@ -25,7 +26,7 @@ function turnTo(e, ang, dt) {
 }
 
 function moveEnt(e, tx, ty, sp, dt, can) {
-  sp *= e.lifeF || 1;
+  sp *= (e.lifeF || 1) * animalSpeed(e.x, e.y); // mato fechado freia, trilha batida acelera
   const dx = tx - e.x,
     dy = ty - e.y,
     d = Math.hypot(dx, dy);
@@ -82,12 +83,44 @@ function findPath(x0, y0, x1, y1, canF) {
     bx1 = Math.max(sx, gx) + 45,
     by0 = Math.min(sy, gy) - 45,
     by1 = Math.max(sy, gy) + 45;
+  // Dijkstra em grade: o tile custa menos em trilha batida e mais em mato fechado (world/Trails.js), então o caminho
+  // segue as trilhas e contorna o mato alto. Num terreno liso é o mesmo trajeto de antes (todos os custos = 1).
   const prev = new Int32Array(MW * MH).fill(-2),
-    q = [sy * MW + sx];
-  prev[q[0]] = -1;
-  for (let h = 0; h < q.length; h++) {
-    const c = q[h],
-      cx = c % MW,
+    dist = new Float32Array(MW * MH).fill(Infinity),
+    heap = [[0, sy * MW + sx]];
+  prev[heap[0][1]] = -1;
+  dist[heap[0][1]] = 0;
+  const push = (d, c) => {
+    let k = heap.push([d, c]) - 1;
+    while (k > 0) {
+      const p = (k - 1) >> 1;
+      if (heap[p][0] <= heap[k][0]) break;
+      [heap[p], heap[k]] = [heap[k], heap[p]];
+      k = p;
+    }
+  };
+  const pop = () => {
+    const top = heap[0],
+      last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      for (let k = 0; ; ) {
+        const l = 2 * k + 1,
+          r = l + 1;
+        let m = k;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === k) break;
+        [heap[m], heap[k]] = [heap[k], heap[m]];
+        k = m;
+      }
+    }
+    return top;
+  };
+  while (heap.length) {
+    const [cd, c] = pop();
+    if (cd > dist[c]) continue;
+    const cx = c % MW,
       cy = (c / MW) | 0;
     if (cx === gx && cy === gy) break;
     for (const [dx, dy] of [
@@ -99,10 +132,12 @@ function findPath(x0, y0, x1, y1, canF) {
       const nx = cx + dx,
         ny = cy + dy;
       if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1 || solid(nx, ny)) continue;
-      const n = ny * MW + nx;
-      if (prev[n] !== -2) continue;
+      const n = ny * MW + nx,
+        nd = cd + tilePathCost(n);
+      if (nd >= dist[n]) continue;
+      dist[n] = nd;
       prev[n] = c;
-      q.push(n);
+      push(nd, n);
     }
   }
   const g = gy * MW + gx;
@@ -112,13 +147,32 @@ function findPath(x0, y0, x1, y1, canF) {
   pts.reverse();
   pts[pts.length - 1] = [x1, y1];
   const free = canF || ((x, y) => !blocked(x, y)),
-    out = [];
+    out = [],
+    tileOf = (x, y) => Math.floor(y / TS) * MW + Math.floor(x / TS),
+    cum = [0];
+  for (let k = 1; k < pts.length; k++) cum[k] = cum[k - 1] + tilePathCost(tileOf(pts[k][0], pts[k][1]));
+  // Custo de ir em linha reta de (ax,ay) a (bx,by): comprimento em tiles x custo médio dos tiles amostrados no meio.
+  const cutCost = (ax, ay, bx, by) => {
+    const len = Math.hypot(bx - ax, by - ay),
+      n = Math.max(1, Math.ceil(len / 8));
+    let c = 0;
+    for (let k = 1; k <= n; k++) c += tilePathCost(tileOf(ax + ((bx - ax) * k) / n, ay + ((by - ay) * k) / n));
+    return (c / n) * (len / TS);
+  };
   let ax = x0,
     ay = y0,
     i = 0;
   while (i < pts.length) {
     let j = pts.length - 1;
-    while (j > i && !losWith(free, ax, ay, pts[j][0], pts[j][1])) j--;
+    // o atalho em linha reta só vale se não custar mais que o caminho por tiles (não corta por mato fechado para fugir da trilha)
+    while (
+      j > i &&
+      !(
+        losWith(free, ax, ay, pts[j][0], pts[j][1]) &&
+        cutCost(ax, ay, pts[j][0], pts[j][1]) <= cum[j] - cum[Math.max(0, i - 1)] + 0.5
+      )
+    )
+      j--;
     out.push(pts[j]);
     ax = pts[j][0];
     ay = pts[j][1];

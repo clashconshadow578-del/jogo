@@ -35,6 +35,8 @@ Ecossistema vivo (percepção, caça, presa-jogador, indicadores): [`docs/ECOSSI
 
 O mato (helicônia e samambaia: dados da vida real, regras de jogo e como inspecionar): [`docs/PLANTAS.md`](docs/PLANTAS.md).
 
+Pisoteio, trilhas de fauna e mato fechado: [`docs/PISOTEIO.md`](docs/PISOTEIO.md).
+
 Documentação técnica da migração (auditoria, inventário de funcionalidades, decisões e evidências):
 [`docs/AUDITORIA_E_MIGRACAO.md`](docs/AUDITORIA_E_MIGRACAO.md).
 

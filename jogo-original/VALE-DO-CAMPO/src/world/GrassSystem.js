@@ -107,7 +107,8 @@ function relaxGrass(dt) {
 
 // Quem anda (jogador, aldeã, vaca) pisa a cada ~3px percorridos e deixa pegadas.
 function walkTrample(id, x, y, w, kind) {
-  const p = walkers[id] || (walkers[id] = { x, y, d: 0, s: 0, side: 1 });
+  const p = walkers[id] || (walkers[id] = { x, y, d: 0, s: 0, side: 1, f: frameNo });
+  p.f = frameNo;
   const dx = x - p.x,
     dy = y - p.y,
     dist = Math.hypot(dx, dy);
@@ -165,6 +166,7 @@ function updateTrail(dt) {
   grazeTick += dt;
   if (grazeTick > 3) {
     grazeTick = 0;
+    for (const k in walkers) if (frameNo - walkers[k].f > 1800) delete walkers[k]; // bichos que sumiram (mortos, outra região)
     for (let i = 0; i < grassGraze.length; i++) if (grassGraze[i]) grassGraze[i]--;
   }
   for (let i = prints.length - 1; i >= 0; i--) {

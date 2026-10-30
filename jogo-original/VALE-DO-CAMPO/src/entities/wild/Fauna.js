@@ -47,6 +47,9 @@ import { assetUrl } from '../../utils/assets.js';
 import { rr } from '../../utils/Random.js';
 import { DOOR } from '../../world/HouseInterior.js';
 import { bio, mato, om, prox, seedAge, sm } from '../../world/hydrology/Hydrology.js';
+import { TRAMPLE } from '../../config/trampling.js';
+import { walkTrample } from '../../world/GrassSystem.js';
+import { animalSpeed, trailK } from '../../world/Trails.js';
 import { flowAt, FQX, FQY } from '../../world/hydrology/RiverFlow.js';
 import { INST } from '../../world/Instances.js';
 import { shroom } from '../../world/Mushrooms.js';
@@ -387,6 +390,22 @@ function faAct(sp, h) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
+// Quanto o caminho (x0,y0) -> (x1,y1) segue trilha batida: média da trilha em 3 pontos do trajeto (0-1).
+function faWorn(x0, y0, x1, y1) {
+  let t = 0;
+  for (let k = 1; k <= 3; k++) {
+    const i = Math.floor((y0 + ((y1 - y0) * k) / 3) / TS) * MW + Math.floor((x0 + ((x1 - x0) * k) / 3) / TS);
+    if (i >= 0 && i < HN) t += trailK(i);
+  }
+  return t / 3;
+}
+
+// A fauna também pisoteia: cada espécie com o seu peso (config/trampling.js); cervo e queixada deixam pegada de casco.
+function faTrample(a) {
+  const w = TRAMPLE.peso[a.sp];
+  if (w) walkTrample('f' + a.id, a.x, a.y, w * (a.age < 999 ? 0.5 : 1), a.sp === 'deer' || a.sp === 'boar' ? 'cow' : 'n');
+}
+
 function faPick(a, R, kind) {
   let best = null,
     bs = -1e9;
@@ -399,7 +418,8 @@ function faPick(a, R, kind) {
     const s =
       faHab(a.sp, Math.floor(x / TS), Math.floor(y / TS), kind) +
       (kind === '' ? faFood(a, Math.floor(x / TS), Math.floor(y / TS)) * (0.6 + a.hun * 2.2) : 0) -
-      (d / R) * 0.6 -
+      (d / R) * 0.6 +
+      faWorn(a.x, a.y, x, y) * 0.9 - // prefere seguir trilhas já batidas (gasta menos energia)
       (a.mem && a.mem.length && memNear(a, x, y, (ECO[a.sp] || {}).avoidR || 0) ? 1.4 : 0) + // evita onde viu o predador
       Math.random() * 0.35;
     if (s > bs) {
@@ -587,7 +607,7 @@ function faStep(a, tx, ty, sp, dt, fly) {
   if (d < 2) return true;
   let ang = Math.atan2(dy, dx);
   const wf = fly ? 1 : a.inW ? a.wf || 0.6 : 1,
-    v = sp * wf;
+    v = sp * wf * (fly || a.inW ? 1 : animalSpeed(a.x, a.y)); // mato fechado freia, trilha batida acelera
   if (!fly && a.inW && a.dk > 0 && flowAt(a.x, a.y) > 1) {
     const hx = (dx / d) * v - FQX * a.dk,
       hy = (dy / d) * v - FQY * a.dk;
@@ -608,6 +628,7 @@ function faStep(a, tx, ty, sp, dt, fly) {
     }
   }
   a.mv = ok;
+  if (ok && !fly && !a.inW) faTrample(a);
   a.stuck = ok ? Math.max(0, a.stuck - dt) : a.stuck + dt;
   return false;
 }
@@ -1813,6 +1834,7 @@ export {
   faShoreT,
   faSpawn,
   faSpot,
+  faStep,
   fauna,
   updateFauna,
 };

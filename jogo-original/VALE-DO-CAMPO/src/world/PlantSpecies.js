@@ -8,6 +8,7 @@
 
 import { HN, MH, MW, TREE } from '../config/constants.js';
 import { HEL, PLANTS, SAM, plantStage } from '../config/plants.js';
+import { TRAMPLE, regressTo } from '../config/trampling.js';
 import { hash2 } from '../utils/MathUtils.js';
 import { mato, nut, sm, wl } from './hydrology/Hydrology.js';
 import { obj } from './World.js';
@@ -64,6 +65,16 @@ export function growthRate(i) {
   return p ? p.ritmo : 1;
 }
 
+/**
+ * O tile está sendo pisoteado (`stress` = desgaste médio 0-1, acima do limite): o mato perde mais quanto maior o desgaste e,
+ * em pisoteio forte, a planta grande regride de fase de uma vez (fase 4 cai para a 2, fase 3 para a 1).
+ */
+export function plantTrampled(i, stress) {
+  const to = regressTo(plantStage(mato[i]), stress);
+  if (to !== null && mato[i] > to) mato[i] = to;
+  mato[i] = Math.max(0, mato[i] - (TRAMPLE.perdaPorPasso + TRAMPLE.perdaPorDesgaste * stress));
+}
+
 /** Um dia na vida da planta do tile: a helicônia que floresceu perde o caule; a samambaia sofre em solo encharcado. */
 export function plantDaily(i) {
   const p = PLANTS[speciesAt(i)];
@@ -71,6 +82,13 @@ export function plantDaily(i) {
   if (p.florescerMorre && plantStage(mato[i]) === 4 && Math.random() < p.florescerMorre)
     mato[i] = Math.max(0, mato[i] - p.florescerQueda);
   else if (p.aguaParada < 0.5 && wl[i] > 0.1) mato[i] = Math.max(0, mato[i] - 6);
+  // sem pisoteio o mato fecha: a helicônia adulta sombreia e sufoca brotos e plantas jovens ao lado
+  if (plantStage(mato[i]) <= 2) {
+    let n = 0;
+    for (const j of [i - 1, i + 1, i - MW, i + MW])
+      if (j >= 0 && j < HN && speciesAt(j) === HEL && plantStage(mato[j]) === 4) n++;
+    if (n) mato[i] = Math.max(0, mato[i] - TRAMPLE.sombraDaHelikonia * n);
+  }
 }
 
 /** Quanto os herbívoros gostam do mato do tile (0-1): as samambaias têm toxinas. */

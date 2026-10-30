@@ -9,6 +9,7 @@ import { extensible } from '../core/extensions.js';
 import { S } from '../core/GameState.js';
 import { $ } from '../ui/dom.js';
 import { gid, grassWear, soilCompact } from '../world/GrassSystem.js';
+import { plantDrag } from '../world/Trails.js';
 import { elev, wl } from '../world/hydrology/Hydrology.js';
 import { climate } from '../world/WeatherSystem.js';
 import { ground } from '../world/World.js';
@@ -19,7 +20,10 @@ const terrainSpeed = extensible(function terrainSpeed() {
   if (ground[ty * MW + tx] !== GRASS) return 1;
   const i = gid(S.px, S.py);
   if (i < 0) return 1;
-  return 1 + (0.07 * soilCompact[i]) / 255 - (climate.wetness > 0.45 ? (0.14 * grassWear[i]) / 255 : 0); // trilha seca é mais rápida; lama atrasa
+  return (
+    (1 + (0.07 * soilCompact[i]) / 255 - (climate.wetness > 0.45 ? (0.14 * grassWear[i]) / 255 : 0)) * // trilha seca é mais rápida; lama atrasa
+    plantDrag(S.px, S.py)
+  ); // mato crescido e fechado cansam de atravessar
 });
 
 let running = false,

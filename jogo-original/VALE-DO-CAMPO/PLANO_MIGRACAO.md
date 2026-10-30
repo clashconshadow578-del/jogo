@@ -398,3 +398,12 @@ Pedido do dono: sair a grama de lâminas e entrar duas plantas amazônicas em 4 
 - **Prova:** `npm test` (101), `tests/browser/plants.mjs` (espécie estável, fases, ciclo da helicônia, inspeção, sem erros), build, e capturas no PixiJS e em `?canvas`.
 - **Fora do escopo / pendente:** a regressão pixel a pixel contra o `legacy/` deixa de valer onde há mato e no chão pisoteado (README, seção 7); as duas linhas da folha trazem
   flores vermelhas na fase 4, inclusive a "samambaia" (arte original; na vida real ela não floresce).
+
+## 24. Pisoteio da fauna, trilhas e mato fechado (feito)
+
+O jogo já tinha pisoteio do jogador, da aldeã e das vacas, trilha de terra batida e recuperação com os dias. Foi acrescentado o que faltava (detalhes em `docs/PISOTEIO.md`):
+fauna selvagem pisoteia (por peso da espécie) e prefere trilhas ao escolher destino; mato crescido e fechado freiam jogador e animais; planta grande regride de fase com
+pisoteio forte; compactação atrapalha o crescimento e a germinação de árvores; `findPath` virou Dijkstra com custo (trilha barata, mato fechado caro); helicônia adulta
+sufoca brotos vizinhos. Números em `config/trampling.js`. Prova: `npm test` (105), `tests/browser/trampling.mjs` (10 conferências), `plants.mjs`, ecossistema A/C/D e cercas sem falhas.
+Observação: `ecosystem-b.mjs` falha na conferência 18 ("a onça derruba o jogador") **também na branch original** (`46eb705`), antes de qualquer mudança desta tarefa.
+

@@ -19,14 +19,15 @@ import { toast } from '../../ui/Toast.js';
 import { pk, pkE, rleDec, rleEnc, upk, upkE } from '../../utils/compression.js';
 import { hash2, smooth } from '../../utils/MathUtils.js';
 import { vnoise } from '../../utils/Noise.js';
-import { GRASS_RES, grassDirty, grassWear, GW, setGrassDirty } from '../GrassSystem.js';
+import { GRASS_RES, grassDirty, grassWear, GW, setGrassDirty, soilCompact } from '../GrassSystem.js';
 import { fvApply, fvDaily, fvDraw, fvFld, fvInfo, fvInit, fvPack, fvReset, fvTick } from './Fluvial.js';
 import { drawPuddle, pdNear } from './Puddles.js';
 import { flowInit } from './RiverFlow.js';
 import { INST } from '../Instances.js';
 import { shroom, shroomRoll } from '../Mushrooms.js';
 import { seasonPhase, SEASONS, seasonUpdate, TINT, TINTSTR } from '../Seasons.js';
-import { growthRate, plantDaily } from '../PlantSpecies.js';
+import { TRAMPLE } from '../../config/trampling.js';
+import { growthRate, plantDaily, plantTrampled } from '../PlantSpecies.js';
 import { crowd, drawSapling, treeDrop, treeFree } from '../Vegetation.js';
 import { climate, clouds, rainAt } from '../WeatherSystem.js';
 import { crops, ground, obj, wet } from '../World.js';
@@ -82,6 +83,7 @@ let elev = new Float32Array(HN),
   mato = new Float32Array(HN),
   shade = new Float32Array(HN),
   wearT = new Float32Array(HN),
+  cmpT = new Float32Array(HN), // compactação média do tile (0-1), recalculada a cada passo: não é salva
   seedAge = new Float32Array(HN),
   sapl = new Float32Array(HN),
   lakeTile = new Uint8Array(HN),
@@ -409,19 +411,26 @@ const hydroStep = extensible(function hydroStep() {
       if (ground[i] === GRASS) {
         const tx0 = (i % MW) * GRASS_RES,
           ty0 = ((i / MW) | 0) * GRASS_RES;
-        let ws = 0;
+        let ws = 0,
+          cs = 0;
         for (let a = 0; a < GRASS_RES; a++)
-          for (let b = 0; b < GRASS_RES; b++) ws += grassWear[(ty0 + a) * GW + tx0 + b];
-        const wr = ws / (GRASS_RES * GRASS_RES * 255);
+          for (let b = 0; b < GRASS_RES; b++) {
+            ws += grassWear[(ty0 + a) * GW + tx0 + b];
+            cs += soilCompact[(ty0 + a) * GW + tx0 + b];
+          }
+        const wr = ws / (GRASS_RES * GRASS_RES * 255),
+          cp = cs / (GRASS_RES * GRASS_RES * 255);
         wearT[i] = wr;
+        cmpT[i] = cp;
         var mb0 = mato[i];
-        if (wr > 0.12)
-          mato[i] = Math.max(0, mato[i] - 0.8); // pisoteado: mato morre e não cresce
+        if (wr > TRAMPLE.limite)
+          plantTrampled(i, wr); // pisoteado: o mato regride de fase, morre e não cresce
         else {
           const g =
             (sm[i] > 0.4 ? (sm[i] - 0.4) * 0.28 : -0.05) *
               Math.max(0, 1 - Math.max(0, elev[i] - 2.2) * 0.25) *
               (1 - wr * 6) *
+              (1 - cp * TRAMPLE.compactaCresce) * // solo compactado: raiz e água têm dificuldade
               SG -
             (season === 3 ? 0.02 : 0);
           mato[i] = Math.max(
@@ -444,7 +453,7 @@ const hydroStep = extensible(function hydroStep() {
       if (seedAge[i] > 0) {
         seedAge[i] += 0.2 * (1 + bio[i]);
         if (w > 0.1 || ground[i] !== GRASS || obj[i]) seedAge[i] = 0;
-        else if (seedAge[i] > 20 && sm[i] > 0.45 && nut[i] > 0.3 && wearT[i] < 0.12 && crowd(i) <= 2 && !crops[i]) {
+        else if (seedAge[i] > 20 && sm[i] > 0.45 && nut[i] > 0.3 && wearT[i] < 0.12 && cmpT[i] < TRAMPLE.compactaGermina && mato[i] < TRAMPLE.matoFechado && crowd(i) <= 2 && !crops[i]) {
           sapl[i] = 0.01;
           seedAge[i] = 0;
         } // germina
@@ -688,7 +697,11 @@ const hydroDaily = extensible(function hydroDaily() {
         Math.min(
           255 * (0.3 + 0.7 * nut[i]),
           mato[i] +
-            (sm[i] > 0.3 ? 28 * sg * (0.4 + sm[i]) * el * (0.25 + 1.5 * nut[i]) * growthRate(i) : s === 3 ? -6 : -3),
+            (sm[i] > 0.3
+              ? 28 * sg * (0.4 + sm[i]) * el * (0.25 + 1.5 * nut[i]) * growthRate(i) * (1 - cmpT[i] * TRAMPLE.compactaCresce)
+              : s === 3
+                ? -6
+                : -3),
         ),
       );
       plantDaily(i); // a helicônia que floresceu perde o caule e rebrota; a samambaia sofre em solo encharcado
@@ -887,5 +900,6 @@ export {
   sm,
   treeSeen,
   wearT,
+  cmpT,
   wl,
 };
