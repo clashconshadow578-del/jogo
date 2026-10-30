@@ -14,8 +14,13 @@ import { TS, VH, VW } from '../../config/constants.js';
 const CANVAS_W = (Math.ceil(VW / TS) + 3) * TS,
   CANVAS_H = (Math.ceil(VH / TS) + 3) * TS;
 
-/** `search` é o texto depois do "?" da URL (ex.: "?pixi&debug"). */
+/** O PixiJS é o desenhista padrão; `?canvas` na URL volta para o Canvas 2D puro (plano B). `search` é o texto depois do "?" da URL. */
 export function pixiRequested(search) {
+  return !/[?&]canvas\b/.test(search || '');
+}
+
+/** O usuário pediu o PixiJS explicitamente (`?pixi`): só então o jogo avisa na tela. */
+export function pixiExplicit(search) {
   return /[?&]pixi\b/.test(search || '');
 }
 

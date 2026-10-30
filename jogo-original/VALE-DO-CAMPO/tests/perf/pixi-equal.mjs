@@ -120,7 +120,7 @@ async function difere(A, B) {
 }
 const hash = (s) => crypto.createHash('sha1').update(s).digest('hex');
 
-const base = await roda('base', '');
+const base = await roda('base', '&canvas'); // Canvas puro (o PixiJS agora é o padrão)
 const execs = [
   { nome: '2d', qs: '&pixi&pixi2d', exato: true },
   { nome: 'webgl', qs: '&pixi', exato: false },

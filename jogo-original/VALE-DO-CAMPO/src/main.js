@@ -9,7 +9,7 @@ import './core/CpuCanvas.js'; // tem que ser o primeiro: troca o getContext ante
 import { loadWorldData } from './world/WorldData.js';
 import { boot } from './core/Game.js';
 import { installDebug } from './core/debug.js';
-import { initPixi, pixiRequested } from './rendering/pixi/PixiBridge.js';
+import { initPixi, pixiExplicit } from './rendering/pixi/PixiBridge.js';
 import { toast } from './ui/Toast.js';
 import { benchRequested, startBench } from './core/Bench.js';
 
@@ -33,9 +33,9 @@ async function start() {
     return;
   }
   boot();
-  // só faz algo com ?pixi na URL: liga o PixiJS (WebGL) e avisa na tela se deu certo, para conferir no celular
+  // liga o PixiJS (WebGL), o desenhista padrão (`?canvas` desliga); com `?pixi` avisa na tela se deu certo
   initPixi().then((info) => {
-    if (pixiRequested(location.search))
+    if (pixiExplicit(location.search))
       toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
   });
   if (benchRequested(location.search)) startBench(); // só com ?bench: teste de desempenho automático (core/Bench.js)

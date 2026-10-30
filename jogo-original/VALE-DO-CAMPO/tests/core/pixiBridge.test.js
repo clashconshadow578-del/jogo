@@ -1,12 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pixiRequested } from '../../src/rendering/pixi/PixiBridge.js';
+import { pixiExplicit, pixiRequested } from '../../src/rendering/pixi/PixiBridge.js';
 
-test('pixiRequested: só liga com ?pixi na URL', () => {
-  assert.equal(pixiRequested(''), false);
-  assert.equal(pixiRequested('?debug'), false);
-  assert.equal(pixiRequested('?pixiano'), false);
+test('pixiRequested: o PixiJS é o padrão; só ?canvas desliga', () => {
+  assert.equal(pixiRequested(''), true);
+  assert.equal(pixiRequested('?debug'), true);
   assert.equal(pixiRequested('?pixi'), true);
-  assert.equal(pixiRequested('?debug&pixi'), true);
-  assert.equal(pixiRequested(undefined), false);
+  assert.equal(pixiRequested(undefined), true);
+  assert.equal(pixiRequested('?canvas'), false);
+  assert.equal(pixiRequested('?debug&canvas'), false);
+  assert.equal(pixiRequested('?canvasx'), true);
+});
+
+test('pixiExplicit: só com ?pixi na URL', () => {
+  assert.equal(pixiExplicit(''), false);
+  assert.equal(pixiExplicit('?pixiano'), false);
+  assert.equal(pixiExplicit('?debug&pixi'), true);
 });
