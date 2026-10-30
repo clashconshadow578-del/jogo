@@ -25,6 +25,7 @@ import { drawFauna, drawFaunaLabels, FA_SP, fauna } from '../entities/wild/Fauna
 import { drawAnimalStatus } from './AnimalStatus.js';
 import { drawJag } from '../entities/wild/Jaguar.js';
 import { amzBig, amzPad } from '../features/amazon/AmazonTrees.js';
+import { AB } from './Ablate.js';
 import { drawAtmosphere } from './Atmosphere.js';
 import { ctx } from './Canvas.js';
 import { glow } from './Effects.js';
@@ -67,13 +68,11 @@ let vcam = null;
  */
 export const entityProviders = [];
 
-// Etapas do desenho que o teste de desempenho (core/Bench.js) pode DESLIGAR uma de cada vez para medir quanto cada uma custa
-// no aparelho. Tudo fica ligado (false) fora do teste; o custo é uma leitura de propriedade por etapa.
-const AB = { sombras: false, mato: false, relevo: false, hidro: false, agua: false, luz: false, clima: false, entidades: false };
-
-/** Desliga as etapas marcadas em `map` (ex.: { sombras: true }); as demais voltam a ligar. */
-export function setAblate(map) {
-  for (const k in AB) AB[k] = !!(map && map[k]);
+/** Esta entidade fica sem desenhar neste quadro (só o teste de desempenho liga isso; ver Ablate.js). */
+function semDesenho(en) {
+  if (AB.entidades) return true;
+  const k = en.sh[4];
+  return (AB.arvores && k === 'tree') || (AB.plantas && k === 'crop') || (AB.outros && k !== 'tree' && k !== 'crop' && en.draw !== drawPlayer);
 }
 
 function render() {
@@ -264,7 +263,7 @@ function render() {
       if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
       mi++;
     }
-    if (!AB.entidades) en.draw();
+    if (!semDesenho(en)) en.draw();
   }
   while (mi < ML.length) {
     if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
@@ -291,7 +290,7 @@ function render() {
 
   if (!AB.clima) drawWeather(t, camX, camY);
   // 4b) Raios de sol, bloom seletivo e poeira atmosférica
-  if (!AB.clima) drawAtmosphere(t, h, camX, camY, ents);
+  if (!AB.atm) drawAtmosphere(t, h, camX, camY, ents);
   if (!AB.clima) drawLightning();
   // 5) vinheta
   ctx.setTransform(1, 0, 0, 1, 0, 0);

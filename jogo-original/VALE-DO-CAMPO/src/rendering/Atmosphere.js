@@ -8,6 +8,7 @@ import { MH, MW, OXP, OYP, TS, VH, VW, WATER } from '../config/constants.js';
 import { gfx, Q } from '../config/settings.js';
 import { S } from '../core/GameState.js';
 import { nightF, sunInfo } from '../core/TimeManager.js';
+import { AB } from './Ablate.js';
 import { ctx, fx, fxCanvas, gctx, glowCanvas } from './Canvas.js';
 import { fillGlow } from './Effects.js';
 import { hash2, smooth } from '../utils/MathUtils.js';
@@ -28,7 +29,7 @@ function drawAtmosphere(t, h, camX, camY, ents) {
   let fxUsed = false,
     glUsed = false;
   const strength = sun.day * S.lum * (1 - climate.cloud * 0.9);
-  if (gfx.rays && quality > 0 && strength > 0.03) {
+  if (gfx.rays && quality > 0 && strength > 0.03 && !AB.atmRaios) {
     const low = smooth(0, 0.13, sun.day) * (1 - smooth(0.5, 0.98, sun.day));
     const maxRays = quality === 1 ? 9 : quality === 2 ? 20 : 32;
     let count = 0;
@@ -62,7 +63,7 @@ function drawAtmosphere(t, h, camX, camY, ents) {
       fx.fill();
     }
   }
-  if (gfx.particles && quality > 0) {
+  if (gfx.particles && quality > 0 && !AB.atmParticulas) {
     const count = quality === 1 ? 14 : quality === 2 ? 30 : 52;
     for (let i = 0; i < count; i++) {
       const seed = hash2(i, 17),
@@ -117,6 +118,7 @@ function drawAtmosphere(t, h, camX, camY, ents) {
   glDirty = glUsed || ATM_OFF;
   if (ATM_OFF) fxUsed = glUsed = true;
   if (!fxUsed && !glUsed) return; // camadas vazias: compô-las não mudaria nenhum pixel
+  if (AB.atmCompor) return; // só o teste de desempenho
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (fxUsed) {

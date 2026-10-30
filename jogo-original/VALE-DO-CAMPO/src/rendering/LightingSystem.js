@@ -9,6 +9,7 @@ import { gfx, Q } from '../config/settings.js';
 import { extensible } from '../core/extensions.js';
 import { S } from '../core/GameState.js';
 import { nightF, sunInfo } from '../core/TimeManager.js';
+import { AB } from './Ablate.js';
 import { ctx, mkC } from './Canvas.js';
 import { casterShadow } from './ShadowSystem.js';
 import { NTK, torchApply } from './Torch.js';
@@ -128,6 +129,7 @@ const applyLighting = extensible(function applyLighting(t, h, camX, camY, ents) 
       vx = key.dirX * m;
       vy = key.dirY * m;
       for (const en of ents) {
+        if (AB.luzSombras) break; // só o teste de desempenho
         const s = en.sh,
           rc = s[6] || 0;
         if (s[0] < camX - 240 - rc || s[0] > camX + VW + 240 + rc || s[1] < camY - 80 - rc || s[1] > camY + VH + 240)
@@ -135,7 +137,7 @@ const applyLighting = extensible(function applyLighting(t, h, camX, camY, ents) 
         casterShadow(shS, s, vx, vy, 1);
         if (SHM_ === 'full') casterShadow(shH, s, vx, vy, 0.45);
       }
-      if (useSun && sunS > 0.12) {
+      if (useSun && sunS > 0.12 && !AB.luzSombras) {
         const W = 1936,
           spd = 5 + climate.wind * 14;
         for (let i = 0; i < 5; i++) {
@@ -161,11 +163,11 @@ const applyLighting = extensible(function applyLighting(t, h, camX, camY, ents) 
     shM.setTransform(1, 0, 0, 1, 0, 0);
     shM.globalCompositeOperation = 'source-over';
     shM.clearRect(0, 0, VW, VH);
-    if (SHM_ !== 'off') {
+    if (SHM_ !== 'off' && !AB.luzBlur) {
       blurTo(shM, SHS, q ? 1 : 0);
       if (SHM_ === 'full') blurTo(shM, SHH, 0);
     }
-    if (q >= 2 && ks > 0.05 && !(NTK && !useSun && NTK(h) > 0.5)) {
+    if (q >= 2 && ks > 0.05 && !AB.luzSombras && !(NTK && !useSun && NTK(h) > 0.5)) {
       shM.globalCompositeOperation = 'destination-out';
       for (const en of ents) {
         if (en.sh[4] !== 'tree') continue;
@@ -236,6 +238,7 @@ const applyLighting = extensible(function applyLighting(t, h, camX, camY, ents) 
     }
     if (torchApply) torchApply(lm, t, h, camX, camY, ents);
   } // fim do bloco recalculado
+  if (AB.luzFinal) return; // só o teste de desempenho: sem a composição final na tela
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'multiply';

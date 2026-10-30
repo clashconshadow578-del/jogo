@@ -14,9 +14,9 @@
  * (o jogo salva sozinho a cada minuto e ao sair da aba: essas gravações são bloqueadas) e os toques na tela são ignorados.
  * No fim aparece o botão "Recarregar o jogo", que volta ao último save, exatamente como estava antes do teste.
  */
-import { gfx, qDrop, setQDrop } from '../config/settings.js';
-import { applyRes } from '../rendering/Canvas.js';
-import { setAblate } from '../rendering/Renderer.js';
+import { gfx, Q, qDrop, setQDrop } from '../config/settings.js';
+import { RS, applyRes } from '../rendering/Canvas.js';
+import { setAblate } from '../rendering/Ablate.js';
 import { SPR } from '../rendering/Sprites.js';
 import { initPixi, setPixiEnabled } from '../rendering/pixi/PixiBridge.js';
 import { setMatoLive } from '../world/Vegetation.js';
@@ -31,48 +31,59 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const CASA = 'EM VOLTA DA CASA';
 const CENAS = [
   { nome: 'ONDE VOCÊ ESTÁ', pos: null, modos: ['base'] },
-  { nome: CASA, pos: [280, 504], modos: ['base', 'gpu', 'cache', 'etapas'] }, // onde o jogo novo começa: bem embaixo da casa
+  { nome: CASA, pos: [280, 504], modos: ['base', 'etapas'] }, // onde o jogo novo começa: bem embaixo da casa
   { nome: 'RIO', pos: [300, 1000], modos: ['base'] },
 ];
-// cada modo liga só o que diz; o resto fica no padrão do jogo (o mato em imagens da fase 3 já foi medido: ficou de fora)
+// o teste anterior já mediu: grama na GPU (fase 2) -2% e cache do chão -9% (não ajudam); mato em imagens (fase 3) piora muito
 const BASE = { nome: 'jogo padrão', pixi: false, chunks: false };
-const RECURSOS = [
-  { nome: 'grama na GPU (fase 2)', pixi: true, chunks: false },
-  { nome: 'cache do chão', pixi: false, chunks: true },
-];
 // só em volta da casa: quanto custa cada etapa do desenho NESTE aparelho? (cada linha desliga UMA etapa e mede de novo)
 const ETAPAS = [
-  { nome: 'sem sombras de contato', abl: { sombras: true } },
-  { nome: 'sem mato', abl: { mato: true } },
-  { nome: 'sem relevo', abl: { relevo: true } },
-  { nome: 'sem umidade do chão', abl: { hidro: true } },
+  { nome: 'sem árvores', abl: { arvores: true } },
+  { nome: 'sem plantações', abl: { plantas: true } },
+  { nome: 'sem o resto das entidades', abl: { outros: true } },
+  { nome: 'sem desenhar as entidades (todas)', abl: { entidades: true } },
+  { nome: 'luz: sem sombras projetadas', abl: { luzSombras: true } },
+  { nome: 'luz: sem desfoque', abl: { luzBlur: true } },
+  { nome: 'luz: sem composição final', abl: { luzFinal: true } },
+  { nome: 'sem luz (tudo)', abl: { luz: true } },
+  { nome: 'atmosfera: sem raios do sol', abl: { atmRaios: true } },
+  { nome: 'atmosfera: sem partículas', abl: { atmParticulas: true } },
+  { nome: 'atmosfera: sem compor camadas', abl: { atmCompor: true } },
+  { nome: 'sem atmosfera (tudo)', abl: { atm: true } },
+  { nome: 'sem clima (chuva, nuvens, raio)', abl: { clima: true } },
   { nome: 'sem água (rio, reflexos)', abl: { agua: true } },
-  { nome: 'sem luz e sombras do sol', abl: { luz: true } },
-  { nome: 'sem clima e atmosfera', abl: { clima: true } },
-  { nome: 'sem desenhar as entidades', abl: { entidades: true } },
+  { nome: 'sem sombras de contato', abl: { sombras: true } },
+  { nome: 'sem mato, relevo e umidade', abl: { mato: true, relevo: true, hidro: true } },
   { nome: 'qualidade mínima', quality: 'low' },
-  { nome: 'sem raios e partículas', rays: false, particles: false },
   { nome: 'resolução x1 (4x menos pixels)', res: '1' },
 ];
 
 const ASSENTA_MS = 2500; // tempo para o jogo se ajustar depois de mudar de modo (caches, texturas)
 const MEDE_MS = 5000;
 
-// Mede quadros por segundo (rAF) em fatias de 1 s e devolve a MEDIANA delas (um congelamento isolado não estraga o número),
-// o pior intervalo entre quadros e os tempos médios de lógica, desenho e interface (GameLoop -> fpsSample).
+// Fps a partir dos intervalos entre quadros (ms): média dos intervalos SEM os 5% mais longos (um congelamento isolado não estraga
+// o número, e a precisão é de décimos de ms, bem melhor que contar quadros por segundo inteiros).
+function fpsAparado(dts) {
+  if (!dts.length) return 0;
+  const ord = dts.slice().sort((a, b) => a - b),
+    n = Math.max(1, Math.floor(ord.length * 0.95));
+  let soma = 0;
+  for (let i = 0; i < n; i++) soma += ord[i];
+  return 1000 / (soma / n);
+}
+
+// Mede os quadros do jogo por `ms` milissegundos (rAF): fps, pior intervalo e tempos médios de lógica, desenho e interface
+// (GameLoop -> fpsSample).
 function medir(ms) {
   return new Promise((resolve) => {
-    let n = 0,
-      worst = 0,
+    let worst = 0,
       last = 0,
       t0 = 0,
-      b0 = 0,
-      bn = 0,
       nj = 0,
       sr = 0,
       su = 0,
       si = 0;
-    const fatias = [];
+    const dts = [];
     setFpsTap((r, u, i) => {
       sr += r;
       su += u;
@@ -81,24 +92,16 @@ function medir(ms) {
     });
     const loop = (now) => {
       if (!t0) {
-        t0 = last = b0 = now;
+        t0 = last = now;
       } else {
-        n++;
-        bn++;
+        dts.push(now - last);
         if (now - last > worst) worst = now - last;
         last = now;
-        if (now - b0 >= 1000) {
-          fatias.push((bn * 1000) / (now - b0));
-          b0 = now;
-          bn = 0;
-        }
       }
       if (now - t0 >= ms) {
         setFpsTap(null);
-        const ord = fatias.slice().sort((a, b) => a - b);
-        const fps = ord.length >= 3 ? ord[(ord.length - 1) >> 1] : (n * 1000) / (now - t0);
         const d = nj || 1;
-        resolve({ fps, js: sr / d, upd: su / d, ui: si / d, worst });
+        resolve({ fps: fpsAparado(dts), js: sr / d, upd: su / d, ui: si / d, worst });
       } else requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
@@ -129,13 +132,15 @@ function prng(seed) {
   return () => (q = (q * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
 }
 
+const MICRO_K = 4; // o micro-teste geral roda com 4x as 2.200 operações do quadro de referência (8.800)
+
 function microOps() {
   const r = prng(99),
     ops = [];
-  for (let i = 0; i < 1500; i++) ops.push({ t: 'r', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 1 + ((r() * 6) | 0), h: 1 + ((r() * 10) | 0), c: (r() * PAL.length) | 0, k: r() });
-  for (let i = 0; i < 300; i++) ops.push({ t: 'a', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 16, h: 16, c: (r() * PAL.length) | 0, k: r() });
-  for (let i = 0; i < 300; i++) ops.push({ t: 'i', x: (r() * 920) | 0, y: (r() * 500) | 0, w: 32, h: 32, sx: ((r() * 14) | 0) * 32, sy: ((r() * 14) | 0) * 32, k: r() });
-  for (let i = 0; i < 100; i++) ops.push({ t: 'e', x: 20 + ((r() * 900) | 0), y: 20 + ((r() * 500) | 0), rx: 6 + ((r() * 10) | 0), ry: 3 + ((r() * 5) | 0), k: r() });
+  for (let i = 0; i < 1500 * MICRO_K; i++) ops.push({ t: 'r', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 1 + ((r() * 6) | 0), h: 1 + ((r() * 10) | 0), c: (r() * PAL.length) | 0, k: r() });
+  for (let i = 0; i < 300 * MICRO_K; i++) ops.push({ t: 'a', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 16, h: 16, c: (r() * PAL.length) | 0, k: r() });
+  for (let i = 0; i < 300 * MICRO_K; i++) ops.push({ t: 'i', x: (r() * 920) | 0, y: (r() * 500) | 0, w: 32, h: 32, sx: ((r() * 14) | 0) * 32, sy: ((r() * 14) | 0) * 32, k: r() });
+  for (let i = 0; i < 100 * MICRO_K; i++) ops.push({ t: 'e', x: 20 + ((r() * 900) | 0), y: 20 + ((r() * 500) | 0), rx: 6 + ((r() * 10) | 0), ry: 3 + ((r() * 5) | 0), k: r() });
   ops.sort((a, b) => a.k - b.k); // ordem misturada, como num quadro de verdade
   return ops;
 }
@@ -155,31 +160,22 @@ function microAtlas() {
   return c;
 }
 
-// como medir(), mas desenha algo a cada quadro; devolve a mediana de quadros por segundo (fatias de 1 s)
+// como medir(), mas desenha algo a cada quadro; devolve os quadros por segundo (média aparada dos intervalos)
 function medirTrabalho(ms, trabalho) {
   return new Promise((resolve) => {
-    let n = 0,
-      t0 = 0,
-      b0 = 0,
-      bn = 0,
+    let t0 = 0,
+      last = 0,
       f = 0;
-    const fatias = [];
+    const dts = [];
     const loop = (now) => {
       trabalho(f++);
-      if (!t0) t0 = b0 = now;
+      if (!t0) t0 = last = now;
       else {
-        n++;
-        bn++;
-        if (now - b0 >= 1000) {
-          fatias.push((bn * 1000) / (now - b0));
-          b0 = now;
-          bn = 0;
-        }
+        dts.push(now - last);
+        last = now;
       }
-      if (now - t0 >= ms) {
-        const ord = fatias.slice().sort((a, b) => a - b);
-        resolve(ord.length >= 2 ? ord[(ord.length - 1) >> 1] : (n * 1000) / (now - t0));
-      } else requestAnimationFrame(loop);
+      if (now - t0 >= ms) resolve(fpsAparado(dts));
+      else requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
   });
@@ -241,6 +237,9 @@ async function perfilOperacoes(atlas) {
   const cg = camada.getContext('2d');
   cg.fillStyle = 'rgba(120,100,160,.5)';
   cg.fillRect(0, 0, 480, 270);
+  const fxc = document.createElement('canvas');
+  fxc.width = 480;
+  fxc.height = 270;
   const aux = [];
   for (let i = 0; i < 10; i++) {
     const c = document.createElement('canvas');
@@ -248,26 +247,96 @@ async function perfilOperacoes(atlas) {
     c.height = 270;
     aux.push([c, c.getContext('2d')]);
   }
+  // fontes de imagem de vários tipos (o jogo usa canvases pequenos para árvores, bordas do lago, floresta...)
+  const fPeq = [],
+    fGrande = [],
+    fBmp = [],
+    fImg = [];
+  for (let i = 0; i < 100; i++) {
+    const c = document.createElement('canvas');
+    c.width = 32;
+    c.height = 64;
+    const x = c.getContext('2d');
+    x.fillStyle = PAL[i % PAL.length];
+    x.fillRect(0, 0, 32, 64);
+    x.fillStyle = PAL[(i + 5) % PAL.length];
+    x.fillRect(4, 4, 24, 56);
+    fPeq.push(c);
+    const big = document.createElement('canvas');
+    big.width = 128;
+    big.height = 129;
+    big.getContext('2d').drawImage(c, 0, 0);
+    fGrande.push(big);
+    fBmp.push(await createImageBitmap(c));
+    const im = new Image();
+    im.src = c.toDataURL();
+    fImg.push(im);
+  }
+  await Promise.all(fImg.map((im) => im.decode().catch(() => {})));
+  // Cada tipo roda com K vezes o volume que o jogo usa por quadro, para o custo aparecer mesmo quando é menor que um quadro
+  // (a 60 fps tudo abaixo de 16,7 ms fica escondido); o custo por quadro do jogo é o extra dividido por K.
+  const fatias = (fontes, N) => (f, dx) => {
+    for (let i = 0; i < N; i++) {
+      const p = pos[i % 2000];
+      g.drawImage(fontes[i % 100], 0, (i % 4) * 16, 32, 16, p.x + dx, p.y, 32, 16);
+    }
+  };
+  const camadaCheia = (modo, N) => () => {
+    g.globalCompositeOperation = modo;
+    for (let i = 0; i < N; i++) g.drawImage(camada, 0, 0, 960, 540);
+    g.globalCompositeOperation = 'source-over';
+  };
+  const raios = (N) => (f, dx) => {
+    const fa = fxc.getContext('2d');
+    fa.clearRect(0, 0, 480, 270);
+    for (let i = 0; i < N; i++) {
+      const p = pos[i % 2000],
+        bx = (p.x >> 1) + (dx >> 1),
+        by = p.y >> 1,
+        op = 0.05 + (0.1 * ((i * 7 + f) % 10)) / 10;
+      const gr = fa.createRadialGradient(bx, by, 1, bx + 20, by + 30, 50);
+      gr.addColorStop(0, 'rgba(255,195,108,' + op + ')');
+      gr.addColorStop(0.5, 'rgba(255,195,108,' + op * 0.55 + ')');
+      gr.addColorStop(1, 'rgba(255,195,108,0)');
+      fa.fillStyle = gr;
+      fa.beginPath();
+      fa.moveTo(bx - 3, by);
+      fa.lineTo(bx + 3, by);
+      fa.lineTo(bx + 33, by + 60);
+      fa.lineTo(bx + 7, by + 60);
+      fa.closePath();
+      fa.fill();
+    }
+    g.globalCompositeOperation = 'screen';
+    g.drawImage(fxc, 0, 0, 960, 540);
+    g.globalCompositeOperation = 'source-over';
+  };
+  // [nome, volume por quadro no jogo, K, desenho]
   const tipos = [
-    ['vazio (só limpar a tela)', 0, () => {}],
-    ['retângulos opacos', 2000, (f, dx) => { for (let i = 0; i < 2000; i++) { const p = pos[i]; g.fillStyle = PAL[p.c]; g.fillRect(p.x + dx, p.y, 3, 5); } }],
-    ['retângulos translúcidos', 500, (f, dx) => { g.globalAlpha = 0.2; for (let i = 0; i < 500; i++) { const p = pos[i]; g.fillStyle = PAL[p.c]; g.fillRect(p.x + dx, p.y, 16, 16); } g.globalAlpha = 1; }],
-    ['imagens de um atlas', 500, (f, dx) => { for (let i = 0; i < 500; i++) { const p = pos[i]; g.drawImage(atlas, p.s, p.t, 32, 32, p.x + dx, p.y, 32, 32); } }],
-    ['imagens espelhadas (save/scale)', 300, (f, dx) => { for (let i = 0; i < 300; i++) { const p = pos[i]; g.save(); g.translate(p.x + dx + 32, p.y); g.scale(-1, 1); g.drawImage(atlas, p.s, p.t, 32, 32, 0, 0, 32, 32); g.restore(); } }],
-    ['elipses translúcidas', 300, (f, dx) => { g.fillStyle = 'rgba(22,28,28,.1)'; for (let i = 0; i < 300; i++) { const p = pos[i]; g.beginPath(); g.ellipse(p.x + dx + 20, p.y + 20, 12, 5, 0, 0, 6.283); g.fill(); } }],
-    ['gradientes radiais', 30, (f, dx) => { for (let i = 0; i < 30; i++) { const p = pos[i], gr = g.createRadialGradient(p.x + dx, p.y, 2, p.x + dx, p.y, 32); gr.addColorStop(0, 'rgba(255,200,120,.5)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = gr; g.fillRect(p.x + dx - 32, p.y - 32, 64, 64); } }],
-    ['camada cheia "lighter" (x10)', 10, () => { g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 10; i++) g.drawImage(camada, 0, 0, 960, 540); g.globalCompositeOperation = 'source-over'; }],
-    ['camada cheia "multiply" (x10)', 10, () => { g.globalCompositeOperation = 'multiply'; for (let i = 0; i < 10; i++) g.drawImage(camada, 0, 0, 960, 540); g.globalCompositeOperation = 'source-over'; }],
-    ['10 canvases auxiliares', 10, (f) => { for (let i = 0; i < 10; i++) { const a = aux[i][1]; a.fillStyle = PAL[(f + i) % PAL.length]; a.fillRect(0, 0, 480, 270); g.drawImage(aux[i][0], 0, 0, 960, 540); } }],
+    ['vazio (só limpar a tela)', 0, 1, () => {}],
+    ['retângulos opacos', 3000, 4, (f, dx) => { for (let i = 0; i < 12000; i++) { const p = pos[i % 2000]; g.fillStyle = PAL[p.c]; g.fillRect(p.x + dx, p.y, 3, 5); } }],
+    ['retângulos translúcidos', 500, 4, (f, dx) => { g.globalAlpha = 0.2; for (let i = 0; i < 2000; i++) { const p = pos[i % 2000]; g.fillStyle = PAL[p.c]; g.fillRect(p.x + dx, p.y, 16, 16); } g.globalAlpha = 1; }],
+    ['imagens de um atlas', 1000, 4, (f, dx) => { for (let i = 0; i < 4000; i++) { const p = pos[i % 2000]; g.drawImage(atlas, p.s, p.t, 32, 32, p.x + dx, p.y, 32, 32); } }],
+    ['imagens espelhadas (save/scale)', 100, 4, (f, dx) => { for (let i = 0; i < 400; i++) { const p = pos[i]; g.save(); g.translate(p.x + dx + 32, p.y); g.scale(-1, 1); g.drawImage(atlas, p.s, p.t, 32, 32, 0, 0, 32, 32); g.restore(); } }],
+    ['elipses translúcidas', 270, 4, (f, dx) => { g.fillStyle = 'rgba(22,28,28,.1)'; for (let i = 0; i < 1080; i++) { const p = pos[i % 2000]; g.beginPath(); g.ellipse(p.x + dx + 20, p.y + 20, 12, 5, 0, 0, 6.283); g.fill(); } }],
+    ['gradientes radiais', 30, 4, (f, dx) => { for (let i = 0; i < 120; i++) { const p = pos[i], gr = g.createRadialGradient(p.x + dx, p.y, 2, p.x + dx, p.y, 32); gr.addColorStop(0, 'rgba(255,200,120,.5)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = gr; g.fillRect(p.x + dx - 32, p.y - 32, 64, 64); } }],
+    ['camadas cheias "lighter"', 4, 4, camadaCheia('lighter', 16)],
+    ['camadas cheias "multiply"', 1, 10, camadaCheia('multiply', 10)],
+    ['canvases auxiliares redesenhados', 10, 2, (f) => { for (let i = 0; i < 20; i++) { const a = aux[i % 10][1]; a.fillStyle = PAL[(f + i) % PAL.length]; a.fillRect(0, 0, 480, 270); g.drawImage(aux[i % 10][0], 0, 0, 960, 540); } }],
+    ['raios do sol (gradiente em polígono)', 20, 3, raios(60)],
+    ['fatias de canvases PEQUENOS', 650, 3, fatias(fPeq, 1950)],
+    ['fatias de canvases GRANDES', 650, 3, fatias(fGrande, 1950)],
+    ['fatias de ImageBitmap', 650, 3, fatias(fBmp, 1950)],
+    ['fatias de imagens <img>', 650, 3, fatias(fImg, 1950)],
   ];
   const res = [];
-  for (const [nome, n, fn] of tipos) {
+  for (const [nome, n, k, fn] of tipos) {
     const fps = await medirTrabalho(3500, (f) => {
       g.fillStyle = '#5aa846';
       g.fillRect(0, 0, 960, 540);
       fn(f, (f % 60) - 30);
     });
-    res.push({ nome, n, fps });
+    res.push({ nome, n, k, fps });
   }
   cv.remove();
   return res;
@@ -397,23 +466,39 @@ async function iniciarBench() {
     ' · WebGL: ' + (pixiOk ? 'sim' : 'não') + ' · modo celular: ' + (matchMedia('(pointer:coarse)').matches ? 'sim' : 'não') +
     '\nGPU: ' + gpuInfo();
 
+  // Configuração em uso: o jogo reduz resolução e qualidade SOZINHO quando o aparelho não acompanha. Para o teste refletir o jogo
+  // como você joga, ele primeiro roda em volta da casa com o ajuste automático ligado por ~22 s e só depois trava o que sobrou.
+  if (!S.inside) {
+    S.px = CENAS[1].pos[0];
+    S.py = CENAS[1].pos[1];
+    S.vx = 0;
+    S.vy = 0;
+  }
+  for (let w = 22; w > 0; w--) {
+    mostra('TESTE DE DESEMPENHO\nDeixando o jogo se ajustar sozinho em volta da casa… ' + w + ' s\n' + aparelho, 'resolução x' + RS + ' · qualidade ' + Q());
+    await espera(1000);
+  }
+  const NOMES_Q = ['low', 'medium', 'high', 'ultra'];
+  const conf = { res: String(RS), quality: NOMES_Q[Math.min(3, Q())], rs: RS, q: Q() };
+  const aparelhoCfg = aparelho + '\nConfiguração em uso (ajustada pelo jogo): resolução x' + conf.rs + ' · qualidade ' + conf.q + ' de 3';
+
   const aplica = (m) => {
     setMatoLive(true); // o mato em imagens fica fora do teste (desenho original)
     setAblate(m.abl || null);
     setPixiEnabled(!!m.pixi && pixiOk);
     gfx.chunks = !!m.chunks;
-    gfx.quality = m.quality || orig.quality;
+    gfx.quality = m.quality || conf.quality;
     gfx.rays = m.rays !== undefined ? m.rays : orig.rays;
     gfx.particles = m.particles !== undefined ? m.particles : orig.particles;
-    gfx.res = m.res || '2'; // fixa a resolução: o governador do jogo não mexe
+    gfx.res = m.res || conf.res; // trava a resolução: o ajuste automático do jogo não mexe mais
     setQDrop(0);
     applyRes();
   };
 
-  // aquecimento: deixa o motor de JavaScript e o PixiJS se acalmarem antes da primeira medição
+  // aquecimento: deixa o motor de JavaScript se acalmar na configuração travada antes da primeira medição
   aplica(BASE);
-  for (let w = 6; w > 0; w--) {
-    mostra('TESTE DE DESEMPENHO\nAquecendo o jogo… ' + w + ' s\n' + aparelho);
+  for (let w = 4; w > 0; w--) {
+    mostra('TESTE DE DESEMPENHO\nTravando a configuração… ' + w + ' s\n' + aparelhoCfg);
     await espera(1000);
   }
 
@@ -421,8 +506,6 @@ async function iniciarBench() {
     const l = [];
     for (const m of cena.modos) {
       if (m === 'base') l.push(BASE);
-      else if (m === 'gpu') l.push(RECURSOS[0]);
-      else if (m === 'cache') l.push(RECURSOS[1]);
       else if (m === 'etapas') l.push(...ETAPAS);
     }
     return l;
@@ -449,15 +532,16 @@ async function iniciarBench() {
       return;
     }
     for (const cena of CENAS) {
-      if (cena.pos) {
-        S.px = cena.pos[0];
-        S.py = cena.pos[1];
+      {
+        const alvo = cena.pos || pos0; // "onde você está" = a posição de antes do teste
+        S.px = alvo[0];
+        S.py = alvo[1];
         S.vx = 0;
         S.vy = 0;
       }
       for (const m of lista(cena)) {
         aplica(m);
-        mostra('TESTE DE DESEMPENHO — não toque na tela (' + feito + '/' + total + ')\n' + aparelho, tabela(), '> medindo: ' + cena.nome + ' / ' + m.nome + '…');
+        mostra('TESTE DE DESEMPENHO — não toque na tela (' + feito + '/' + total + ')\n' + aparelhoCfg, tabela(), '> medindo: ' + cena.nome + ' / ' + m.nome + '…');
         await espera(ASSENTA_MS);
         const semPixi = m.pixi && !pixiOk;
         const r = semPixi ? null : await medir(MEDE_MS);
@@ -486,7 +570,7 @@ async function iniciarBench() {
   // ---- micro-teste: o mesmo trabalho em Canvas 2D e em WebGL, com o jogo pausado ----
   let micro = null;
   try {
-    mostra('TESTE DE DESEMPENHO — micro-teste (jogo pausado, não toque na tela)\n' + aparelho, tabela(), '> medindo o Canvas 2D e o WebGL…');
+    mostra('TESTE DE DESEMPENHO — micro-teste (jogo pausado, não toque na tela)\n' + aparelhoCfg, tabela(), '> medindo o Canvas 2D e o WebGL…');
     setLoopPaused(true);
     const ops = microOps(),
       atlas = microAtlas();
@@ -514,14 +598,6 @@ async function iniciarBench() {
     if (ocupado / iv >= 0.8) resumo += '  => limitado pelo PROCESSADOR (JavaScript)\n';
     else if (x1 && x1.r && x1.r.fps / base.r.fps >= 1.4) resumo += '  => limitado por PIXELS (placa de vídeo / tela)\n';
     else resumo += '  => o JavaScript fica ESPERANDO: limite da placa de\n     vídeo (quantidade de operações), não dos pixels\n';
-    resumo += '\nRECURSOS (fps vs jogo padrão, em volta da casa)\n';
-    for (const m of RECURSOS) {
-      const l = saida.find((x) => x.cena === CASA && x.modo === m.nome);
-      if (l && l.r) {
-        const p = Math.round((l.r.fps / base.r.fps - 1) * 100);
-        resumo += '  ' + m.nome.padEnd(24) + (p >= 0 ? '+' : '') + p + '%\n';
-      }
-    }
     const custo = saida
       .filter((l) => l.cena === CASA && l.r && ETAPAS.some((e) => e.nome === l.modo))
       .map((l) => ({ nome: l.modo, ms: iv - 1000 / l.r.fps, fps: l.r.fps }))
@@ -533,19 +609,21 @@ async function iniciarBench() {
   let microTxt = '';
   if (micro) {
     microTxt += 'MICRO-TESTE (jogo pausado)\n';
-    microTxt += 'O mesmo trabalho, 2.200 operações por quadro:\n';
-    microTxt += '  Canvas 2D (como o jogo desenha)  ' + Math.round(micro.canvas) + ' fps\n';
-    microTxt += micro.webgl === null ? '  WebGL (PixiJS)                   indisponível\n' : '  WebGL (PixiJS)                   ' + Math.round(micro.webgl) + ' fps\n';
+    const por2200 = (fps) => (fps >= 59 ? '< ' + (16.7 / MICRO_K).toFixed(1) : (Math.max(0, 1000 / fps - 16.7) / MICRO_K).toFixed(1)) + ' ms por 2.200 operações';
+    microTxt += 'O mesmo trabalho (' + 2200 * MICRO_K + ' operações por quadro):\n';
+    microTxt += '  Canvas 2D (como o jogo desenha)  ' + Math.round(micro.canvas) + ' fps  ' + por2200(micro.canvas) + '\n';
+    microTxt += micro.webgl === null ? '  WebGL (PixiJS)                   indisponível\n' : '  WebGL (PixiJS)                   ' + Math.round(micro.webgl) + ' fps  ' + por2200(micro.webgl) + '\n';
     if (micro.ops && micro.ops.length) {
       const vazio = micro.ops[0].fps;
-      microTxt += '\nCUSTO POR TIPO DE OPERAÇÃO (Canvas 2D)\n(fps de uma tela só com aquilo; ' + Math.round(vazio) + ' fps = não pesa)\n';
+      microTxt += '\nCUSTO POR TIPO DE OPERAÇÃO (Canvas 2D), em ms por quadro\nno volume que o jogo usa (testado com 2 a 10 vezes isso)\n';
       for (const o of micro.ops.slice(1)) {
-        const extra = Math.max(0, 1000 / o.fps - 1000 / vazio);
-        microTxt += '  ' + (o.nome + ' ' + o.n).padEnd(36) + String(Math.round(o.fps)).padStart(3) + ' fps  ' + (extra < 1 ? '  ~0' : n1(extra, 4)) + ' ms\n';
+        const extra = Math.max(0, 1000 / o.fps - 1000 / vazio) / o.k,
+          cheio = o.fps >= vazio * 0.97;
+        microTxt += '  ' + (o.nome + ' ' + o.n).padEnd(40) + (cheio ? ' < ' + (1000 / vazio / o.k).toFixed(1) : n1(extra, 5)) + ' ms\n';
       }
     }
   }
-  mostra('TESTE DE DESEMPENHO — PRONTO: tire um print desta tela\n' + aparelho, resumo, tabela(), microTxt);
+  mostra('TESTE DE DESEMPENHO — PRONTO: tire um print desta tela\n' + aparelhoCfg, resumo, tabela(), microTxt);
   const botao = document.createElement('button');
   botao.textContent = 'Recarregar o jogo';
   botao.style.cssText =

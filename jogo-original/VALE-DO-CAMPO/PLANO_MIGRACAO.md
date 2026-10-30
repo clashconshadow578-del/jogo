@@ -215,15 +215,31 @@ mais que muitos retângulos** (cada uma vira uma textura na placa de vídeo). Pa
 - Leitura provisória: o tempo vai para fora do JavaScript (placa de vídeo / driver, por **quantidade e tipo de operações**), sobretudo na luz
   (várias camadas auxiliares e `multiply`) e no desenho das entidades. As imagens do jogo pesam só 18,8 MB: não é falta de memória de textura.
 
-**`?bench` ampliado (versão atual):** além de fps, **separa o tempo do quadro em lógica / desenho / interface / espera** (diz de uma vez se o
-limite é o processador ou a placa de vídeo), faz um **micro-teste** (as mesmas 2.200 operações em Canvas 2D e em WebGL/PixiJS, com o jogo
-pausado) e mede o **custo de cada tipo de operação do Canvas 2D** (retângulos, imagens, imagens espelhadas, elipses, gradientes, camadas cheias
-com `lighter` e `multiply`, vários canvases auxiliares). A tabela sai em 3 colunas para caber em telas baixas.
+**2º teste real (mesmo celular):** o quadro de ~60 ms se divide em **lógica 2,2 ms + desenho em JavaScript 19,2 ms + interface 0,1 ms =
+21,5 ms de JavaScript**, e **38,3 ms (64%) de ESPERA** (o JavaScript parado esperando a placa de vídeo/tela). O micro-teste deu **60 fps
+em Canvas 2D e em WebGL** para 2.200 operações misturadas, e cada tipo de operação sozinho também deu 60 fps: o Canvas 2D **não é lento em
+geral** neste aparelho; o que trava é algo **específico do jogo**. Etapas (ms por quadro que cada uma custa): entidades 11,4 · luz 9,8 ·
+raios e partículas 9,0 · clima e atmosfera 8,1 · qualidade 4,6 · água 3,3 · relevo, umidade e sombras de contato 1,5 cada · mato 0,6.
+(Com isso a Fase 2 (grama na GPU) e a Fase 3 (mato em imagens) ficaram sem efeito prático: o chão e o mato custam quase nada na espera.)
+
+**Pista nova (erro meu corrigido):** o contador de chamadas de desenho antigo **não via o `drawImage` do canvas principal** (o jogo o embrulha).
+Contando de novo, em volta da casa são **1.195 chamadas de `drawImage` por quadro, 653 delas de canvases pequenos (< 128x129 px)**, que o Chrome
+**não acelera por placa de vídeo** (ficam na memória do processador e precisam ser reenviados à GPU); os principais são a floresta amazônica
+(348), as bordas do lago (218) e as fatias das copas das árvores. Isso combina com a falha do mato em imagens (também canvases pequenos, 4 fps).
+
+**`?bench` ampliado (versão atual):**
+- primeiro **deixa o jogo se ajustar sozinho por ~22 s em volta da casa** (ele reduz resolução e qualidade quando não acompanha) e só então **trava**
+  essa configuração; assim o teste mede o jogo **como você joga** (antes travava tudo no máximo);
+- **separa o tempo do quadro em lógica / desenho / interface / espera**;
+- **interruptores finos**: árvores, plantações, o resto das entidades, luz (sombras projetadas, desfoque, composição final), atmosfera (raios do sol,
+  partículas, compor camadas), clima, água, sombras de contato, mato+relevo+umidade, qualidade mínima, resolução x1; mede com **média aparada** dos
+  intervalos entre quadros (precisão de décimos de ms, sem o ruído de contar fps inteiros);
+- **micro-teste**: as mesmas operações em Canvas 2D e WebGL/PixiJS **com 4x o volume** (para o custo aparecer mesmo abaixo de um quadro), e o
+  **custo por tipo de operação** (retângulos, imagens, espelhadas, elipses, gradientes, camadas cheias `lighter`/`multiply`, canvases auxiliares,
+  raios do sol, e **fatias de canvases pequenos x grandes x ImageBitmap x `<img>`**).
 
 **Como usar:** abra o jogo com `?bench` no fim do endereço (ex.: `...app.github.dev/?bench`). Sem tocar em nada, o jogo roda sozinho cerca de
-3 minutos e mostra o resultado em 3 lugares (onde você está, **em volta da casa** e o rio). Em volta da casa desliga **uma etapa do desenho de
-cada vez** (sombras de contato, mato, relevo, umidade do chão, água, luz do sol, clima e atmosfera, entidades, qualidade mínima, sem raios e
-partículas, resolução x1) e mostra um **ranking** de quantos milissegundos por quadro cada uma custa **naquele aparelho**.
+**5 minutos** e mostra o resultado em 3 lugares (onde você está, **em volta da casa** e o rio), um **ranking** do que mais pesa e os micro-testes.
 
 **Segurança do seu jogo:** durante o teste **nada é gravado** (o jogo salva sozinho a cada minuto e ao esconder a aba; isso fica bloqueado),
 os toques são ignorados e a resolução fica fixa. No fim aparece o botão **Recarregar o jogo**, que volta ao último save como estava.
