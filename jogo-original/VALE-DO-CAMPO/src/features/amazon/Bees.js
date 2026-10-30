@@ -14,7 +14,7 @@ import { cow } from '../../entities/cow/Cow.js';
 import { herd } from '../../entities/cow/Herd.js';
 import { chx, setChx } from '../../entities/farm/Chickens.js';
 import { fox, setFox } from '../../entities/farm/FarmFoxes.js';
-import { damagePlayer, envenenar } from '../../entities/PlayerHurt.js';
+import { stingPlayer } from '../../entities/PlayerHurt.js';
 import { faRow, fauna } from '../../entities/wild/Fauna.js';
 import { eat, giveItem } from './AmazonItems.js';
 import { spawnPT } from './AmazonRender.js';
@@ -172,8 +172,7 @@ function hvSting(t, H) {
   H.angry = Math.max(H.angry, 20);
   if (t.k === 'pl') {
     // ferroada: tira vida e deixa veneno, que drena a estamina aos poucos (depois de um tempo, a estamina cai sozinha)
-    damagePlayer(2.5, 'Abelhas');
-    envenenar(3);
+    stingPlayer(); // vida + veneno + contagem: muitas picadas derrubam o personagem (PlayerHurt.js)
     const n = performance.now();
     if (n - stingT > 4500) {
       stingT = n;

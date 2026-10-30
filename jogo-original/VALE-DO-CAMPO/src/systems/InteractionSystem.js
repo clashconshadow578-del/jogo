@@ -11,7 +11,7 @@ import { toolFx } from '../config/progression.js';
 import { extensible } from '../core/extensions.js';
 import { S } from '../core/GameState.js';
 import { dormir } from '../core/TimeManager.js';
-import { playerSnared, playerStruggle } from '../entities/ai/Perception.js';
+import { playerFx, playerSnared, playerStruggle } from '../entities/ai/Perception.js';
 import { aniInfo, aniInit, say } from '../entities/animals/AnimalSocial.js';
 import { herd } from '../entities/cow/Herd.js';
 import { chxInfoNear } from '../entities/farm/Chickens.js';
@@ -57,6 +57,7 @@ function lineTiles(t, n) {
 }
 
 const actionA = extensible(function actionA() {
+  if (playerFx.ko) return; // desmaiado
   if (playerSnared()) {
     // preso pela sucuri (ou derrubado pela onça): Usar vira "se debater" e afrouxa o aperto
     playerStruggle(PLAYER_PREY.anaconda.struggle);
@@ -201,7 +202,7 @@ const actionA = extensible(function actionA() {
 });
 
 function actionB() {
-  if (dlgOpen) return;
+  if (dlgOpen || playerFx.ko) return;
   if (nearBed()) dormir(false);
   else toast('Entre na casa e chegue perto da cama para dormir');
 }

@@ -10,6 +10,7 @@ import { ctx } from '../rendering/Canvas.js';
 import { drawPerson } from '../rendering/Characters.js';
 import { assetUrl } from '../utils/assets.js';
 import { wClamp } from '../world/WaterSystem.js';
+import { playerFx } from './ai/Perception.js';
 
 /** Gasta energia de uma ação. `k` é o multiplicador do custo (ferramentas melhoradas gastam menos). */
 function spend(k = 1) {
@@ -17,6 +18,16 @@ function spend(k = 1) {
 }
 
 function drawPlayer() {
+  if (playerFx.ko) {
+    // desmaiado: deitado no chão (corpo girado 90°)
+    ctx.save();
+    ctx.translate(S.px, S.py - 4);
+    ctx.rotate(Math.PI / 2);
+    ctx.translate(-S.px, -(S.py - 4));
+    drawPlayerBase();
+    ctx.restore();
+    return;
+  }
   const w = S.wetK || 0;
   if (w < 0.03) {
     drawPlayerBase();

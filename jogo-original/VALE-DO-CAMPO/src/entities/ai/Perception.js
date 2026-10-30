@@ -10,6 +10,7 @@ import { BIN, HOUSE, MH, MW, ROCK, TREE, TS } from '../../config/constants.js';
 import {
   ATTN,
   ECO,
+  KO_RANGE,
   MEM,
   PERC_DT,
   detects,
@@ -94,13 +95,15 @@ export function playerTarget() {
   return {
     x: S.px,
     y: S.py,
-    moving: sp > 6,
-    running: sp > 68,
+    moving: !playerFx.ko && sp > 6,
+    running: !playerFx.ko && sp > 68,
     stalking: false,
     frozen: false,
-    cover: S.inside ? 1 : coverAt(S.px, S.py),
+    cover: S.inside ? 1 : playerFx.ko ? 0 : coverAt(S.px, S.py),
     camo: 0,
-    scentMul: 0.65, // o cheiro do jogador chega menos longe que o de uma presa grande
+    // desmaiado (picadas): deitado, sem se mexer, sem esconderijo, e MUITO mais fácil de achar (ver, ouvir e cheirar de longe)
+    rangeMul: playerFx.ko ? KO_RANGE : 1,
+    scentMul: 0.65 * (playerFx.ko ? KO_RANGE : 1), // o cheiro do jogador chega menos longe que o de uma presa grande
     scentNeedsHunger: true, // e a onça só o fareja de longe quando está com fome
     lit: env.playerLit ? !!env.playerLit() : false,
   };
@@ -139,9 +142,10 @@ export function senseTarget(o, T, rangeOverride) {
   const dx = T.x - o.x,
     dy = T.y - o.y,
     dist = Math.hypot(dx, dy);
+  const rm = T.rangeMul || 1; // alvo indefeso (desmaiado): visto e ouvido de longe
   const base =
-    rangeOverride != null ? rangeOverride : sightRange(o.sp, env.night, ATTN[o.state] != null ? ATTN[o.state] : 1);
-  if (dist > Math.max(base * 1.9, P ? Math.max(P.hear, P.scent || 0, P.heat || 0, P.nose || 0) : 0) + 1)
+    (rangeOverride != null ? rangeOverride : sightRange(o.sp, env.night, ATTN[o.state] != null ? ATTN[o.state] : 1)) * rm;
+  if (dist > Math.max(base * 1.9, P ? Math.max(P.hear * rm, (P.scent || 0) * Math.max(1, T.scentMul || 1), P.heat || 0, P.nose || 0) : 0) + 1)
     return { seen: false, heard: false, smelled: false, any: false, dist, occ: 0, range: base, eff: 0 };
   const occ = occlusion(o.x, o.y, T.x, T.y),
     // quem come/descansa vira a cabeça o tempo todo: a direção do olhar oscila ±~57° em torno do corpo (fases distintas por animal)
@@ -150,7 +154,7 @@ export function senseTarget(o, T, rangeOverride) {
     cosF = dist > 0.001 ? (Math.cos(dirE) * dx + Math.sin(dirE) * dy) / dist : 1;
   const vis = targetVisibility(T),
     rear = rearFactor(cosF);
-  const r = detects({ dist, range: base, vis, occlusion: occ, rear, hear: P ? P.hear : 0, loud: !!T.running });
+  const r = detects({ dist, range: base, vis, occlusion: occ, rear, hear: P ? P.hear * rm : 0, loud: !!T.running || rm > 1 });
   // olfato (predador com fome farejando) e sentido de calor (sucuri): alcance curto, atravessam a vegetação
   const scent =
       P &&
@@ -318,10 +322,13 @@ export function resetEcology() {
   playerFx.snareSlow = 1;
   playerFx.struggle = 0;
   playerFx.freeUntil = 0;
+  playerFx.ko = false;
+  playerFx.koLeft = 0;
 }
 
 /** Efeitos temporários sobre o jogador causados por animais (não são salvos). `snareUntil`: preso pela sucuri até esse instante (ecoNow). */
-export const playerFx = { snareUntil: 0, snareSlow: 1, struggle: 0, freeUntil: 0 };
+/** `ko`: desmaiado (picadas): deitado e indefeso. `koLeft`: minutos de jogo até acordar. */
+export const playerFx = { snareUntil: 0, snareSlow: 1, struggle: 0, freeUntil: 0, ko: false, koLeft: 0 };
 
 /** O jogador está preso (sucuri, bote da onça)? */
 export const playerSnared = () => playerFx.snareUntil > env.t;

@@ -614,9 +614,9 @@ function jagPlayerEval(a, h) {
       {
         hunt: H,
         vPred: PLAYER_PREY.jaguar.burst,
-        vPrey: Math.max(60, spd),
-        value: 0.7,
-        counter: 0.12,
+        vPrey: playerFx.ko ? 4 : Math.max(60, spd), // desmaiado não foge
+        value: playerFx.ko ? 0.95 : 0.7,
+        counter: playerFx.ko ? 0.02 : 0.12,
         scanR: H.scanR,
         driveMul: 0.5 + jagAct(h) + 1.2 * ag, // crepuscular/noturna: mais interessada ao anoitecer; faminta, de qualquer hora
       },

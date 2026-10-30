@@ -5,6 +5,8 @@
  */
 
 import { gfx, Q, qDrop, setQDrop } from '../config/settings.js';
+import { playerFx } from '../entities/ai/Perception.js';
+import { KO_SPEED } from '../systems/Vitals.js';
 import { update } from './GameUpdate.js';
 import { FPS_ON, fpsSample } from './FpsMeter.js';
 import { applyRes, ctx, RS, VIG } from '../rendering/Canvas.js';
@@ -84,6 +86,8 @@ function frame(now) {
   }
   const tA = FPS_ON ? performance.now() : 0; // só com ?fps / ?bench (FpsMeter.js): mede lógica, desenho e interface de cada quadro
   update(dt);
+  // desmaiado pelas picadas: o mundo roda vários passos por quadro (o tempo passa rápido, os animais continuam agindo)
+  if (playerFx.ko) for (let r = 1; r < KO_SPEED; r++) update(dt);
   const tB = FPS_ON ? performance.now() : 0;
   render();
   const tC = FPS_ON ? performance.now() : 0;

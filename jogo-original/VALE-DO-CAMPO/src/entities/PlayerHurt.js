@@ -15,7 +15,18 @@ import { dormir } from '../core/TimeManager.js';
 import { toast } from '../ui/Toast.js';
 import { plAct } from './PlayerSprite.js';
 import { playerFx } from './ai/Perception.js';
-import { addVenom, regenVida, venomDrain, vitals, VIDA_MAX } from '../systems/Vitals.js';
+import {
+  addVenom,
+  KO_HOURS,
+  KO_WAKE_ENERGY,
+  KO_WAKE_VIDA,
+  regenVida,
+  stingTrack,
+  venomDrain,
+  vitals,
+  VIDA_MAX,
+} from '../systems/Vitals.js';
+import { fadeEl } from '../ui/dom.js';
 
 let fainting = false;
 
@@ -61,6 +72,51 @@ export function hurtPlayer(o) {
   return true;
 }
 
+/** Desmaiado pelas picadas (deitado, indefeso, o tempo passa rápido)? */
+export const isKnockedOut = () => playerFx.ko;
+
+/**
+ * Muitas picadas de abelha: o personagem desmaia e só acorda horas depois (KO_HOURS de jogo). O tempo acelera (GameLoop) e ele fica
+ * deitado onde caiu: os animais o enxergam de MUITO mais longe (config KO_RANGE) e o tratam como presa fácil.
+ */
+export function knockOut() {
+  if (playerFx.ko || S.inside || sleeping || fainting) return;
+  playerFx.ko = true;
+  playerFx.koLeft = KO_HOURS * 60;
+  playerFx.snareUntil = 0;
+  S.vx = S.vy = 0;
+  S.mv = false;
+  vitals.venom = 0; // o veneno já fez o estrago
+  fadeEl.style.opacity = 0.55; // tela escurecida enquanto está apagado
+  toast('🐝 Picadas demais: você desmaiou! Só acorda daqui a ' + KO_HOURS + ' horas...');
+}
+
+/** Acorda (ou cancela, se dormir/morrer antes): devolve vida e estamina mínimas. */
+export function wakeUp(msg = true) {
+  if (!playerFx.ko) return;
+  playerFx.ko = false;
+  playerFx.koLeft = 0;
+  fadeEl.style.opacity = 0;
+  if (msg) {
+    S.vida = Math.max(S.vida, KO_WAKE_VIDA);
+    S.energy = Math.max(S.energy, KO_WAKE_ENERGY);
+    toast('Você acordou, tonto e dolorido, horas depois das picadas.');
+  }
+}
+
+/** Uma ferroada de abelha: tira vida, deixa veneno e conta; muitas seguidas derrubam o personagem. */
+export function stingPlayer() {
+  if (playerFx.ko) return; // desmaiado: as abelhas já se acalmaram
+  if (!damagePlayer(2.5, 'Abelhas')) return;
+  envenenar(3);
+  const r = stingTrack(vitals.stings, performance.now() / 1000);
+  vitals.stings = r.lista;
+  if (r.ko && S.vida > 0) {
+    vitals.stings = [];
+    knockOut();
+  }
+}
+
 /** Veneno de abelha: acrescenta estamina a consumir (o teto evita zerar tudo de uma vez). */
 export function envenenar(n) {
   if (S.inside || sleeping) return;
@@ -71,6 +127,10 @@ export function envenenar(n) {
 export function vitalsTick(dt) {
   vitals.quiet += dt;
   if (fainting) return;
+  if (playerFx.ko) {
+    playerFx.koLeft -= dt; // dt em s reais = minutos de jogo; o GameLoop roda vários passos por quadro
+    if (playerFx.koLeft <= 0) wakeUp();
+  }
   if (S.vida < VIDA_MAX) S.vida = regenVida(S.vida, dt, vitals.quiet);
   if (vitals.venom > 0) {
     const r = venomDrain(vitals.venom, dt);

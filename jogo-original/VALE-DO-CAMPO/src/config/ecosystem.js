@@ -211,6 +211,9 @@ export const HUNT = {
   },
 };
 
+/** Quanto aumenta o alcance de visão/audição/faro dos animais sobre um jogador DESMAIADO (deitado, indefeso, cheirando a sangue): presa fácil. */
+export const KO_RANGE = 2.6;
+
 /* ============ fome → agressividade do predador ============ */
 /**
  * Quão agressivo (0..1) o predador está por fome: 0 até ~35% de fome (comportamento normal), sobe até 1 em ~90%. Faminto ele deixa de

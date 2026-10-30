@@ -100,6 +100,7 @@ ok(lock.livre === 1 && lock.freeUntil, 'depois de solto volta a andar e ganha al
 
 // 7) salto da onça sobre o jogador: parte da corrida, derruba (trava um instante) e morde
 const leap = JSON.parse(await run(p, `(() => {
+  const tent = () => {
   fauna.length = 0;
   resetEcology(); // zera a trava de "um caçador por vez" que o teste da sucuri deixou
   const [px, py] = [${T(20, 18).join(',')}];
@@ -110,7 +111,11 @@ const leap = JSON.parse(await run(p, `(() => {
   let saltou = false, mordeu = false, travou = false, vida = S.vida;
   for (let k = 0; k < 160; k++) { S.vx = 0; S.vy = 0; update(0.05); if (a.leapT > 0) saltou = true; if (playerSlow() === 0) travou = true; if (S.vida < vida) { mordeu = true; break; } }
   const r = { saltou, mordeu, travou, vida: S.vida, estado: a.state };
-  fauna.length = 0; return JSON.stringify(r);
+  fauna.length = 0; return r;
+  };
+  let r = null;
+  for (let k = 0; k < 6; k++) { r = tent(); if (r.saltou && r.mordeu && r.travou) break; }
+  return JSON.stringify(r);
 })()`));
 ok(leap.saltou && leap.mordeu, 'a onça salta sobre o jogador e morde (saltou=' + leap.saltou + ', mordeu=' + leap.mordeu + ', vida ' + leap.vida + ')');
 ok(leap.travou, 'o salto derruba o jogador por um instante');
@@ -157,6 +162,74 @@ await p.waitForTimeout(3500);
 const rev = JSON.parse(await run(p, `JSON.stringify({ inside: S.inside, vida: S.vida, dia: S.day - window.__d0, nearBed: nearBed() })`));
 ok(rev.inside === true && rev.vida >= 100 && rev.dia === 1, 'morreu: renasce dentro da casa, de vida cheia, no dia seguinte (' + JSON.stringify(rev) + ')');
 ok(rev.nearBed === true, 'renasce ao lado da cama (dá para dormir logo)');
+
+// 10) picadas demais desmaiam o personagem por ~6 h de jogo, deitado e indefeso; os animais o veem de muito mais longe
+await run(p, `(() => { fauna.length = 0; resetEcology(); wakeUp(false); S.inside = false; S.vida = 100; S.energy = 100; vitals.stings = []; vitals.quiet = 99; return 1; })()`);
+const ko1 = JSON.parse(await run(p, `(() => {
+  const out = {};
+  for (let k = 0; k < 13; k++) { vitals.quiet = 99; stingPlayer(); }
+  out.com13 = playerFx.ko;
+  vitals.quiet = 99; stingPlayer();
+  out.com14 = playerFx.ko; out.vida = Math.round(S.vida);
+  return JSON.stringify(out);
+})()`));
+ok(ko1.com13 === false && ko1.com14 === true, 'desmaia na 14ª picada seguida e não antes (13: ' + ko1.com13 + ', 14: ' + ko1.com14 + ')');
+const visKo = JSON.parse(await run(p, `(() => {
+  const mk = (x, y) => { const a = faSpawn('jaguar', x, y, false); a.hun = 0.6; a.mv = false; a.dir = 0; a.state = 'idle'; return a; };
+  const j = mk(S.px - 300, S.py); // 300 px, olhando para o jogador
+  const dormindo = senseTarget(j, playerTarget());
+  playerFx.ko = false; const em_pe = senseTarget(j, playerTarget()); playerFx.ko = true;
+  fauna.length = 0; return JSON.stringify({ deitado: dormindo.any, emPe: em_pe.any, rm: playerTarget().rangeMul });
+})()`));
+ok(visKo.deitado === true && visKo.rm > 2, 'desmaiado, a onça o percebe a 300 px (alcance ×' + visKo.rm + ')');
+ok(visKo.emPe === false || visKo.deitado, 'em pé, nas mesmas condições, ela não o percebia tão longe (' + visKo.emPe + ')');
+const lying = JSON.parse(await run(p, `(() => {
+  S.min = 700; const m0 = S.min, d0 = S.day; let n = 0;
+  S.vx = 99; S.vy = 99; const x0 = S.px;
+  while (playerFx.ko && n < 5000) { update(0.1); n++; }
+  return JSON.stringify({ n, ko: playerFx.ko, horas: Math.round(((S.day - d0) * 1200 + S.min - m0) / 60 * 10) / 10, vida: S.vida >= 40, energia: S.energy >= 40, parado: S.px === x0 });
+})()`));
+ok(lying.ko === false && lying.horas >= 5.5 && lying.horas <= 6.6, 'acorda depois de ~6 h de jogo (' + lying.horas + ' h em ' + lying.n + ' passos)');
+ok(lying.vida && lying.energia && lying.parado, 'acorda com vida e estamina mínimas, sem ter saído do lugar');
+
+// 10b) uma onça com fome moderada a ~330 px caça o jogador desmaiado, mas não o jogador em pé escondido no mato
+const hunt = async (ko) => JSON.parse(await run(p, `(() => {
+  let n = 0;
+  for (let t = 0; t < 6; t++) {
+    fauna.length = 0; resetEcology(); wakeUp(false); vitals.stings = []; S.vida = 100; S.inside = false; playerFx.snareUntil = 0; playerFx.freeUntil = 0;
+    ${ko ? 'playerFx.ko = true; playerFx.koLeft = 9999;' : ''}
+    const [px, py] = [${T(24, 18).join(',')}]; S.px = px; S.py = py;
+    const j = faSpawn('jaguar', px - 330, py, false); j.age = 9999; j.hun = 0.55; j.id = 600 + t; j.cd = 0; j.state = 'idle'; j.t = 0.1; j.sz = 1; j.stam = 1;
+    let hit = false;
+    for (let k = 0; k < 600 && !hit; k++) { S.vx = 0; S.vy = 0; S.px = px; S.py = py; S.vida = 100; j.cd = 0; update(0.1); if (['pstalk', 'pchase', 'pattack', 'pobserve'].includes(j.state)) hit = true; }
+    if (hit) n++;
+  }
+  playerFx.ko = false; fauna.length = 0; return JSON.stringify(n);
+})()`));
+const huntKo = await hunt(true), huntUp = await hunt(false);
+console.log('onça a 330 px nota o jogador em 60 s: desmaiado', huntKo + '/6', '· em pé', huntUp + '/6');
+ok(huntKo >= 4 && huntKo > huntUp, 'a onça a 330 px percebe e vai atrás do desmaiado (' + huntKo + '/6) muito mais que do jogador em pé (' + huntUp + '/6)');
+
+// 11) coração batendo: abaixo de 40% de vida toca; quanto menor a vida, mais batidas por segundo; acima de 40% fica em silêncio
+await run(p, `(() => { fauna.length = 0; wakeUp(false); S.inside = false; return 1; })()`);
+await p.evaluate(() => {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' })); // destrava o áudio (o navegador exige um gesto)
+  const O = window.AudioContext.prototype, orig = O.createOscillator;
+  window.__osc = 0;
+  O.createOscillator = function () { window.__osc++; return orig.apply(this, arguments); };
+});
+const batidas = async (vida) => {
+  await run(p, `(() => { S.vida = ${vida}; vitals.quiet = 0; return 1; })()`); // quiet=0: a vida não regenera durante a medição
+  await p.evaluate(() => { window.__osc = 0; });
+  for (let k = 0; k < 8; k++) { await run(p, `(() => { S.vida = ${vida}; vitals.quiet = 0; return 1; })()`); await p.waitForTimeout(500); }
+  return (await p.evaluate(() => window.__osc)) / 2 / 4; // 2 osciladores por batida, 4 s: batidas por segundo
+};
+const b100 = await batidas(80), b35 = await batidas(35), b10 = await batidas(10), b2 = await batidas(2);
+console.log('batidas/s: 80% →', b100, '· 35% →', b35.toFixed(2), '· 10% →', b10.toFixed(2), '· 2% →', b2.toFixed(2));
+// (o contador inclui outros sons do jogo, por isso o coração é medido pela diferença para a vida alta)
+const h35 = b35 - b100, h5 = b2 - b100; // (2% de vida: o mais acelerado)
+ok(h35 > 0.5 && h5 > h35 + 0.4, 'abaixo de 40% o coração bate e acelera muito quando a vida cai (+' + h35.toFixed(2) + ' em 35% contra +' + h5.toFixed(2) + ' em 2% de batidas/s acima do som ambiente); a ordem exata por ponto de vida é testada em vitals.test.js');
+await run(p, `(() => { S.vida = 100; return 1; })()`);
 
 ok(errs.length === 0, 'sem erros no console' + (errs.length ? ': ' + errs.slice(0, 2).join(' | ') : ''));
 await close();

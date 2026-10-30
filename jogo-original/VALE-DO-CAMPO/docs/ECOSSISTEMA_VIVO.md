@@ -70,6 +70,17 @@ Valores em `config/ecosystem.js` (`ECO`, `HUNT`, `PLAYER_PREY`, `CAMO`, `aggress
   em mais presas e de mais longe (`scanR` ×1,5), aceita mais risco, persiste mais (perseguição ×1,6, fôlego +15 %), descansa até 75 % menos entre tentativas
   e caça o jogador a qualquer hora. Saciada, o comportamento é o de antes.
 
+## Picadas, desmaio, coração e renascimento
+
+- **Muitas picadas de abelha derrubam o personagem** (`stingPlayer` em `PlayerHurt.js`, regras puras em `systems/Vitals.js`): 14 ferroadas em 25 s. Ele
+  fica **deitado** onde caiu por **6 horas de jogo** (o tempo corre 8× mais rápido durante o desmaio: ~45 s reais) e acorda com pelo menos 40 de vida e de estamina.
+  Enquanto isso não anda nem age, as abelhas se acalmam e **os animais o enxergam, ouvem e cheiram 2,6× mais longe** (`KO_RANGE`) e o tratam como presa
+  indefesa (a onça avalia `vPrey` ≈ 0): no teste, uma onça a 330 px o percebe em 6 de 6 vezes; em pé, em 0 de 6. Dormir ou morrer cancela o desmaio.
+- **Coração batendo** (`systems/audio/Heartbeat.js`): com a vida **abaixo de 40%** toca um "tum-tum" grave que, a cada ponto de vida perdido, fica mais rápido
+  (64 → 170 batimentos/min) e mais forte (`heartbeat(vida)` em `Vitals.js`). Silêncio acima de 40% e com vida zero. O ritmo usa o relógio real.
+- **Onça sem recuo.** O estado `retreat` (a onça correndo para longe ao ficar perto de gente) foi removido: predador não foge do jogador.
+- **Morreu, renasce em casa.** Ao morrer (animal ou lobisomem), o personagem renasce **dentro da casa, ao lado da cama** (`respawnInHouse`), de vida cheia, no dia seguinte.
+
 ## Indicadores
 
 Barras de fome e sede + idade compacta (`fmtAge`, `lifeStage`) sobre cada animal, com dados reais (`hun`/`thi`/`age`;

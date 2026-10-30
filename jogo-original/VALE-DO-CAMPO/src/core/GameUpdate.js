@@ -10,7 +10,8 @@ import { extensible } from './extensions.js';
 import { S, sleeping } from './GameState.js';
 import { keys } from './InputManager.js';
 import { dormir } from './TimeManager.js';
-import { playerSlow } from '../entities/ai/Perception.js';
+import { playerFx, playerSlow } from '../entities/ai/Perception.js';
+import { heartbeatTick } from '../systems/audio/Heartbeat.js';
 import { vitalsTick } from '../entities/PlayerHurt.js';
 import { cbSpd } from '../entities/Carcass.js';
 import { herd, updateHerd } from '../entities/cow/Herd.js';
@@ -56,6 +57,7 @@ const update = extensible(function update(dt) {
   if (!sleeping) {
     fecesTick(dt);
     vitalsTick(dt);
+    heartbeatTick(); // vida baixa: coração batendo cada vez mais rápido e forte
   }
   updateNpc(dt);
   tillTick(dt);
@@ -66,7 +68,8 @@ const update = extensible(function update(dt) {
     iy = Math.max(-1, Math.min(1, ky));
   const mag = Math.hypot(ix, iy);
   // movimento suave: aceleração/desaceleração, direção sem tremer na diagonal, passos proporcionais à distância
-  const can = !sleeping && !dlgOpen && mag > 0.12,
+  if (playerFx.ko) S.vx = S.vy = 0; // desmaiado: deitado, não anda nem é empurrado
+  const can = !sleeping && !dlgOpen && !playerFx.ko && mag > 0.12,
     ts = can ? terrainSpeed() * (1 - 0.38 * (S.wetK || 0)) * playerSlow() : 1; // playerSlow: preso pela sucuri
   const wantRun = (running || keys['shift']) && can && !S.inside;
   if (wantRun && S.energy <= 0) {
