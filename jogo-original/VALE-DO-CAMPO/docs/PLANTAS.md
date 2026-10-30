@@ -15,6 +15,8 @@ A fase 4 só é alcançada em solo rico: o mato nunca passa de `255 × (0,3 + 0,
 
 **Começo do jogo:** o mato inicial nasce em manchas de 45 a 145 (fases 1 a 3), não numa camada única de brotos; assim as plantas já aparecem no primeiro minuto. Num save antigo o mato é o que já estava salvo.
 
+**Água e plantas:** a planta aparece sempre que há mato, não importa o nível de água do tile (antes sumia e voltava na borda de poças e rios). As poças de escoamento deixaram de ser desenhadas (a água continua simulada).
+
 **Movimento:** as plantas ficam paradas (sem balanço de vento). Só se mexem quando algo passa por elas: a "dobra" deixada por quem anda (jogador, aldeã, vaca, fauna) empurra a planta no sentido do passo, ela treme um instante e volta (`drawMato`).
 
 **Posição:** cada planta nasce num ponto sorteado dentro do tile (de -7 a +7 px na horizontal e de -5 a +5 na vertical, sorteio fixo por tile),

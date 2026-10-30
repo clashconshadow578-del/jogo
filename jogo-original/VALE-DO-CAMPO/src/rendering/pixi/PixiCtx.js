@@ -961,6 +961,12 @@ export function pixiLayerEnd() {
     pc.update();
   }
   for (let i = rused; i < runs.length && runs[i].pc.visible; i++) runs[i].pc.visible = false;
+  // As máscaras de recorte são retângulos/formas BRANCAS que ficam na cena só para recortar. Quando o PixiJS tira uma máscara de um
+  // objeto (o objeto do pool passa a ter outra máscara ou nenhuma), ele a marca como "parte do desenho" (includeInBuild = true) e,
+  // se nenhum objeto a usa naquele quadro, ela aparecia como um retângulo branco na posição do quadro anterior: a mancha branca que
+  // seguia o personagem (recorte do reflexo/água) e piscava na água. Aqui toda máscara volta a ficar fora do desenho antes de renderizar;
+  // quando é usada, o próprio PixiJS a liga só durante o recorte.
+  for (const mg of mpool) mg.includeInBuild = false;
   const tA = performance.now();
   app.render({ container: root });
   stats.msOps = (stats.msOps || 0) * 0.9 + (tA - stats.t0) * 0.1;

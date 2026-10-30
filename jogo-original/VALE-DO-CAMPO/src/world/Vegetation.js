@@ -129,7 +129,8 @@ function hydroMatoList(x0, x1, y0, y1) {
   for (let ty = y0; ty <= y1; ty++)
     for (let tx = x0; tx <= x1; tx++) {
       const i = ty * MW + tx;
-      if (ground[i] === GRASS && mato[i] > FASE[0] && wl[i] < 0.03 && wearT[i] < 0.12 && !obj[i]) {
+      // o nível de água do tile NÃO decide mais se a planta aparece (oscilava na borda de poças e rios e a planta piscava)
+      if (ground[i] === GRASS && mato[i] > FASE[0] && wearT[i] < 0.25 && !obj[i]) {
         const o = MATO_POOL[n] || (MATO_POOL[n] = { k: 0, tx: 0, ty: 0, i: 0 });
         o.k = ty * TS + 6 + matoDY(tx, ty); // a ordem Y segue o pé da planta, que agora varia dentro do tile
         o.tx = tx;

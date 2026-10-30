@@ -306,17 +306,6 @@ function drawTrampledGrass(tx, ty, t) {
           ctx.fillStyle = 'rgba(70,48,28,.45)';
           ctx.fillRect(px0, py0 + 2, 3, 1);
         } // rachaduras do solo seco
-        if (wt > 0.45 && cp > 0.5 && wear > 0.6 && hash2(gx >> 1, gy >> 1) < (wt - 0.45) * 1.7) {
-          // poças em solo compactado
-          ctx.fillStyle = 'rgba(84,126,158,.58)';
-          ctx.fillRect(px0, py0 + 1, 4, 3);
-          ctx.fillStyle = 'rgba(224,238,248,.38)';
-          ctx.fillRect(px0 + 1, py0 + 1, 2, 1);
-          if (climate.rain > 0.2 && ((frameNo >> 3) + gx * 7 + gy * 3) % 11 === 0) {
-            ctx.fillStyle = 'rgba(235,245,255,.5)';
-            ctx.fillRect(px0 + 1, py0 + 2, 2, 1);
-          }
-        }
         continue;
       }
       if (wear > 0.16) {

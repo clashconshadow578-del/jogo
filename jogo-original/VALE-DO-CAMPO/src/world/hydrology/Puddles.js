@@ -35,7 +35,13 @@ function pdW(tx, ty) {
   return tx < 0 || ty < 0 || tx >= MW || ty >= MH ? 0 : ground[ty * MW + tx] === WATER ? 0 : wl[ty * MW + tx];
 }
 
+// As poças de escoamento deixaram de ser DESENHADAS: o chão compactado (trilha) alagava com a chuva e a mancha clara de borda
+// branca virava um retângulo branco na neblina, e o nível de água que oscilava na borda fazia o mato piscar. A água continua
+// sendo simulada (infiltração, escoamento, erosão, poços de beber); só não aparece mais como poça. Para ver de volta: `PUDDLES_VISIBLE`.
+const PUDDLES_VISIBLE = false;
+
 function pdNear(i, tx, ty) {
+  if (!PUDDLES_VISIBLE) return false;
   return (
     wl[i] > 0.03 ||
     (tx > 0 && wl[i - 1] > 0.03) ||
@@ -50,6 +56,7 @@ function pdNear(i, tx, ty) {
 }
 
 function drawPuddle(i, tx, ty, x, y, w, t) {
+  if (!PUDDLES_VISIBLE) return;
   const w00 = pdW(tx, ty),
     wl_ = pdW(tx - 1, ty),
     wr = pdW(tx + 1, ty),

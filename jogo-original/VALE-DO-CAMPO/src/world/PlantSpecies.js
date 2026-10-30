@@ -81,7 +81,7 @@ export function plantDaily(i) {
   if (!p) return;
   if (p.florescerMorre && plantStage(mato[i]) === 4 && Math.random() < p.florescerMorre)
     mato[i] = Math.max(0, mato[i] - p.florescerQueda);
-  else if (p.aguaParada < 0.5 && wl[i] > 0.1) mato[i] = Math.max(0, mato[i] - 6);
+  else if (p.aguaParada < 0.5 && wl[i] > 0.25) mato[i] = Math.max(0, mato[i] - 6);
   // sem pisoteio o mato fecha: a helicônia adulta sombreia e sufoca brotos e plantas jovens ao lado
   if (plantStage(mato[i]) <= 2) {
     let n = 0;

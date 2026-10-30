@@ -65,6 +65,17 @@ for (let k = 0; k < 8 && !toastTxt; k++) {
 }
 ok(/(Helicônia|Samambaia)/.test(toastTxt), 'o aviso mostra a planta: ' + toastTxt.slice(0, 80));
 
+// 6b) o nível de água do tile não faz a planta sumir (antes `wl < 0.03` a fazia piscar na borda de poças e rios)
+const vis = JSON.parse(await run(p, `(() => {
+  const i = window.__t[2], tx = i % MW, ty = (i / MW) | 0; const r = [];
+  mato[i] = 150; wearT[i] = 0; obj[i] = 0; ground[i] = GRASS;
+  for (const w of [0, 0.05, 0.3, 0.9, 0.01]) { wl[i] = w; r.push(hydroMatoList(tx - 1, tx + 1, ty - 1, ty + 1).some((o) => o.i === i)); }
+  wl[i] = 0; return JSON.stringify(r);
+})()`));
+ok(vis.every(Boolean), 'planta continua na lista de desenho com qualquer nível de água: ' + vis);
+const pd = await run(p, `(() => pdNear(window.__t[2], window.__t[2] % MW, (window.__t[2] / MW) | 0))()`);
+ok(pd === false, 'poças deixaram de ser desenhadas (pdNear = false)');
+
 // 7) a hidrologia roda sem erro com as espécies (vários passos e dias)
 await run(p, `(() => { for (let k = 0; k < 20; k++) hydroDaily(); return 1; })()`);
 await p.waitForTimeout(1500);
