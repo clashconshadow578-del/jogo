@@ -60,6 +60,9 @@ export function pixiLayersInit() {
       clearBeforeRender: true,
     });
     app = r;
+    app.canvas.id = 'pixiView';
+    app.canvas.style.display = 'none'; // aparece no primeiro quadro desenhado por ele
+    mainCtx.canvas.after(app.canvas); // mesma posição e tamanho do canvas do jogo (a regra `canvas` do main.css vale para os dois)
     root = new PIXI.Container();
     root.sortableChildren = true; // a ordem de desenho é o zIndex (sprites e formas se misturam)
     return true;
@@ -103,22 +106,22 @@ function shape() {
   return g;
 }
 
-/** Máscara (para clip) com o caminho atual do contexto: fica na cena, mas não aparece. */
+/** Máscara (para clip) com o caminho atual do contexto. Fora da cena: por isso a escala da tela (RS) entra na matriz dela. */
 function maskPath(c) {
   let g;
   if (mused < mpool.length) g = mpool[mused++];
   else {
     g = new PIXI.Graphics();
-    g.renderable = false;
     mpool.push(g);
-    root.addChild(g);
     mused++;
   }
   g.clear();
   if (!c.buildPath(g)) c.bad = 'clip com forma não suportada';
   g.fill(0xffffff);
-  c.place(g);
-  g.visible = true;
+  tmpM ||= new PIXI.Matrix();
+  const m = c.m;
+  tmpM.set(m[0] * RS, m[1] * RS, m[2] * RS, m[3] * RS, m[4] * RS, m[5] * RS);
+  g.setFromMatrix(tmpM);
   return g;
 }
 
@@ -669,7 +672,10 @@ const pctx = new Proxy(new PixiCtx(), {
  * se o PixiJS ainda não está pronto (então o quadro é desenhado em Canvas como sempre).
  */
 export function pixiLayerBegin() {
-  if (!app || !getPixi()) return false;
+  if (!app || !getPixi()) {
+    mostrar(false); // sem PixiJS (ou desligado): volta a aparecer o canvas do jogo
+    return false;
+  }
   if (W !== VW * RS || H !== VH * RS) {
     W = VW * RS;
     H = VH * RS;
@@ -688,6 +694,9 @@ export function pixiLayerBegin() {
   if (typeof mainCtx.fillStyle === 'string') pctx.fillStyle = mainCtx.fillStyle;
   pctx.globalAlpha = mainCtx.globalAlpha;
   active = true;
+  mostrar(!copiar());
+  if (app.canvas.style.imageRendering !== mainCtx.canvas.style.imageRendering)
+    app.canvas.style.imageRendering = mainCtx.canvas.style.imageRendering;
   setDrawCtx(pctx);
   return true;
 }
@@ -698,13 +707,15 @@ export function pixiLayerEnd() {
   active = false;
   for (let i = used; i < pool.length && pool[i].visible; i++) pool[i].visible = false;
   for (let i = gused; i < gpool.length && gpool[i].visible; i++) gpool[i].visible = false;
-  for (let i = mused; i < mpool.length && mpool[i].visible; i++) mpool[i].visible = false;
   app.render({ container: root });
   const g = mainCtx;
-  g.save();
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  g.drawImage(app.canvas, 0, 0, VW, VH);
-  g.restore();
+  if (copiar()) {
+    // só nos testes automáticos (precisam ler os pixels do canvas do jogo): copia o quadro do PixiJS para ele
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(app.canvas, 0, 0, VW, VH);
+    g.restore();
+  }
   // o código seguinte conta com o estado em que a camada deixou o contexto (câmera, cor, transparência)
   g.setTransform(...pctx.m);
   if (typeof pctx.fillStyle === 'string') g.fillStyle = pctx.fillStyle;
@@ -751,3 +762,18 @@ function dyn(img, sx, sy, sw, sh) {
   if (tex.source.update) tex.source.update();
   return tex;
 }
+
+/** Nos testes automáticos (`window.__step`) ou com `?copia`, o quadro do PixiJS é copiado para o canvas do jogo para poder ser lido. */
+function copiar() {
+  return typeof window.__step === 'function' || /[?&]copia\b/.test(location.search);
+}
+
+let mostrandoPixi = false;
+/** Mostra na tela o canvas do PixiJS (true) ou o canvas 2D do jogo (false), sem mexer no tamanho nem na posição. */
+export function mostrar(pixi) {
+  if (!app || pixi === mostrandoPixi) return;
+  mostrandoPixi = pixi;
+  app.canvas.style.display = pixi ? '' : 'none';
+  mainCtx.canvas.style.visibility = pixi ? 'hidden' : '';
+}
+export { mostrar as pixiMostrar };

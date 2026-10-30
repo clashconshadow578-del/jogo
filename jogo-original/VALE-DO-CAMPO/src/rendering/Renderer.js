@@ -23,7 +23,12 @@ import { drawPlayer } from '../entities/Player.js';
 import { drawFaunaLabels } from '../entities/wild/Fauna.js';
 import { drawAnimalStatus } from './AnimalStatus.js';
 import { AB } from './Ablate.js';
-import { pixiLayerBegin, pixiLayerEnd } from './pixi/PixiCtx.js';
+import { pixiLayerBegin, pixiLayerEnd, pixiMostrar } from './pixi/PixiCtx.js';
+
+function pixiLayerOff() {
+  pixiMostrar(false);
+  return false;
+}
 import { drawAtmosphere } from './Atmosphere.js';
 import { ctx } from './Canvas.js';
 import { collectEntities } from './Entities.js';
@@ -247,15 +252,16 @@ const passFinish = extensible(function passFinish(v, ents) {
 });
 
 function render() {
-  if (S.inside) {
-    renderInterior();
-    return;
-  }
-  const v = viewFor();
-  vcam = { x: v.camX, y: v.camY };
   // com o PixiJS pronto o quadro inteiro é desenhado por ele (uma passagem só: luz e clima misturam com o que está embaixo)
-  const noPixi = pixiLayerBegin();
+  // (o interior da casa ainda é desenhado em Canvas: o piso com recorte sai errado no PixiJS; pendência da migração)
+  const noPixi = S.inside ? pixiLayerOff() : pixiLayerBegin();
   try {
+    if (S.inside) {
+      renderInterior();
+      return;
+    }
+    const v = viewFor();
+    vcam = { x: v.camX, y: v.camY };
     passGround(v);
     const ents = collectEntities(v);
     passEntities(v, ents);

@@ -36,6 +36,7 @@ async function roda(qs) {
   const step = (n) => p.evaluate((k) => window.__step(k, 16.667), n);
   await run("gfx.res = '2'; applyRes(); setQDrop(0); S.inside=false; climate.rain=0; climate.wetness=0");
   if (process.env.PRE) await run(process.env.PRE);
+  if (process.env.INSIDE) await run('S.inside=true');
   await step(60);
   const pngs = {};
   let q = 777;
