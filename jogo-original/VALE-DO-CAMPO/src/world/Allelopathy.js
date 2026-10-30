@@ -37,7 +37,8 @@ import {
   wl,
 } from './hydrology/Hydrology.js';
 import { shroom } from './Mushrooms.js';
-import { drawTree, TREE_M, TREE_SETS, treeModel } from './Trees.js';
+import { drawTree } from '../rendering/TreeRenderer.js';
+import { TREE_M, TREE_SETS, treeModel } from './Trees.js';
 import { climate, rainAt, randomDay, windNow } from './WeatherSystem.js';
 import { ground, obj } from './World.js';
 

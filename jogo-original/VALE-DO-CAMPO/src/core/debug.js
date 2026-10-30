@@ -127,6 +127,8 @@ import * as m121 from '../config/ecosystem.js';
 import * as m122 from '../entities/ai/Perception.js';
 import * as m123 from '../entities/PlayerHurt.js';
 import * as m124 from '../rendering/AnimalStatus.js';
+import * as m125 from '../rendering/Entities.js';
+import * as m126 from '../rendering/TreeRenderer.js';
 import * as m115 from '../entities/farm/Eggs.js';
 import * as m116 from '../entities/farm/Chickens.js';
 import * as m117 from '../entities/cow/Cow.js';
@@ -266,6 +268,8 @@ const MODULES = {
   'entities/ai/Perception': m122,
   'entities/PlayerHurt': m123,
   'rendering/AnimalStatus': m124,
+  'rendering/Entities': m125,
+  'rendering/TreeRenderer': m126,
 };
 const SETTERS = {
   qDrop: ['config/settings', 'setQDrop'],

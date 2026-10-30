@@ -15,7 +15,8 @@ import { drawWeather } from '../../rendering/WeatherRenderer.js';
 import { TREE_HP } from '../../systems/Woodcutting.js';
 import { ecoTrees } from '../../world/ecology/TreeEcology.js';
 import { drawPrints } from '../../world/GrassSystem.js';
-import { drawTree, treeModel } from '../../world/Trees.js';
+import { drawTree } from '../../rendering/TreeRenderer.js';
+import { treeModel } from '../../world/Trees.js';
 import { drawSapling } from '../../world/Vegetation.js';
 import { climate, windNow } from '../../world/WeatherSystem.js';
 

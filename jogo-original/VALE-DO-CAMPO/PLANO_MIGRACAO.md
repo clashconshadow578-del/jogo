@@ -303,3 +303,18 @@ corrigido antes do commit.
 - `?pixi` (`tests/perf/pixi-equal.mjs`, `DENSE=10`): resultado **idêntico antes e depois** da divisão (mesmos números). Atenção: nesse teste o modo `2d`
   (que deveria dar 0) mostra **1 quadro com 4 pixels diferentes** (posição `800,5`, topo do mapa, até 121 níveis). Isso já acontecia **antes** da Fase 4
   (veio de algum commit depois da Fase 2, ainda não identificado), só afeta o `?pixi` (experimental, desligado por padrão) e **não** o jogo normal.
+
+## 16. Fase 5 (feita): entidades separadas do `Renderer.js` e do código das árvores
+
+- **`src/rendering/Entities.js` (novo):** `collectEntities(v)` e `entityProviders` saíram do `Renderer.js`. A coleta virou funções pequenas
+  (`collectTiles`, `collectFauna`, `collectVillage`, `collectFarmAnimals`, `collectQuestNpcs`, `collectHome`, `collectHerd`, `collectVillager`, mais os
+  fornecedores extras e o jogador), chamadas **na mesma ordem de antes**: a ordenação por Y é estável, então, quando duas coisas têm a mesma chave Y,
+  quem entra primeiro na lista é desenhado primeiro. O `Renderer.js` continua exportando `entityProviders` e `collectEntities` (o jogo e o README ainda
+  importam dele).
+- **`src/rendering/TreeRenderer.js` (novo):** `drawTree` e `drawTreeOld` (o balanço ao vento) saíram de `world/Trees.js`, que agora só cuida de sprites,
+  regiões e escolha do modelo (não tem mais nenhum `ctx`). `AmazonRender.js` e `Allelopathy.js` passaram a importar `drawTree` do arquivo novo; as
+  extensões (`drawTree.extend`) funcionam como antes.
+- **`Renderer.js`** deixou de importar 49 nomes (não conhece mais cada tipo de entidade): sobraram só os passes. `core/debug.js` ganhou os dois módulos novos.
+- **Prova:** 97 testes · build · 24 posições da câmera com 0 diferenças da referência · regressão visual com os **mesmos números** do código anterior nos 4 cenários.
+- **O que isto NÃO é:** as entidades continuam sendo desenhadas em Canvas 2D. Passá-las para sprites do PixiJS exigiria levar junto o mato (centenas de tiles
+  intercalados com as entidades pela ordem Y, porque a ordem de desenho precisa continuar exata). Ver a seção 19.
