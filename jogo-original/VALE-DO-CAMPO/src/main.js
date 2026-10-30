@@ -8,7 +8,8 @@
 import { loadWorldData } from './world/WorldData.js';
 import { boot } from './core/Game.js';
 import { installDebug } from './core/debug.js';
-import { initPixi } from './rendering/pixi/PixiBridge.js';
+import { initPixi, pixiRequested } from './rendering/pixi/PixiBridge.js';
+import { toast } from './ui/Toast.js';
 
 function showFatalError(err) {
   console.error('[Vale do Campo] falha ao iniciar:', err);
@@ -30,7 +31,10 @@ async function start() {
     return;
   }
   boot();
-  initPixi(); // só faz algo com ?pixi na URL (fase 1: liga o WebGL, ainda sem desenhar)
+  // só faz algo com ?pixi na URL: liga o PixiJS (WebGL) e avisa na tela se deu certo, para conferir no celular
+  initPixi().then((info) => {
+    if (pixiRequested(location.search)) toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
+  });
   const env = import.meta.env || {};
   if (env.DEV || /[?&]debug\b/.test(location.search)) installDebug();
 }

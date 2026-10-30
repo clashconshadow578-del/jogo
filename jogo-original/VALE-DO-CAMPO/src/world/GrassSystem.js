@@ -270,6 +270,7 @@ let idleForce = null;
 function setIdleOff(v) {
   idleForce = !!v;
 }
+const idleGrassEnabled = () => !idleOff();
 const idleOff = () => (idleForce !== null ? idleForce : Q_NOIDLE || (!Q_IDLE && applyRes.mob !== true));
 
 // Desenho parado SEM a camada gigante (usada no computador, onde ela foi desligada por piscar em algumas placas de vídeo):
@@ -487,6 +488,7 @@ export {
   grassDirty,
   grassGraze,
   grassWear,
+  idleGrassEnabled,
   idleGrassTile,
   tileStill,
   markFusedTile,

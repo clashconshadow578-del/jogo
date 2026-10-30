@@ -76,7 +76,7 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 |---|---|---|---|
 | **0 — Preparação** *(feita)* | Vite funcionando, `package.json` recriado, `pixi.js` instalado (ainda não usado), backup etiquetado | Nenhum | Build ok, 96 testes ok, jogo abre sem erro |
 | **1 — Tomada de desenho** *(feita)* | Criar `rendering/pixi/` com a "tomada": inicia o Pixi atrás do `?pixi`, com plano B em Canvas. **O jogo ainda desenha tudo em Canvas** | Muito baixo | Com e sem `?pixi` a imagem é idêntica |
-| **2 — Chão (tiles)** | Chão de grama parada vira sprites/tint na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Imagens iguais (tolerância de poucos níveis por cor); FPS medido melhor |
+| **2 — Chão (tiles)** *(feita, experimental: só com `?pixi`)* | A grama parada do chão vira textura na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Lógica idêntica (0 pixels); com WebGL, diferenças mínimas no navegador de teste; **FPS ainda não medido no celular** |
 | **3 — Grama pisoteada e rios** | `drawTrampledGrass`, `Hydrology` | Médio | Idem + teste `grass-idle-paths` |
 | **4 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
 | **5 — Efeitos** | Clima, partículas, sombras | Médio | Regressão visual |
@@ -126,3 +126,34 @@ Para rodar esse teste é preciso o Playwright (`npm install --no-save playwright
   Se o WebGL falhar, só avisa no console e o jogo segue em Canvas 2D.
 - `tests/core/pixiBridge.test.js`: teste do interruptor. Total de testes: 97.
 - Como conferir no navegador: abra `?pixi` e, no console, `window.VDC_PIXI.renderer` deve mostrar `webgl`.
+
+## 12. Fase 2 (feita, experimental): o que foi criado e o que foi provado
+
+**O que muda com `?pixi`:** o PixiJS guarda a imagem pronta da grama parada (`fuseLayer`, 1600x1600) como textura na placa de vídeo, desenha o
+trecho visível de uma vez e o resultado é copiado para o canvas do jogo **só nos tiles escolhidos**. Todo o resto continua em Canvas 2D e a
+imagem final ainda é montada pelo Canvas (a ponte é "híbrida"). Sem `?pixi` o jogo roda exatamente como antes. Funciona onde o modo de grama
+parada está ligado (celular ou `?idle`); no PC comum o jogo não usa essa camada, então não muda nada.
+
+**Quais tiles o PixiJS cobre** (`pixiPlanTiles` em `TileRenderer.js`): grama parada, sem água em volta, fora do brejo, e **sem nenhum vizinho
+desenhado antes** (esquerda, cima-esquerda, cima, cima-direita) que possa "vazar" sobre ele (grama pisoteada, mudas, sementes). Nos demais, o
+desenho antigo continua valendo.
+
+**O que foi provado** (`tests/perf/pixi-equal.mjs`, 3 execuções do mesmo jogo, ~50 quadros: posições aleatórias, cantos do mapa e andando):
+- Lógica (`?pixi&pixi2d`, mesma lógica, cópia direta, sem WebGL): **0 pixels diferentes**.
+- Imagem do PixiJS em si: igual à imagem pronta, **0 pixels diferentes** (cópia lida de volta e comparada).
+- Com WebGL de verdade (`?pixi`), no Chromium **sem placa de vídeo**: os quadros em que o canvas do jogo recebe a imagem do WebGL
+  ficam com diferenças pequenas (pior caso medido: ~7% dos pixels, mais de 90% deles com **1 nível de 255**, máximo 9, mais a borda de
+  1 pixel da tela); os quadros sem essa cópia saem **idênticos**. A causa não é a posição da grama (a lógica é exata): é esse navegador
+  arredondar as camadas translúcidas de outro jeito depois de receber uma imagem do WebGL. **Isso precisa ser conferido no seu
+  celular** (placa de vídeo real), tanto o visual quanto a fluidez. Passar a imagem por um canvas intermediário não resolveu.
+
+**Cuidados descobertos no caminho** (valem para as próximas fases):
+- O sistema de luz só recalcula a cada 2-3 quadros e reaproveita o quadro anterior deslocado; por isso os testes ligam `window.LIGHT_FULL`.
+- O ambiente de teste congela os relógios; o PixiJS só liga se o tempo andar (`__step`). Todas as execuções usam o mesmo aquecimento.
+- Ligar o PixiJS **não** muda nada sozinho; o que muda a imagem é copiar do WebGL para o canvas do jogo.
+
+**Ainda não medido:** se isso deixa o jogo mais rápido. O navegador de teste não tem placa de vídeo, então não serve para medir FPS. A cópia
+WebGL -> Canvas pode custar o que a Fase 2 economiza; só o celular responde. Se não ajudar, a Fase 2 não vira padrão.
+
+**Como testar no celular:** abra o jogo normal e depois com `?pixi` no fim do endereço (ex.: `...app.github.dev/?pixi`). Compare o visual
+(deve ser igual) e a fluidez. No console (`window.VDC_PIXI.renderer`) deve aparecer `webgl`.

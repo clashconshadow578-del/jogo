@@ -34,7 +34,9 @@ import { drawRelief } from './Relief.js';
 import { contactShadow } from './ShadowSystem.js';
 import { drawBin, drawHouse, drawRock } from './Sprites.js';
 import { terrainDraw, terrainServed } from './TerrainCache.js';
-import { drawTile } from './TileRenderer.js';
+import { drawTile, pixiPlanEnd, pixiPlanTiles } from './TileRenderer.js';
+import { pixiGroundDraw } from './pixi/PixiGround.js';
+import { getPixi } from './pixi/PixiBridge.js';
 import { drawLightning, drawWeather } from './WeatherRenderer.js';
 import { cropModel, drawCrop } from '../systems/FarmingSystem.js';
 import { fishDrawEnts } from '../systems/Fishing.js';
@@ -96,6 +98,12 @@ function render() {
   ctx.fillRect(0, 0, VW, VH);
   ctx.setTransform(1, 0, 0, 1, -camX, -camY);
   terrainDraw(x0, x1, y0, y1, frameNo); // tiles estáticos vêm de um cache (1 cópia); o resto é desenhado ao vivo abaixo
+  if (getPixi()) {
+    // só com ?pixi (fase 2): a grama parada vem da GPU; sem isso (ou se falhar) tudo é desenhado ao vivo como sempre.
+    // Fica DEPOIS do cache do chão: o cache também usa drawTile e não pode pular tiles.
+    const plan = pixiPlanTiles(gx0, gx1, gy0, gy1, terrainServed);
+    if (plan && !pixiGroundDraw(ctx, plan, gx0, gx1, gy0, gy1)) pixiPlanEnd();
+  }
   for (let ty = gy0; ty <= gy1; ty++)
     for (let tx = gx0; tx <= gx1; tx++) {
       if (terrainServed[ty * MW + tx]) continue;
@@ -103,6 +111,7 @@ function render() {
       drawTrampledGrass(tx, ty, t);
       drawHydro(tx, ty, t);
     }
+  pixiPlanEnd();
   drawRelief(x0, x1, y0, y1);
   drawPrints();
   wCam.x = camX;

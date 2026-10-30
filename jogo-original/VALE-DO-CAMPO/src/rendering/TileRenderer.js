@@ -13,8 +13,8 @@ import { lakeDepthDraw, lakeEdge } from './LakeRenderer.js';
 import { LEGACY_GROUND } from '../config/groundStyle.js';
 import { SPR } from './Sprites.js';
 import { hash2 } from '../utils/MathUtils.js';
-import { idleGrassTile, markFusedTile, paintIdleBlades } from '../world/GrassSystem.js';
-import { WTc } from '../world/hydrology/Hydrology.js';
+import { idleGrassEnabled, idleGrassTile, markFusedTile, paintIdleBlades, tileStill } from '../world/GrassSystem.js';
+import { WTc, sapl, seedAge } from '../world/hydrology/Hydrology.js';
 import { FLM, FLX, FLY } from '../world/hydrology/RiverFlow.js';
 import { ground, wet } from '../world/World.js';
 
@@ -186,6 +186,69 @@ function bakeGrassFused(tex) {
     }
 }
 
+/* ===== Fase 2 (?pixi): grama parada desenhada pelo PixiJS =====
+ * Antes do laço de tiles, pixiPlanTiles escolhe os tiles de grama parada cuja base o PixiJS vai pôr no quadro de uma vez
+ * (PixiGround.js), recortados só nesses tiles; os demais continuam sendo desenhados ao vivo, sem nenhuma mudança. drawTile
+ * pula a cópia dos tiles marcados. Um tile só é marcado se for exatamente o caso do ramo "grama parada fundida" de drawTile
+ * E nenhum vizinho desenhado antes dele (esquerda, cima-esquerda, cima, cima-direita) pode ter vazado sobre ele: no
+ * desenho original o tile era pintado depois e cobria o vazamento (lâminas dobradas passam 1-2 px, mudas/sementes idem). */
+const pixiStamp = new Uint32Array(MW * MH);
+let pixiNow = 0,
+  pixiCount = 0;
+
+function spillFree(tx, ty, i) {
+  if (tx <= 0 || ty <= 0 || tx >= MW - 1) return false;
+  for (const j of [i - 1, i - MW - 1, i - MW, i - MW + 1]) {
+    if (sapl[j] > 0 || seedAge[j] > 0) return false;
+    if (ground[j] === GRASS && !tileStill(j % MW, (j / MW) | 0)) return false;
+  }
+  return true;
+}
+
+/**
+ * Devolve { fuse, path } (a imagem pronta e o recorte dos tiles cobertos) ou null se nada será coberto.
+ * `served` (opcional) marca os tiles que o cache do chão já entregou neste quadro (com umidade/poças dentro): esses ficam de fora.
+ */
+function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
+  pixiNow = 0;
+  const tex = LEGACY_GROUND ? null : SPR.grass;
+  if (!tex || !tex.ready || !idleGrassEnabled()) return null;
+  if (!fuseBaked) bakeGrassFused(tex);
+  const stamp = ++pixiCount;
+  const path = new Path2D();
+  let n = 0;
+  for (let ty = gy0; ty <= gy1; ty++) {
+    let run = -1;
+    for (let tx = gx0; tx <= gx1 + 1; tx++) {
+      const i = ty * MW + tx;
+      const ok =
+        tx <= gx1 &&
+        ground[i] === GRASS &&
+        WTc[i] !== 9 &&
+        noWaterAround(tx, ty) &&
+        !(served && served[i]) &&
+        idleGrassTile(tx, ty) &&
+        spillFree(tx, ty, i);
+      if (ok) {
+        pixiStamp[i] = stamp;
+        n++;
+        if (run < 0) run = tx;
+      } else if (run >= 0) {
+        path.rect(run * TS, ty * TS, (tx - run) * TS, TS); // sequência de tiles vizinhos na mesma linha = 1 retângulo
+        run = -1;
+      }
+    }
+  }
+  if (!n) return null;
+  pixiNow = stamp;
+  return { fuse: fuseLayer, path };
+}
+
+/** Fim do laço de tiles do quadro: drawTile volta a desenhar tudo (cache do chão, interior...). */
+function pixiPlanEnd() {
+  pixiNow = 0;
+}
+
 // Sem água nos 8 vizinhos => lakeEdge(tx, ty) retorna sem desenhar (ver LakeRenderer.lakeEdge).
 function noWaterAround(tx, ty) {
   for (let dy = -1; dy <= 1; dy++)
@@ -206,6 +269,10 @@ function drawTile(tx, ty, t) {
   if (g === GRASS) {
     // Tile de grama parado (sem pisoteio/dobra/pasto), fora do brejo e longe da água: textura + variação de região +
     // lâminas já prontas numa camada → 1 drawImage no lugar de ~3 chamadas + cálculos. Idêntico ao desenho abaixo.
+    if (pixiNow !== 0 && pixiStamp[i] === pixiNow) {
+      markFusedTile(i); // a base deste tile já foi posta no quadro pelo PixiJS (pixiPlanTiles)
+      return;
+    }
     const ftex = LEGACY_GROUND ? null : SPR.grass;
     if (ftex && ftex.ready && WTc[i] !== 9 && noWaterAround(tx, ty) && idleGrassTile(tx, ty)) {
       if (!fuseBaked) bakeGrassFused(ftex);
@@ -365,4 +432,4 @@ function drawTile(tx, ty, t) {
   lakeEdge(tx, ty);
 }
 
-export { drawTile };
+export { drawTile, pixiPlanEnd, pixiPlanTiles };

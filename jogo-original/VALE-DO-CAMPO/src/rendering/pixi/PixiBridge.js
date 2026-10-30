@@ -1,5 +1,6 @@
 /**
- * Ponte para o PixiJS (WebGL). Fase 1 da migração (ver PLANO_MIGRACAO.md): só liga o PixiJS, ainda não desenha nada.
+ * Ponte para o PixiJS (WebGL). Liga o PixiJS e entrega o renderizador para as camadas migradas (ver PLANO_MIGRACAO.md).
+ * Hoje a única camada que usa o PixiJS é o chão de grama parada (PixiGround.js, fase 2).
  *
  * - Sem `?pixi` na URL: nada acontece e o PixiJS nem é baixado. O jogo é desenhado em Canvas 2D, como sempre.
  * - Com `?pixi`: cria um renderizador WebGL FORA da tela (não entra na página). Se o aparelho não suportar WebGL,
@@ -7,7 +8,11 @@
  *
  * O estado fica em `window.VDC_PIXI` ({ ok, renderer }) para conferência no console e nos testes.
  */
-import { VH, VW } from '../../config/constants.js';
+import { TS, VH, VW } from '../../config/constants.js';
+
+// Tamanho do quadro do PixiJS: cabe o maior trecho de tiles que o laço do chão visita (ver Renderer.js) + folga.
+const CANVAS_W = (Math.ceil(VW / TS) + 3) * TS,
+  CANVAS_H = (Math.ceil(VH / TS) + 3) * TS;
 
 /** `search` é o texto depois do "?" da URL (ex.: "?pixi&debug"). */
 export function pixiRequested(search) {
@@ -25,10 +30,20 @@ export function initPixi(search = location.search) {
       // Pixel art nítido: sem suavizar as texturas ao ampliar.
       PIXI.TextureSource.defaultOptions.scaleMode = 'nearest';
       const app = new PIXI.Application();
-      await app.init({ width: VW, height: VH, preference: 'webgl', backgroundAlpha: 0, antialias: false });
+      // autoStart: false -> o jogo manda desenhar quando quer (não existe laço próprio do PixiJS).
+      await app.init({
+        width: CANVAS_W,
+        height: CANVAS_H,
+        resolution: 1,
+        preference: 'webgl',
+        backgroundAlpha: 1,
+        antialias: false,
+        autoStart: false,
+        sharedTicker: false,
+      });
       const info = { ok: true, renderer: app.renderer.name, app, PIXI };
       window.VDC_PIXI = info;
-      console.info('[Vale do Campo] PixiJS ligado (' + info.renderer + '). O desenho ainda é Canvas 2D (fase 1).');
+      console.info('[Vale do Campo] PixiJS ligado (' + info.renderer + '). O resto do desenho continua em Canvas 2D.');
       return info;
     } catch (err) {
       window.VDC_PIXI = { ok: false, error: String(err) };
@@ -37,4 +52,10 @@ export function initPixi(search = location.search) {
     }
   })();
   return started;
+}
+
+/** O PixiJS pronto ({ PIXI, app }) ou null (sem ?pixi, ainda carregando, ou sem WebGL). */
+export function getPixi() {
+  const v = typeof window !== 'undefined' ? window.VDC_PIXI : null;
+  return v && v.ok ? v : null;
 }
