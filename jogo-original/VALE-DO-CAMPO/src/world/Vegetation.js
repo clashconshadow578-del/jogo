@@ -118,6 +118,11 @@ const drawSapling = extensible(function drawSapling(x, y, s) {
 const MATO_POOL = [],
   MATO_LIST = [];
 
+// Onde a planta nasce DENTRO do tile: sorteio fixo por tile (hash), nos dois eixos, para não formar grade nem ficar
+// sempre no centro. A base da planta varia de -7 a +7 px na horizontal e de -5 a +5 na vertical (pode invadir o vizinho).
+const matoDX = (tx, ty) => Math.floor(hash2(tx * 13 + 1, ty * 17 + 9) * 15) - 7,
+  matoDY = (tx, ty) => Math.floor(hash2(tx * 19 + 5, ty * 23 + 2) * 11) - 5;
+
 function hydroMatoList(x0, x1, y0, y1) {
   const L = MATO_LIST;
   let n = 0;
@@ -126,7 +131,7 @@ function hydroMatoList(x0, x1, y0, y1) {
       const i = ty * MW + tx;
       if (ground[i] === GRASS && mato[i] > FASE[0] && wl[i] < 0.03 && wearT[i] < 0.12 && !obj[i]) {
         const o = MATO_POOL[n] || (MATO_POOL[n] = { k: 0, tx: 0, ty: 0, i: 0 });
-        o.k = ty * TS + 6;
+        o.k = ty * TS + 6 + matoDY(tx, ty); // a ordem Y segue o pé da planta, que agora varia dentro do tile
         o.tx = tx;
         o.ty = ty;
         o.i = i;
@@ -134,12 +139,13 @@ function hydroMatoList(x0, x1, y0, y1) {
       }
     }
   L.length = n;
+  L.sort((a, b) => a.k - b.k); // o pé varia por tile: a lista deixa de sair em ordem de linha
   return L;
 }
 
 /**
- * Desenha a planta (helicônia ou samambaia, fase 1-4) do tile de mato. A base fica no pé do tile e a copa passa
- * para o tile de cima; a ordem Y (hydroMatoList) faz o mato cobrir os pés de quem está atrás dele.
+ * Desenha a planta (helicônia ou samambaia, fase 1-4) do tile de mato, num ponto sorteado dentro do tile (matoDX/DY)
+ * e com a copa passando para cima; a ordem Y (hydroMatoList) faz o mato cobrir os pés de quem está atrás dele.
  * `t` é o tempo em segundos: o vento balança a planta 1 px e o jogador por perto a faz tremer.
  */
 function drawMato(tx, ty, t, i) {
@@ -155,8 +161,7 @@ function drawMato(tx, ty, t, i) {
     ws = Math.sin(t * 1.3 + tx * 0.7 + ty * 0.4) * (0.6 + climate.wind * 0.6),
     rs = Math.hypot(x + 8 - S.px, y + 8 - S.py) < 22 ? Math.sin(t * 14) * 1.3 : 0,
     lean = Math.round(ws * 0.5 + rs);
-  const ox = Math.floor(h * 5) - 2; // deslocamento por tile: quebra a repetição em campos inteiros da mesma fase
-  ctx.drawImage(m.img, Math.round(x + 8 - m.w / 2) + ox + lean, y + 14 - m.h);
+  ctx.drawImage(m.img, Math.round(x + 8 - m.w / 2) + matoDX(tx, ty) + lean, y + 14 + matoDY(tx, ty) - m.h);
 }
 
 /** Compatibilidade com o teste de desempenho (core/Bench.js): o mato agora é sempre uma sprite pronta. */
