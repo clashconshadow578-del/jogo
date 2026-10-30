@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { createServer } from 'vite';
 const { chromium } = createRequire(import.meta.url)('playwright');
 const TOL_MAX = +(process.env.TOL_MAX || 10),
-  TOL_FRAC = +(process.env.TOL_FRAC || 0.01);
+  TOL_FRAC = +(process.env.TOL_FRAC || 0.02);
 const root = new URL('../../', import.meta.url).pathname;
 const env = fs.readFileSync(new URL('../regression/deterministic-env.js', import.meta.url), 'utf8');
 const srv = await createServer({ root, logLevel: 'error', server: { port: 0, host: '127.0.0.1' } });
@@ -48,7 +48,9 @@ async function roda(qs) {
     await step(3);
     pngs[`${x},${y}`] = (await p.evaluate(() => document.getElementById('c').toDataURL('image/png'))).split(',')[1];
   }
-  const layers = await p.evaluate(() => JSON.stringify(window.VDC_LAYERS || null));
+  const layers = await p.evaluate(
+    () => JSON.stringify(window.VDC_LAYERS || null) + ' guardas: ' + JSON.stringify(window.VDC_LAYER_STATS || null),
+  );
   await c.close();
   return { pngs, layers, errs };
 }

@@ -157,6 +157,11 @@ const layerShoreline = extensible(function layerShoreline(v, ents) {
       } // bordas sempre acima da água
 });
 
+/** Desenha uma entidade (ponto de extensão). */
+const drawEntity = extensible(function drawEntity(en) {
+  en.draw();
+});
+
 /** Camada: as entidades já ordenadas por Y, com o mato cobrindo os pés. */
 const layerEntities = extensible(function layerEntities(v, ents) {
   const { t, gx0, gx1, gy0, gy1 } = v;
@@ -167,7 +172,7 @@ const layerEntities = extensible(function layerEntities(v, ents) {
       if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
       mi++;
     }
-    if (!semDesenho(en)) en.draw();
+    if (!semDesenho(en)) drawEntity(en);
   }
   while (mi < ML.length) {
     if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
@@ -254,6 +259,7 @@ function render() {
 }
 
 export {
+  drawEntity,
   layerBase,
   layerEntities,
   layerRelief,
