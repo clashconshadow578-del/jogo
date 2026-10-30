@@ -318,3 +318,19 @@ corrigido antes do commit.
 - **Prova:** 97 testes · build · 24 posições da câmera com 0 diferenças da referência · regressão visual com os **mesmos números** do código anterior nos 4 cenários.
 - **O que isto NÃO é:** as entidades continuam sendo desenhadas em Canvas 2D. Passá-las para sprites do PixiJS exigiria levar junto o mato (centenas de tiles
   intercalados com as entidades pela ordem Y, porque a ordem de desenho precisa continuar exata). Ver a seção 19.
+
+## 17. Fase 6 (feita): luz e clima em etapas separadas
+
+`passFinish` (o último passe do quadro) virou quatro etapas, cada uma `extensible()` e exportada, chamadas na **mesma ordem** de antes:
+
+| Etapa | O que faz |
+|---|---|
+| `passLight(v, ents)` | poeira, respingos e a iluminação (`applyLighting`: mapa de luz e sombras projetadas) |
+| `passOverlays(v)` | balões, estados dos bichos, etiquetas e vaga-lumes (aditivo) |
+| `passSky(v, ents)` | clima (chuva, nuvens), raios de sol, bloom, poeira atmosférica e relâmpago |
+| `passVignette(v)` | vinheta (escurece as bordas, mais forte à noite) |
+
+Assim o PixiJS pode assumir, por exemplo, só a vinheta ou só o clima, sem tocar na luz. **Só o código mudou de lugar**: 97 testes · build · 24 posições
+da câmera com 0 diferenças · regressão visual com os mesmos números nos 4 cenários. A luz continua sendo gerada em Canvas 2D (o mapa de luz e as sombras
+projetadas são desenhados em canvases auxiliares); passar a *composição final* para o PixiJS só vale a pena se uma medição no celular mostrar que ela pesa
+(no 3º teste ela ficou dentro do ruído: seção 14).

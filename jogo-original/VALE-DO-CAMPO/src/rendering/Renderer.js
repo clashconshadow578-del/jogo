@@ -2,8 +2,8 @@
  * Renderização de um quadro: câmera, chão, água, entidades ordenadas por Y, reflexos, mato, iluminação, vaga-lumes, clima, atmosfera e vinheta.
  *
  * O quadro é feito em três passes, sempre nesta ordem: `passGround` (fundo e chão), `passEntities` (tudo o que fica em pé, ordenado
- * por Y) e `passFinish` (luz, clima, atmosfera e vinheta). Cada passe é `extensible()`: é por aí que o PixiJS assume um passe de
- * cada vez, com o desenho em Canvas como plano B:
+ * por Y) e `passFinish` (luz, clima, atmosfera e vinheta; ele chama `passLight`, `passOverlays`, `passSky` e `passVignette`).
+ * Cada passe é `extensible()`: é por aí que o PixiJS assume um passe de cada vez, com o desenho em Canvas como plano B:
  *
  *   passGround.extend((prev) => function (v) { if (!pixiOk()) return prev.apply(this, arguments); ...desenha no Pixi... });
  *
@@ -144,12 +144,17 @@ const passEntities = extensible(function passEntities(v, ents) {
   }
 });
 
-/** Passe 3: poeira, respingos, iluminação, balões e etiquetas, vaga-lumes, clima, atmosfera, relâmpago e vinheta. */
-const passFinish = extensible(function passFinish(v, ents) {
+/** Passe 3a (luz): poeira, respingos e a iluminação (mapa de luz e sombras projetadas). */
+const passLight = extensible(function passLight(v, ents) {
   const { t, h, camX, camY } = v;
   drawDust();
   if (!AB.agua) drawSplash();
   if (!AB.luz) applyLighting(t, h, camX, camY, ents);
+});
+
+/** Passe 3b (por cima da luz): balões, estados dos bichos, etiquetas e vaga-lumes. */
+const passOverlays = extensible(function passOverlays(v) {
+  const { t, h, camX, camY } = v;
   drawBubbles(camX, camY);
   drawAnimalStatus();
   drawFaunaLabels();
@@ -165,11 +170,20 @@ const passFinish = extensible(function passFinish(v, ents) {
     }
     ctx.globalCompositeOperation = 'source-over';
   }
+});
 
+/** Passe 3c (céu): clima (chuva, nuvens), raios de sol, bloom, poeira atmosférica e relâmpago. */
+const passSky = extensible(function passSky(v, ents) {
+  const { t, h, camX, camY } = v;
   if (!AB.clima) drawWeather(t, camX, camY);
   // 4b) Raios de sol, bloom seletivo e poeira atmosférica
   if (!AB.atm) drawAtmosphere(t, h, camX, camY, ents);
   if (!AB.clima) drawLightning();
+});
+
+/** Passe 3d: vinheta (escurece as bordas, mais forte à noite). */
+const passVignette = extensible(function passVignette(v) {
+  const { h } = v;
   // 5) vinheta
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const vig = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VW * 0.65);
@@ -177,6 +191,14 @@ const passFinish = extensible(function passFinish(v, ents) {
   vig.addColorStop(1, `rgba(0,0,0,${(0.2 + 0.3 * nightF(h)) * S.lum})`);
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, VW, VH);
+});
+
+/** Passe 3: acabamento, sempre nesta ordem: luz, sobreposições, céu e vinheta (cada etapa também é `extensible()`). */
+const passFinish = extensible(function passFinish(v, ents) {
+  passLight(v, ents);
+  passOverlays(v);
+  passSky(v, ents);
+  passVignette(v);
 });
 
 function render() {
@@ -192,6 +214,6 @@ function render() {
   passFinish(v, ents);
 }
 
-export { passEntities, passFinish, passGround, render, vcam, viewFor };
+export { passEntities, passFinish, passGround, passLight, passOverlays, passSky, passVignette, render, vcam, viewFor };
 // Compatibilidade: `entityProviders` e `collectEntities` agora moram em rendering/Entities.js (o jogo e o README ainda importam daqui).
 export { collectEntities, entityProviders } from './Entities.js';
