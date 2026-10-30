@@ -6,7 +6,7 @@ Escrito em português simples, para quem não programa. Baseado na leitura real 
 ## 1. Onde estamos hoje (a boa notícia)
 
 - O jogo **já é modular** (não é mais um arquivo único) e **já usa Vite**.
-- Já existem testes: 96 testes automáticos passam, e há um teste que compara o jogo pixel a pixel com o original
+- Já existem testes: 97 testes automáticos passam, e há um teste que compara o jogo pixel a pixel com o original
   (`legacy/Vale_do_Campo_V64.html`). Isso é a nossa rede de segurança.
 - **Lógica e desenho já estão separados em pastas**: `world/`, `entities/`, `systems/`, `core/` (lógica) e `rendering/` (desenho).
   A separação não é perfeita (veja a seção 3), mas é um bom ponto de partida.
@@ -39,13 +39,10 @@ O desenho acontece em ~50 arquivos que importam o `ctx` (o "pincel" do Canvas) d
 Arquivos que mais desenham (os "candidatos"): `TileRenderer` (chão), `AmazonRender`, `MapUI` (mapa, fica em Canvas), `Carcass`,
 `Bees`, `GrassSystem` (grama), `LightingSystem` (luz), `Torch`, `Trees`, `Fluvial`/`Hydrology` (rios), `ShadowSystem`.
 
-A ordem de um quadro (`Renderer.js`, função `render`):
-1. fundo + chão tile a tile (`drawTile`, `drawTrampledGrass`, `drawHydro`)
-2. relevo, pegadas, água
-3. entidades ordenadas por Y: árvores, plantas, animais, vaca, galinhas, NPCs, jogador
-4. mato, poeira, respingos, balões, vaga-lumes, clima
-5. raios de sol, brilho, relâmpago
-6. iluminação/névoa e vinheta
+A ordem de um quadro (`Renderer.js`; desde a Fase 4 a função `render` só chama 3 passes, nesta ordem; ver seção 15):
+1. `passGround`: fundo + chão tile a tile (`drawTile`, `drawTrampledGrass`, `drawHydro`), relevo, pegadas, água
+2. `collectEntities` + `passEntities`: entidades ordenadas por Y (árvores, plantas, animais, vaca, galinhas, NPCs, jogador), com o mato cobrindo os pés
+3. `passFinish`: poeira, respingos, iluminação/névoa, balões, vaga-lumes, clima, raios de sol, brilho, relâmpago e vinheta
 
 ## 4. Por que NÃO fazer uma "tradução" completa de Canvas para Pixi
 
@@ -66,7 +63,7 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 1. **Interruptor `?pixi` na URL.** Sem ele, o jogo roda como hoje. Só viramos o padrão quando todas as fases passarem.
 2. **Volta automática ao Canvas** se o aparelho não suportar WebGL.
 3. **Um sistema por vez**, um commit por fase. Se quebrar: `git revert` do commit (1 segundo) ou voltar para `backup-original-v64`.
-4. **Após cada fase, rodar:** `npm test` (96 testes), `npm run build` e o teste de regressão visual (compara pixels com o original).
+4. **Após cada fase, rodar:** `npm test` (97 testes), `npm run build` e o teste de regressão visual (compara pixels com o original).
 5. **Você testa no celular** pelo link de preview antes de eu passar para a próxima fase.
 6. Nada de mudar regras do jogo (animais, save, clima). Só a forma de desenhar.
 
@@ -78,10 +75,11 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 | **1 — Tomada de desenho** *(feita)* | Criar `rendering/pixi/` com a "tomada": inicia o Pixi atrás do `?pixi`, com plano B em Canvas. **O jogo ainda desenha tudo em Canvas** | Muito baixo | Com e sem `?pixi` a imagem é idêntica |
 | **2 — Chão (tiles)** *(feita, experimental: só com `?pixi`)* | A grama parada do chão vira textura na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Lógica idêntica (0 pixels); com WebGL, diferenças mínimas no navegador de teste; **FPS ainda não medido no celular** |
 | **3 — Mato em imagens prontas** *(feita, mas DESLIGADA por padrão até medir no celular: `?matocache` liga; ver seções 13 e 14)* | `Vegetation.drawMato`: cada tile de mato vira uma imagem pequena, refeita só quando o vento muda a inclinação das lâminas | Baixo | **Idêntico, pixel a pixel** (133 quadros) e 21-37% menos chamadas de desenho por quadro |
-| **4 — Sombras, relevo e água** *(antiga fase 3 + medição)* | Sombras de contato, relevo, hidrologia/poças/lago e grama pisoteada: camadas translúcidas, guardadas prontas quando estáticas | Médio | Diferenças de arredondamento de 1-2 níveis; conferir no celular |
-| **5 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y; clima e partículas | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
+| **4 — Passes de desenho** *(feita)* | `render()` dividido em 3 passes (`passGround`, `passEntities`, `passFinish`), cada um com plano B em Canvas: é a "tomada" por camada da seção 4. Nenhum pixel muda | Muito baixo | Idêntico: regressão visual com os mesmos números nos 4 cenários; 24 posições da câmera com 0 diferenças (seção 15) |
+| **5 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y; clima e partículas. **É o que mais pesa no celular: ~13 ms de ~52** (seção 14). Começa separando o desenho da lógica nos arquivos que ainda misturam os dois (seção 7) | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
 | **6 — Luz e névoa** | `LightingSystem`, `Torch`, vinheta viram filtros/sprites | Alto | Regressão visual, teste noturno |
-| **7 — Limpeza** | Tirar o desenho antigo só das camadas já provadas; Pixi vira padrão | Baixo | Todos os testes + teste em celular real |
+| **7 — Sombras, relevo e água** *(adiada)* | Sombras de contato, relevo, hidrologia/poças/lago e grama pisoteada: camadas translúcidas, guardadas prontas quando estáticas. **No celular custam quase nada** (dentro do ruído da medição, seção 14): só vale fazer se uma nova medição mudar isso | Médio | Diferenças de arredondamento de 1-2 níveis; conferir no celular |
+| **8 — Limpeza** | Tirar o desenho antigo só das camadas já provadas; Pixi vira padrão | Baixo | Todos os testes + teste em celular real |
 
 A interface (HUD, inventário, menus) já é HTML/CSS e **não muda**. O `MapUI` (mapa) pode ficar em Canvas.
 
@@ -89,14 +87,16 @@ A interface (HUD, inventário, menus) já é HTML/CSS e **não muda**. O `MapUI`
 
 Alguns arquivos de lógica também desenham (ex.: `Carcass.js`, `Chickens.js`, `Fishing.js`, `Anaconda.js`, `Bees.js`). Em cada fase,
 a função `draw...` desses arquivos é movida para uma pasta `rendering/` correspondente, sem alterar a lógica. Os "fornecedores de entidades"
-(`entityProviders` em `Renderer.js`) já guardam a ordem Y e a função de desenhar, e serão o ponto de encaixe da Fase 4.
+(`entityProviders` em `Renderer.js`) já guardam a ordem Y e a função de desenhar, e serão o ponto de encaixe da Fase 5. Hoje cerca de 40
+arquivos fora de `rendering/` ainda importam o `ctx` e desenham por conta própria; os maiores são `Bees`, `GrassSystem`, `Carcass`, `WaterSystem`,
+`Vegetation`, `RiverFlow`, `Fauna`, `Trees`, `Player`, `FallenLogs`, `Hydrology`, `Chickens`, `Fishing`.
 
 ## 8. Como rodar e testar
 
 ```bash
 npm install          # uma vez
 npm run dev          # servidor com atualização instantânea (porta 5173)
-npm test             # 96 testes
+npm test             # 97 testes
 npm run build        # gera a pasta dist/ (a que vai para o Netlify)
 ```
 
@@ -244,5 +244,62 @@ Contando de novo, em volta da casa são **1.195 chamadas de `drawImage` por quad
 **Segurança do seu jogo:** durante o teste **nada é gravado** (o jogo salva sozinho a cada minuto e ao esconder a aba; isso fica bloqueado),
 os toques são ignorados e a resolução fica fixa. No fim aparece o botão **Recarregar o jogo**, que volta ao último save como estava.
 
-Com o ranking do aparelho eu escolho a Fase 4 pelo que realmente pesa (e não por palpite). O navegador de teste do desenvolvimento não tem
-placa de vídeo: os números dele não valem para o celular.
+O navegador de teste do desenvolvimento não tem placa de vídeo: os números dele não valem para o celular.
+
+**3º teste real (mesmo celular; o jogo se ajustou sozinho para resolução x1 e qualidade 0 de 3):** quadro de **52,4 ms (19 fps)** = lógica 2,0 +
+desenho em JavaScript 16,2 + interface 0,1 + **espera 34,1 ms (65%)**. Mesmo no mínimo de resolução e de qualidade o jogo fica em ~19 fps: o gargalo
+**não** é a quantidade de pixels nem o nível de qualidade.
+- O que dá para afirmar: **desenhar as entidades custa 13,3 ms** (árvores 5,5 · o resto das entidades 2,6 · plantações 0,6); luz 2,3 e água 1,7.
+- O que **não** dá para afirmar: atmosfera, clima, sombras de contato, mato/relevo/umidade, resolução e qualidade ficaram **dentro do ruído** (±6 ms: o
+  celular esquenta e perde velocidade ao longo dos 5 minutos; várias linhas até "pioraram" ao desligar algo). Sem ser um gargalo claro, nenhuma dessas
+  partes justifica uma fase só para ela.
+- Micro-teste: Canvas 2D e WebGL fazem 2.200 operações a 60 fps (< 4,2 ms). Fatias de canvases pequenos, grandes, ImageBitmap e `<img>` custam **o mesmo**
+  (~7 ms por 650 fatias, ~10 µs cada); imagens de **uma só fonte** (atlas) custam ~1,8 µs cada. Ou seja: a hipótese "canvas pequeno não é acelerado" **não
+  se confirmou**; o que encarece é **trocar de imagem de origem** a cada desenho.
+
+**Decisão do dono do jogo (seguir o plano em vez de caçar fps):** "não está injogável e acredito que melhore depois". Os testes de desempenho ficam
+parados; o `?bench` e o `?fps` continuam no jogo para quando voltarmos a eles. **Pistas guardadas (nada disto foi testado no celular):**
+1. **Interface HTML:** os botões do celular (`.btn`, `src/styles/mobile.css`) usam `backdrop-filter: blur(2px)` por cima de um canvas que muda a
+   cada quadro, e alguns elementos usam `filter: drop-shadow`. A placa de vídeo refaz esses efeitos a cada quadro e isso aparece como "espera" no
+   JavaScript, não como tempo de desenho. Teste barato: abrir o jogo com um CSS que tira `backdrop-filter` e `filter`, e outro que esconde toda a
+   interface, e comparar o `?fps`.
+2. **Atlas único de sprites:** uma simulação das "corridas" de desenho por quadro (operações seguidas que a placa de vídeo consegue juntar numa
+   chamada só) deu ~1.766 hoje contra ~1.498 se todos os canvases viessem de uma só imagem: no máximo **~15%** menos chamadas. Ganho pequeno.
+3. **Árvores da Amazônia:** em volta da casa são ~346 `drawImage` por quadro só delas (cada árvore alta vira dezenas de fatias por causa do
+   balanço e do "farfalhar" das folhas). Guardar a árvore já "entortada" só compensa se o vento mudar devagar.
+4. O contador de chamadas mostrou 141 imagens de origem diferentes por quadro (479 chamadas de `drawTile`, 348 da Amazônia, 218 de bordas de lago).
+
+**Ordem das fases depois dos 3 testes (revisada de novo):** 4 = passes de desenho (feita, seção 15) · 5 = entidades (o que mais pesa) · 6 = luz e névoa ·
+7 = sombras, relevo e água (adiada: custam quase nada no celular) · 8 = limpeza.
+
+## 15. Fase 4 (feita): o desenho de um quadro em 3 passes
+
+**Por que:** `render()` era uma função de ~220 linhas que fazia tudo, e a regra "uma camada por vez, com plano B em Canvas" (seção 5) obrigava a enfiar
+um `if` do Pixi no meio dela (foi o que a Fase 2 fez). Agora cada etapa tem o seu lugar e a sua "tomada".
+
+| Peça (`rendering/Renderer.js`) | O que faz |
+|---|---|
+| `viewFor()` | calcula a câmera do quadro: `t` (segundos), `h` (hora), `camX`, `camY` e as faixas de tiles (`x0..y1`, com folga para árvores, e `gx0..gy1`, para o chão) |
+| `passGround(v)` | fundo, chão tile a tile (com o cache do chão e, só com `?pixi`, a grama na GPU), relevo, pegadas, água sobre o chão |
+| `collectEntities(v)` | **não desenha**: reúne tudo o que fica em pé (árvores, plantas, bichos, casas, jogador...) com a chave de ordenação Y e devolve a lista `ents` |
+| `passEntities(v, ents)` | sombras de contato, ordem Y, reflexos, bordas do lago e o desenho de cada entidade (o mato cobre os pés) |
+| `passFinish(v, ents)` | poeira, respingos, iluminação, balões, vaga-lumes, clima, atmosfera, relâmpago e vinheta |
+
+`passGround`, `passEntities` e `passFinish` são `extensible()` (o mesmo mecanismo de camadas que o jogo já usa em `core/extensions.js`) e ficam
+exportados junto com `viewFor` e `collectEntities`. **É assim que o PixiJS assume um passe de cada vez:**
+`passEntities.extend((prev) => function (v, ents) { if (!pixiOk()) return prev.apply(this, arguments); ...desenha no Pixi... })`. Sem WebGL, ou se der
+erro, cai no `prev` (o Canvas de sempre).
+
+**Só o código mudou de lugar.** Conferido comparando o arquivo antigo e o novo linha a linha: as únicas linhas que sumiram são dois `import` que ficaram
+sem uso, 3 linhas de uma conta de sombra (`shA`) que ninguém lia e a linha `vcam = ...`, que foi para `render()`; a variável da vinheta passou de `v`
+para `vig` porque `v` agora é a câmera. Um erro de digitação aparece na hora (o jogo nem abre): aconteceu uma vez durante a divisão (nome repetido) e foi
+corrigido antes do commit.
+
+**Prova (código anterior x novo, no mesmo ambiente de teste):**
+- 97 testes automáticos ok; `npm run build` ok;
+- regressão visual `npm run test:regression`: **os mesmos números de pixels** do código anterior nos 4 cenários (`basic`, `full`, `touch`, `load`); no `basic`
+  continuam iguais à referência da seção 10;
+- `tests/perf/posgrid.mjs` (24 posições da câmera, com bordas do mapa): **0 quadros diferentes** da referência do jogo original;
+- `?pixi` (`tests/perf/pixi-equal.mjs`, `DENSE=10`): resultado **idêntico antes e depois** da divisão (mesmos números). Atenção: nesse teste o modo `2d`
+  (que deveria dar 0) mostra **1 quadro com 4 pixels diferentes** (posição `800,5`, topo do mapa, até 121 níveis). Isso já acontecia **antes** da Fase 4
+  (veio de algum commit entre a Fase 2 e o `?bench`), só afeta o `?pixi` (experimental, desligado por padrão) e **não** o jogo normal.

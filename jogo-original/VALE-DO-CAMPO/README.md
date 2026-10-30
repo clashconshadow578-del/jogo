@@ -189,7 +189,10 @@ como acontecia com os `<script>` do original.
 ```
 frame(now) ─ governador de desempenho (ajusta resolução/qualidade pelo FPS)
            ├─ update(dt)      core/GameUpdate.js + camadas registradas (regiões, tocha, névoa, Amazônia, troncos, abelhas)
-           ├─ render()        rendering/Renderer.js: chão → água → entidades (ordem Y) → iluminação → clima → atmosfera
+           ├─ render()        rendering/Renderer.js, em 3 passes (cada um é `extensible()`, ver core/extensions.js):
+           │                    passGround    chão → relevo → água
+           │                    passEntities  entidades (ordem Y) com sombras, reflexos e mato
+           │                    passFinish    iluminação → clima → atmosfera → vinheta
            └─ HUD, botões contextuais, seta da casa, hotbar
 ```
 

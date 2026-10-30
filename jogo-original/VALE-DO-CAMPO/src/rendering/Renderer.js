@@ -1,10 +1,19 @@
 /**
  * Renderização de um quadro: câmera, chão, água, entidades ordenadas por Y, reflexos, mato, iluminação, vaga-lumes, clima, atmosfera e vinheta.
  *
+ * O quadro é feito em três passes, sempre nesta ordem: `passGround` (fundo e chão), `passEntities` (tudo o que fica em pé, ordenado
+ * por Y) e `passFinish` (luz, clima, atmosfera e vinheta). Cada passe é `extensible()`: é por aí que o PixiJS assume um passe de
+ * cada vez, com o desenho em Canvas como plano B:
+ *
+ *   passGround.extend((prev) => function (v) { if (!pixiOk()) return prev.apply(this, arguments); ...desenha no Pixi... });
+ *
+ * `v` é a câmera do quadro (ver `viewFor`) e `ents` a lista de entidades (`collectEntities`).
+ *
  * Origem: Vale_do_Campo_V64.html (s02)
  */
 
 import { MH, MW, OXP, OYP, ROCK, TREE, TS, VH, VW } from '../config/constants.js';
+import { extensible } from '../core/extensions.js';
 import { frameNo } from '../core/GameLoop.js';
 import { S } from '../core/GameState.js';
 import { nightF } from '../core/TimeManager.js';
@@ -42,7 +51,6 @@ import { drawLightning, drawWeather } from './WeatherRenderer.js';
 import { cropModel, drawCrop } from '../systems/FarmingSystem.js';
 import { fishDrawEnts } from '../systems/Fishing.js';
 import { treeShake } from '../systems/Woodcutting.js';
-import { smooth } from '../utils/MathUtils.js';
 import { drawDust, drawPrints, drawTrampledGrass } from '../world/GrassSystem.js';
 import { renderInterior } from '../world/HouseInterior.js';
 import { fvBankFX } from '../world/hydrology/Fluvial.js';
@@ -55,7 +63,6 @@ import { drawVilHouse, VIL } from '../world/Village.js';
 import { drawQNpc, QNPC } from '../world/village/Quests.js';
 import { drawVendor, VEND } from '../world/village/Vendor.js';
 import { drawReflections, drawSplash, drawWaterFX, wCam } from '../world/WaterSystem.js';
-import { climate } from '../world/WeatherSystem.js';
 import { actRange, crops, inAct, obj } from '../world/World.js';
 
 let vcam = null;
@@ -72,19 +79,19 @@ export const entityProviders = [];
 function semDesenho(en) {
   if (AB.entidades) return true;
   const k = en.sh[4];
-  return (AB.arvores && k === 'tree') || (AB.plantas && k === 'crop') || (AB.outros && k !== 'tree' && k !== 'crop' && en.draw !== drawPlayer);
+  return (
+    (AB.arvores && k === 'tree') ||
+    (AB.plantas && k === 'crop') ||
+    (AB.outros && k !== 'tree' && k !== 'crop' && en.draw !== drawPlayer)
+  );
 }
 
-function render() {
-  if (S.inside) {
-    renderInterior();
-    return;
-  }
+/** Câmera e faixas de tiles de um quadro: tudo o que os passes precisam saber sobre "onde estamos olhando" (`t` em segundos, `h` hora do dia). */
+function viewFor() {
   const t = performance.now() / 1000;
   const h = 6 + S.min / 60;
   const camX = Math.round(Math.min(Math.max(S.px - VW / 2, 0), MW * TS - VW));
   const camY = Math.round(Math.min(Math.max(S.py - VH / 2, 0), MH * TS - VH));
-  vcam = { x: camX, y: camY };
   const AR0 = actRange(),
     x0 = Math.max(AR0[0], Math.floor(camX / TS) - 1),
     x1 = Math.min(AR0[1], Math.floor((camX + VW) / TS) + 1);
@@ -99,7 +106,12 @@ function render() {
     gx1 = Math.min(AR0[1], Math.floor((camX + VW) / TS)),
     gy0 = Math.max(0, Math.floor(camY / TS) - 1),
     gy1 = Math.min(MH - 1, Math.floor((camY + VH) / TS));
+  return { t, h, camX, camY, AR0, x0, x1, y0, y1, gx0, gx1, gy0, gy1 };
+}
 
+/** Passe 1: fundo + chão (tiles, trilhas, hidrologia), relevo, pegadas e a água que fica sobre o chão. */
+const passGround = extensible(function passGround(v) {
+  const { t, camX, camY, x0, x1, y0, y1, gx0, gx1, gy0, gy1 } = v;
   // 1) fundo + chão
   lakeDepthTick(t);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -126,11 +138,12 @@ function render() {
   wCam.x = camX;
   wCam.y = camY;
   if (!AB.agua) drawWaterFX(t, camX, camY, x0, x1, y0, y1);
+});
 
+/** Reúne tudo o que é desenhado em pé no mundo (árvores, plantas, bichos, casas, jogador...), cada um com sua chave de ordenação Y. */
+function collectEntities(v) {
+  const { camX, camY, AR0, x0, x1, y0, y1 } = v;
   // 2) entidades (Y-sort) e sombras
-  const sunS = (h - 6) / 14;
-  const e = sunS >= 0 && sunS <= 1 ? Math.sin(Math.PI * sunS) : 0;
-  const shA = 0.4 * smooth(0, 0.12, e) * S.lum * (1 - climate.cloud * 0.95);
   const ents = [];
   const AP = amzPad ? amzPad() : null,
     ax0 = AP ? Math.max(AR0[0], x0 - AP.x) : x0,
@@ -240,7 +253,12 @@ function render() {
   if (wolfEnt) wolfEnt(ents);
   for (const add of entityProviders) add(ents, camX, camY);
   ents.push({ k: S.py, sh: [S.px, S.py, 8, 14, 'person'], draw: drawPlayer });
+  return ents;
+}
 
+/** Passe 2: sombras de contato, ordem Y, reflexos, bordas do lago e o desenho de cada entidade (o mato cobre os pés). */
+const passEntities = extensible(function passEntities(v, ents) {
+  const { t, gx0, gx1, gy0, gy1 } = v;
   const fillBefore = ctx.fillStyle; // contactShadow não faz mais save/restore por entidade: devolvemos o fillStyle aqui
   if (!AB.sombras)
     for (const en of ents) {
@@ -269,6 +287,11 @@ function render() {
     if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
     mi++;
   }
+});
+
+/** Passe 3: poeira, respingos, iluminação, balões e etiquetas, vaga-lumes, clima, atmosfera, relâmpago e vinheta. */
+const passFinish = extensible(function passFinish(v, ents) {
+  const { t, h, camX, camY } = v;
   drawDust();
   if (!AB.agua) drawSplash();
   if (!AB.luz) applyLighting(t, h, camX, camY, ents);
@@ -294,11 +317,24 @@ function render() {
   if (!AB.clima) drawLightning();
   // 5) vinheta
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const v = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VW * 0.65);
-  v.addColorStop(0, 'rgba(0,0,0,0)');
-  v.addColorStop(1, `rgba(0,0,0,${(0.2 + 0.3 * nightF(h)) * S.lum})`);
-  ctx.fillStyle = v;
+  const vig = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VW * 0.65);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, `rgba(0,0,0,${(0.2 + 0.3 * nightF(h)) * S.lum})`);
+  ctx.fillStyle = vig;
   ctx.fillRect(0, 0, VW, VH);
+});
+
+function render() {
+  if (S.inside) {
+    renderInterior();
+    return;
+  }
+  const v = viewFor();
+  vcam = { x: v.camX, y: v.camY };
+  passGround(v);
+  const ents = collectEntities(v);
+  passEntities(v, ents);
+  passFinish(v, ents);
 }
 
-export { render, vcam };
+export { collectEntities, passEntities, passFinish, passGround, render, vcam, viewFor };
