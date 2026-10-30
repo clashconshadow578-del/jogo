@@ -77,9 +77,9 @@ escolhido por um interruptor. O Canvas continua sendo o padrão e o plano B.
 | **0 — Preparação** *(feita)* | Vite funcionando, `package.json` recriado, `pixi.js` instalado (ainda não usado), backup etiquetado | Nenhum | Build ok, 96 testes ok, jogo abre sem erro |
 | **1 — Tomada de desenho** *(feita)* | Criar `rendering/pixi/` com a "tomada": inicia o Pixi atrás do `?pixi`, com plano B em Canvas. **O jogo ainda desenha tudo em Canvas** | Muito baixo | Com e sem `?pixi` a imagem é idêntica |
 | **2 — Chão (tiles)** *(feita, experimental: só com `?pixi`)* | A grama parada do chão vira textura na GPU (`TileRenderer`, `GrassSystem` parte parada) | Médio | Lógica idêntica (0 pixels); com WebGL, diferenças mínimas no navegador de teste; **FPS ainda não medido no celular** |
-| **3 — Grama pisoteada e rios** | `drawTrampledGrass`, `Hydrology` | Médio | Idem + teste `grass-idle-paths` |
-| **4 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
-| **5 — Efeitos** | Clima, partículas, sombras | Médio | Regressão visual |
+| **3 — Mato em imagens prontas** *(feita; trocou de lugar com a antiga fase 3, ver seção 13)* | `Vegetation.drawMato`: cada tile de mato vira uma imagem pequena, refeita só quando o vento muda a inclinação das lâminas | Baixo | **Idêntico, pixel a pixel** (133 quadros) e 21-37% menos chamadas de desenho por quadro |
+| **4 — Sombras, relevo e água** *(antiga fase 3 + medição)* | Sombras de contato, relevo, hidrologia/poças/lago e grama pisoteada: camadas translúcidas, guardadas prontas quando estáticas | Médio | Diferenças de arredondamento de 1-2 níveis; conferir no celular |
+| **5 — Entidades** | Árvores, plantas, animais, jogador como sprites ordenados por Y; clima e partículas | Médio/alto | Regressão visual dos cenários `basic`, `full`, `touch` |
 | **6 — Luz e névoa** | `LightingSystem`, `Torch`, vinheta viram filtros/sprites | Alto | Regressão visual, teste noturno |
 | **7 — Limpeza** | Tirar o desenho antigo só das camadas já provadas; Pixi vira padrão | Baixo | Todos os testes + teste em celular real |
 
@@ -157,3 +157,38 @@ WebGL -> Canvas pode custar o que a Fase 2 economiza; só o celular responde. Se
 
 **Como testar no celular:** abra o jogo normal e depois com `?pixi` no fim do endereço (ex.: `...app.github.dev/?pixi`). Compare o visual
 (deve ser igual) e a fluidez. No console (`window.VDC_PIXI.renderer`) deve aparecer `webgl`.
+
+## 13. A medição que mudou a ordem das fases (e a Fase 3 feita)
+
+**Por que medir:** a Fase 2 mostrou que mexer no chão rende pouco quando ele já está otimizado. Então, antes da Fase 3, contei quantas
+chamadas de desenho (Canvas 2D) o jogo faz **por quadro** e **quem** as faz. Esse número independe da placa de vídeo: é o que pesa no
+processador do celular. (Roteiro: instrumentar os métodos do contexto 2D e agrupar pelo arquivo/função que chamou; 40 quadros de média.)
+
+| Parte do jogo | Fazenda | Rio | Floresta |
+|---|---|---|---|
+| **Mato** (`Vegetation.drawMato`) | **31%** | 24% | **43%** |
+| Sombras de contato (`ShadowSystem`) | 20% | 22% | 19% |
+| Água, umidade, poças, lago (`Hydrology`, `Puddles`, `LakeRenderer`) | 13% + 6% | **30%** | 15% |
+| Relevo (`Relief`) | 11% | – | 19% |
+| Tiles base (`TileRenderer`, o que a Fase 2 cobriu) | 12% | 8% | – |
+| Total de chamadas por quadro | 3.956 | 4.959 | 4.038 |
+
+A grama pisoteada (que seria a Fase 3) nem aparece entre os maiores. Por isso a Fase 3 passou a ser o **mato**, o maior de todos.
+
+**Fase 3 (feita): mato em imagens prontas.** O mato é feito só de retângulos **opacos** de 1 pixel de largura, então cada tile vira uma imagem
+pequena (28x26 px) copiada com 1 chamada no lugar de 3 a 13. A imagem só é refeita quando o vento muda a inclinação de alguma lâmina (um
+número inteiro de pixels). Fica no desenho original (lâmina por lâmina) quando: o jogador está perto (o mato treme todo quadro), a inclinação
+passa de 6 px, o desenho não é no canvas principal (cache do chão) ou há transparência/modo de mistura ligados. `?matolive` força o desenho
+original (usado nos testes).
+- **Prova:** `tests/perf/ab-equal.mjs` compara o desenho original com o novo em 133 quadros (posições do mapa, vento de 0 a 4,5, 4 níveis de
+  qualidade, andando, chuva e noite; ~520 tiles de mato por quadro): **0 pixels diferentes**. Estragando o código de propósito (imagem
+  deslocada 1 px) o teste reprova todos os quadros, então ele detecta erro. O jogo normal também ficou idêntico aos registros anteriores.
+- **Ganho medido** (chamadas de desenho por quadro): fazenda 3.956 → 2.884 (**-27%**), rio 4.959 → 3.928 (-21%), floresta 4.038 → 2.549 (**-37%**).
+  Só o mato: 1.239 → 160, 1.183 → 152, 1.722 → 221.
+- **Não é PixiJS:** não precisa de WebGL, funciona sem `?pixi`. As imagens prontas são exatamente o tipo de recurso que o PixiJS usará nas
+  fases seguintes (texturas/sprites em vez de desenhar tudo a cada quadro).
+
+**Roteiro revisado (pelos dados):** 4 = sombras de contato + relevo + água/umidade (camadas translúcidas, estáticas na maior parte do tempo;
+arredondamento de 1-2 níveis em vez de idêntico) · 5 = entidades (árvores, animais, jogador) como sprites do PixiJS · 6 = luz e névoa em shader
+· 7 = PixiJS vira o padrão. A razão: o PixiJS ganha de verdade quando substitui **milhares de chamadas por quadro** por objetos que ficam na
+placa de vídeo; as camadas que ainda são feitas de muitas chamadas pequenas (mato, sombras, relevo, água) vêm primeiro.
