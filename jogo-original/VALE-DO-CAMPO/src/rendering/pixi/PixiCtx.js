@@ -345,23 +345,30 @@ class Grad {
   }
 }
 const gradCache = new Map();
-/** Imagem do gradiente no retângulo (rx, ry, w, h). Se todas as paradas têm a mesma cor, só o alpha muda: guarda 1 imagem e devolve o alpha máximo. */
+/**
+ * Imagem do gradiente no retângulo (rx, ry, w, h). Se todas as paradas têm a mesma cor, só o alpha muda: guarda 1 imagem BRANCA e devolve
+ * o alpha máximo (`a`) e a cor (`rgb`), que quem desenha aplica como tinta. Assim uma cor que muda aos poucos (o reflexo do céu na água,
+ * que muda a cada minuto do amanhecer) não cria uma imagem do tamanho da tela por cor, sem nunca liberar a memória da placa de vídeo.
+ */
 function gradImage(g, rx, ry, w, h) {
   const cores = g.stops.map(([o, c]) => [o, parseColor(c)]);
   const mesma = cores.every(([, c]) => c && c.rgb === cores[0][1].rgb);
   const amax = mesma ? Math.max(...cores.map(([, c]) => c.a), 1e-6) : 1;
   const rel = g.p.map((v, i) =>
-    g.tipo === 'linear' ? v - (i % 2 ? ry : rx) : v - (i === 0 || i === 3 ? rx : i === 1 || i === 4 ? ry : 0),
+    Math.round(
+      (g.tipo === 'linear' ? v - (i % 2 ? ry : rx) : v - (i === 0 || i === 3 ? rx : i === 1 || i === 4 ? ry : 0)) * 2,
+    ) / 2, // em passos de 0,5 px: raios que oscilam continuamente (tocha) não geram uma imagem nova a cada quadro
   );
   const key = [
     g.tipo,
     rel.join(','),
     w,
     h,
-    mesma ? cores.map(([o, c]) => o + ':' + c.rgb + ':' + (c.a / amax).toFixed(3)).join(';') : JSON.stringify(g.stops),
+    mesma ? cores.map(([o, c]) => o + ':' + (c.a / amax).toFixed(2)).join(';') : JSON.stringify(g.stops),
   ].join('|');
   let c = gradCache.get(key);
   if (!c) {
+    if (gradCache.size > 300) gradCache.clear(); // limite: o que ainda for usado é refeito
     c = document.createElement('canvas');
     c.width = w;
     c.height = h;
@@ -373,14 +380,14 @@ function gradImage(g, rx, ry, w, h) {
       const cc = cores[i][1];
       gr.addColorStop(
         o,
-        mesma ? 'rgba(' + [(cc.rgb >> 16) & 255, (cc.rgb >> 8) & 255, cc.rgb & 255, cc.a / amax].join(',') + ')' : col,
+        mesma ? 'rgba(255,255,255,' + (cc.a / amax).toFixed(2) + ')' : col,
       );
     }
     k.fillStyle = gr;
     k.fillRect(0, 0, w, h);
     gradCache.set(key, c);
   }
-  return { c, a: amax };
+  return { c, a: amax, rgb: mesma ? cores[0][1].rgb : 0xffffff };
 }
 
 const BLEND = { 'source-over': 'normal', lighter: 'add', multiply: 'multiply', screen: 'screen' };
@@ -555,11 +562,8 @@ class PixiCtx {
       if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1)
         this.bad = 'gradiente em retângulo fracionado';
       else {
-        const gi = gradImage(this.fillStyle, x, y, w, h),
-          antes = this.globalAlpha;
-        this.globalAlpha = antes * gi.a;
-        this.drawImage(gi.c, x, y);
-        this.globalAlpha = antes;
+        const gi = gradImage(this.fillStyle, x, y, w, h);
+        this.quad(dyn(gi.c, 0, 0, w, h), x, y, w, h, gi.rgb, this.globalAlpha * gi.a);
       }
       return;
     }
@@ -662,43 +666,13 @@ class PixiCtx {
     const gs = this.fillStyle;
     if (gs instanceof Grad && gs.tipo === 'radial' && this.ops.length === 1 && this.ops[0][0] === 'A') {
       // brilho: círculo com gradiente radial que some na borda. Vira 1 imagem centrada (vale para qualquer posição).
-      const [, x, y, rx] = this.ops[0],
-        [gx0, gy0, gr0, gx1, gy1, gr1] = gs.p;
-      const w = Math.ceil(rx * 2) + 2;
-      const key =
-        'g|' +
-        w +
-        '|' +
-        gr0.toFixed(2) +
-        '|' +
-        gr1.toFixed(2) +
-        '|' +
-        (gx1 - gx0).toFixed(1) +
-        ',' +
-        (gy1 - gy0).toFixed(1) +
-        '|' +
-        JSON.stringify(gs.stops);
-      let b = bakeCache.get(key);
-      if (!b) {
-        const cv = document.createElement('canvas');
-        cv.width = cv.height = w;
-        cv.naturalWidth = w;
-        const k = cv.getContext('2d'),
-          gr = k.createRadialGradient(
-            w / 2 + (gx0 - x),
-            w / 2 + (gy0 - y),
-            gr0,
-            w / 2 + (gx1 - x),
-            w / 2 + (gy1 - y),
-            gr1,
-          );
-        for (const [o, col] of gs.stops) gr.addColorStop(o, col);
-        k.fillStyle = gr;
-        k.fillRect(0, 0, w, w);
-        b = { c: cv };
-        bakeCache.set(key, b);
-      }
-      this.quad(frameTex(b.c, 0, 0, w, w), x - w / 2, y - w / 2, w, w, 0xffffff, this.globalAlpha);
+      // Usa gradImage: quando todas as paradas têm a mesma cor só o alpha muda, então é UMA imagem por tamanho e o alpha vai no desenho.
+      // (Antes a chave incluía o alpha de cada parada: vaga-lumes e tochas, que mudam de alpha a cada quadro, criavam uma imagem
+      // nova por quadro, sem limite, e a memória da placa de vídeo enchia até o jogo travar.)
+      const [, x, y, rx] = this.ops[0];
+      const w = Math.ceil(rx * 2) + 2,
+        gi = gradImage(gs, x - w / 2, y - w / 2, w, w);
+      this.quad(frameTex(gi.c, 0, 0, w, w), x - w / 2, y - w / 2, w, w, gi.rgb, this.globalAlpha * gi.a);
       return;
     }
     const c = typeof this.fillStyle === 'string' ? parseColor(this.fillStyle) : null;

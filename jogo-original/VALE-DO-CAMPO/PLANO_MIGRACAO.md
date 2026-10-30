@@ -407,3 +407,12 @@ pisoteio forte; compactação atrapalha o crescimento e a germinação de árvor
 sufoca brotos vizinhos. Números em `config/trampling.js`. Prova: `npm test` (105), `tests/browser/trampling.mjs` (10 conferências), `plants.mjs`, ecossistema A/C/D e cercas sem falhas.
 Observação: `ecosystem-b.mjs` falha na conferência 18 ("a onça derruba o jogador") **também na branch original** (`46eb705`), antes de qualquer mudança desta tarefa.
 
+## 25. Travamento depois de dormir: vazamento de imagens no PixiJS (corrigido)
+
+Sintoma: ~30 s depois de dormir o jogo caía para 0 fps. Causa (já existia na versão original): `PixiCtx.fill` (brilhos: vaga-lumes, tocha) guardava uma imagem por valor de
+transparência, e `drawWaterFX` (reflexo do céu na água, cuja cor muda a cada minuto do amanhecer) uma imagem do tamanho da tela por cor, sem limite: milhares por minuto, memória da
+placa de vídeo cheia. Conserto: o gradiente guarda UMA imagem branca e a cor/transparência vão como tinta no desenho (`gradImage` devolve `rgb` e `a`), raios em passos de 0,5 px e
+limite de 300 no cache. `findPath` virou A* com memória de buscas sem saída (tempo de jogo). Máscaras de recorte brancas voltam a ficar fora do desenho antes de cada quadro.
+Atenção para quem testa: os testes de navegador antigos NÃO ligam o PixiJS (o servidor estático não resolve `pixi.js`); só `tests/browser/pixi-leak.mjs` sobe o jogo pelo Vite com WebGL.
+Nota: "canvas" aqui são as imagens-buffer que o PixiJS usa como textura (seção 21); a cena inteira continua desenhada pelo PixiJS.
+

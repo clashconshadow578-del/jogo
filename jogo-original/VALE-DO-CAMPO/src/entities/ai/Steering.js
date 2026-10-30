@@ -5,6 +5,7 @@
  */
 
 import { MH, MW, TS } from '../../config/constants.js';
+import { S } from '../../core/GameState.js';
 import { blocked, solid } from '../../systems/CollisionSystem.js';
 import { animalSpeed, tilePathCost } from '../../world/Trails.js';
 
@@ -72,78 +73,123 @@ function losWith(can, x0, y0, x1, y1) {
   return true;
 }
 
-// Caminho por tiles (BFS) + suavização por linha de visão -> trajetos naturais, sem "andar em grade"
+// Memória da busca (reaproveitada em toda chamada: nada é alocado por busca). `stamp` diz se o tile foi visto NESTA busca.
+const N_TILES = MW * MH,
+  stamp = new Uint32Array(N_TILES),
+  prev = new Int32Array(N_TILES),
+  dist = new Float64Array(N_TILES), // precisão dupla: com Float32 o arredondamento fazia um tile "melhorar" para sempre (loop infinito)
+  HEAP_MAX = 1 << 17,
+  heapK = new Float64Array(HEAP_MAX), // prioridade (custo até o tile + estimativa até o destino)
+  heapC = new Int32Array(HEAP_MAX), // tile
+  heapD = new Float64Array(HEAP_MAX); // custo até o tile (para descartar entradas velhas)
+let gen = 0,
+  heapN = 0;
+// Caminhos que NÃO existem (alvo cercado): lembrados por um tempo DE JOGO (não do relógio real: o jogo também roda acelerado, ao dormir
+// e nos testes). Galinhas e vacas atraídas por comida repetem a busca a cada quadro enquanto não há rota, e uma busca sem saída varre a
+// área inteira (~1 ms): sem esta memória, vários bichos assim pesavam o quadro todo.
+const noPath = new Map(),
+  NO_PATH_MIN = 1.5; // minutos de jogo (~1,5 s no ritmo normal)
+const gameClock = () => S.day * 10000 + S.min;
+
+function heapPush(k, c, d) {
+  if (heapN >= HEAP_MAX) return;
+  let i = heapN++;
+  while (i > 0) {
+    const p = (i - 1) >> 1;
+    if (heapK[p] <= k) break;
+    heapK[i] = heapK[p];
+    heapC[i] = heapC[p];
+    heapD[i] = heapD[p];
+    i = p;
+  }
+  heapK[i] = k;
+  heapC[i] = c;
+  heapD[i] = d;
+}
+
+// Tira o menor e devolve o tile (o custo fica em popD).
+let popD = 0;
+function heapPop() {
+  const top = heapC[0];
+  popD = heapD[0];
+  const k = heapK[--heapN],
+    c = heapC[heapN],
+    d = heapD[heapN];
+  let i = 0;
+  for (;;) {
+    let m = 2 * i + 1;
+    if (m >= heapN) break;
+    if (m + 1 < heapN && heapK[m + 1] < heapK[m]) m++;
+    if (heapK[m] >= k) break;
+    heapK[i] = heapK[m];
+    heapC[i] = heapC[m];
+    heapD[i] = heapD[m];
+    i = m;
+  }
+  heapK[i] = k;
+  heapC[i] = c;
+  heapD[i] = d;
+  return top;
+}
+
+// Caminho por tiles (A*) + suavização por linha de visão -> trajetos naturais, sem "andar em grade"
 function findPath(x0, y0, x1, y1, canF) {
   const sx = Math.floor(x0 / TS),
     sy = Math.floor(y0 / TS),
     gx = Math.floor(x1 / TS),
     gy = Math.floor(y1 / TS);
   if (solid(gx, gy)) return null;
+  const clock = gameClock(),
+    nk = ((sy * MW + sx) << 14) ^ (gy * MW + gx), // chave da busca (tile de saída + tile de chegada)
+    nf = noPath.get(nk);
+  if (nf !== undefined && clock >= nf && clock - nf < NO_PATH_MIN) return null;
   const bx0 = Math.min(sx, gx) - 45,
     bx1 = Math.max(sx, gx) + 45,
     by0 = Math.min(sy, gy) - 45,
     by1 = Math.max(sy, gy) + 45;
-  // Dijkstra em grade: o tile custa menos em trilha batida e mais em mato fechado (world/Trails.js), então o caminho
+  // A* em grade: o tile custa menos em trilha batida e mais em mato fechado (world/Trails.js), então o caminho
   // segue as trilhas e contorna o mato alto. Num terreno liso é o mesmo trajeto de antes (todos os custos = 1).
-  const prev = new Int32Array(MW * MH).fill(-2),
-    dist = new Float64Array(MW * MH).fill(Infinity), // precisão dupla: com Float32 o arredondamento fazia um tile "melhorar" para sempre (loop infinito)
-    heap = [[0, sy * MW + sx]];
-  prev[heap[0][1]] = -1;
-  dist[heap[0][1]] = 0;
-  const push = (d, c) => {
-    let k = heap.push([d, c]) - 1;
-    while (k > 0) {
-      const p = (k - 1) >> 1;
-      if (heap[p][0] <= heap[k][0]) break;
-      [heap[p], heap[k]] = [heap[k], heap[p]];
-      k = p;
-    }
-  };
-  const pop = () => {
-    const top = heap[0],
-      last = heap.pop();
-    if (heap.length) {
-      heap[0] = last;
-      for (let k = 0; ; ) {
-        const l = 2 * k + 1,
-          r = l + 1;
-        let m = k;
-        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-        if (m === k) break;
-        [heap[m], heap[k]] = [heap[k], heap[m]];
-        k = m;
-      }
-    }
-    return top;
-  };
+  // A estimativa (distância em tiles x o custo mínimo 0,5) nunca passa do custo real, então o resultado é o mesmo de um Dijkstra.
+  if (++gen === 0xffffffff) {
+    stamp.fill(0);
+    gen = 1;
+  }
+  const start = sy * MW + sx,
+    goal = gy * MW + gx,
+    h = (x, y) => (Math.abs(x - gx) + Math.abs(y - gy)) * 0.5;
+  stamp[start] = gen;
+  prev[start] = -1;
+  dist[start] = 0;
+  heapN = 0;
+  heapPush(h(sx, sy), start, 0);
   let guard = 0;
-  while (heap.length) {
+  while (heapN) {
     if (++guard > 120000) break; // trava de segurança (a área tem no máximo ~8 mil tiles): nunca deixa a página presa
-    const [cd, c] = pop();
+    const c = heapPop(),
+      cd = popD;
     if (cd > dist[c] + 1e-9) continue;
+    if (c === goal) break;
     const cx = c % MW,
       cy = (c / MW) | 0;
-    if (cx === gx && cy === gy) break;
-    for (const [dx, dy] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ]) {
-      const nx = cx + dx,
-        ny = cy + dy;
+    for (let q = 0; q < 4; q++) {
+      const nx = cx + (q === 0 ? 1 : q === 1 ? -1 : 0),
+        ny = cy + (q === 2 ? 1 : q === 3 ? -1 : 0);
       if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1 || solid(nx, ny)) continue;
       const n = ny * MW + nx,
         nd = cd + tilePathCost(n);
-      if (nd >= dist[n] - 1e-9) continue;
+      if (stamp[n] === gen && nd >= dist[n] - 1e-9) continue;
+      stamp[n] = gen;
       dist[n] = nd;
       prev[n] = c;
-      push(nd, n);
+      heapPush(nd + h(nx, ny), n, nd);
     }
   }
-  const g = gy * MW + gx;
-  if (prev[g] === -2) return null;
+  const g = goal;
+  if (stamp[g] !== gen) {
+    if (noPath.size > 400) noPath.clear();
+    noPath.set(nk, clock);
+    return null;
+  }
   const pts = [];
   for (let c = g; c !== -1; c = prev[c]) pts.push([(c % MW) * TS + 8, ((c / MW) | 0) * TS + 8]);
   pts.reverse();

@@ -106,6 +106,22 @@ const rnd = JSON.parse(await run(p, `(() => {
 })()`));
 ok(rnd.worst < 80 && rnd.total < 2500, 'findPath nunca prende: pior ' + rnd.worst.toFixed(1) + ' ms, total ' + rnd.total.toFixed(0) + ' ms para 300 caminhos');
 
+// 9) alvo cercado (sem caminho): galinhas e vacas repetem a busca a cada quadro; 300 chamadas seguidas não podem custar caro
+const cercado = JSON.parse(await run(p, `(() => {
+  const [fx, fy] = window.__f, gx = fx + 6, gy = fy + 4;
+  for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) { const i = (gy + y) * MW + gx + x; obj[i] = (x === 0 && y === 0) ? 0 : 1; }
+  const t = performance.now(); let nulos = 0;
+  for (let k = 0; k < 300; k++) if (!findPath(fx * 16 + 8, fy * 16 + 8, gx * 16 + 8, gy * 16 + 8)) nulos++;
+  const ms = performance.now() - t;
+  for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) obj[(gy + y) * MW + gx + x] = 0;
+  return JSON.stringify({ ms, nulos });
+})()`));
+ok(cercado.nulos === 300 && cercado.ms < 150, 'alvo cercado: 300 buscas sem caminho em ' + cercado.ms.toFixed(1) + ' ms');
+
+// 10) o caminho de ida e volta continua achando rota depois de uma falha lembrada (outro destino livre)
+const livre = JSON.parse(await run(p, `(() => { const [fx, fy] = window.__f; const q = findPath(fx * 16 + 8, fy * 16 + 8, (fx + 9) * 16 + 8, (fy + 7) * 16 + 8); return JSON.stringify(q ? q.length : null); })()`));
+ok(livre !== null && livre >= 1, 'destino livre ainda tem caminho (' + livre + ' pontos)');
+
 await p.waitForTimeout(1000);
 ok(errs.length === 0, 'sem erros no console' + (errs.length ? ': ' + errs.join(' | ') : ''));
 await close();
