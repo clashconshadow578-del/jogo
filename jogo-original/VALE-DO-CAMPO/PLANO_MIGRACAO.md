@@ -334,3 +334,19 @@ Assim o PixiJS pode assumir, por exemplo, só a vinheta ou só o clima, sem toca
 da câmera com 0 diferenças · regressão visual com os mesmos números nos 4 cenários. A luz continua sendo gerada em Canvas 2D (o mapa de luz e as sombras
 projetadas são desenhados em canvases auxiliares); passar a *composição final* para o PixiJS só vale a pena se uma medição no celular mostrar que ela pesa
 (no 3º teste ela ficou dentro do ruído: seção 14).
+
+## 18. Fase 7 (feita, na forma de camadas): chão, água e sombras em camadas separadas
+
+Os passes `passGround` e `passEntities` foram divididos em camadas, todas `extensible()` e exportadas, chamadas na **mesma ordem** de antes:
+
+| Passe | Camadas (em ordem) |
+|---|---|
+| `passGround` | `layerTerrain` (fundo, cache do chão, tiles, trilhas, hidrologia; é aqui que o `?pixi` troca a grama parada) → `layerRelief` (relevo e pegadas) → `layerWater` (efeitos da água sobre o chão) |
+| `passEntities` | `layerShadows` (sombras de contato) → *(ordenação por Y)* → `layerShoreline` (reflexos, bordas do lago e das margens) → `layerEntities` (entidades por Y, com o mato cobrindo os pés) |
+
+As sombras de contato são desenhadas **antes** da ordenação por Y, na ordem em que as entidades foram reunidas (isso precisa ser mantido, porque sombras
+translúcidas sobrepostas dependem da ordem). Cada camada pode agora ser trocada pelo PixiJS sozinha. Na forma antiga do plano, esta fase seria "guardar
+prontas as camadas translúcidas estáticas (sombras, relevo, água)": os dados do celular mostraram que elas custam quase nada (seção 14), então **ficou só a
+separação em camadas**, sem trocar nenhum desenho por outro (zero risco para a imagem).
+
+**Prova:** 97 testes · build · 24 posições da câmera com 0 diferenças · regressão visual com os mesmos números nos 4 cenários.

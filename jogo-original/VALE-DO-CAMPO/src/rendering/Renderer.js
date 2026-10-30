@@ -3,7 +3,8 @@
  *
  * O quadro é feito em três passes, sempre nesta ordem: `passGround` (fundo e chão), `passEntities` (tudo o que fica em pé, ordenado
  * por Y) e `passFinish` (luz, clima, atmosfera e vinheta; ele chama `passLight`, `passOverlays`, `passSky` e `passVignette`).
- * Cada passe é `extensible()`: é por aí que o PixiJS assume um passe de cada vez, com o desenho em Canvas como plano B:
+ * Dentro deles há camadas menores (`layerTerrain`, `layerRelief`, `layerWater`; `layerShadows`, `layerShoreline`, `layerEntities`).
+ * Cada passe e cada camada é `extensible()`: é por aí que o PixiJS assume uma de cada vez, com o desenho em Canvas como plano B:
  *
  *   passGround.extend((prev) => function (v) { if (!pixiOk()) return prev.apply(this, arguments); ...desenha no Pixi... });
  *
@@ -80,8 +81,8 @@ function viewFor() {
   return { t, h, camX, camY, AR0, x0, x1, y0, y1, gx0, gx1, gy0, gy1 };
 }
 
-/** Passe 1: fundo + chão (tiles, trilhas, hidrologia), relevo, pegadas e a água que fica sobre o chão. */
-const passGround = extensible(function passGround(v) {
+/** Camada: fundo e chão (cache do terreno, tiles, trilhas e hidrologia). Com `?pixi`, a grama parada vem do PixiJS. */
+const layerTerrain = extensible(function layerTerrain(v) {
   const { t, camX, camY, x0, x1, y0, y1, gx0, gx1, gy0, gy1 } = v;
   // 1) fundo + chão
   lakeDepthTick(t);
@@ -104,16 +105,32 @@ const passGround = extensible(function passGround(v) {
       if (!AB.hidro) drawHydro(tx, ty, t);
     }
   pixiPlanEnd();
+});
+
+/** Camada: relevo e pegadas. */
+const layerRelief = extensible(function layerRelief(v) {
+  const { x0, x1, y0, y1 } = v;
   if (!AB.relevo) drawRelief(x0, x1, y0, y1);
   drawPrints();
+});
+
+/** Camada: efeitos da água que ficam sobre o chão. */
+const layerWater = extensible(function layerWater(v) {
+  const { t, camX, camY, x0, x1, y0, y1 } = v;
   wCam.x = camX;
   wCam.y = camY;
   if (!AB.agua) drawWaterFX(t, camX, camY, x0, x1, y0, y1);
 });
 
-/** Passe 2: sombras de contato, ordem Y, reflexos, bordas do lago e o desenho de cada entidade (o mato cobre os pés). */
-const passEntities = extensible(function passEntities(v, ents) {
-  const { t, gx0, gx1, gy0, gy1 } = v;
+/** Passe 1: fundo + chão (tiles, trilhas, hidrologia), relevo, pegadas e a água que fica sobre o chão, nesta ordem. */
+const passGround = extensible(function passGround(v) {
+  layerTerrain(v);
+  layerRelief(v);
+  layerWater(v);
+});
+
+/** Camada: sombras de contato sob cada entidade (antes da ordenação por Y: seguem a ordem em que as entidades foram reunidas). */
+const layerShadows = extensible(function layerShadows(v, ents) {
   const fillBefore = ctx.fillStyle; // contactShadow não faz mais save/restore por entidade: devolvemos o fillStyle aqui
   if (!AB.sombras)
     for (const en of ents) {
@@ -121,7 +138,11 @@ const passEntities = extensible(function passEntities(v, ents) {
       contactShadow(en.sh[0], en.sh[1], en.sh[2]);
     }
   ctx.fillStyle = fillBefore;
-  ents.sort((a, b) => a.k - b.k);
+});
+
+/** Camada: reflexos na água e bordas do lago e das margens (as bordas ficam sempre acima da água). */
+const layerShoreline = extensible(function layerShoreline(v, ents) {
+  const { t, gx0, gx1, gy0, gy1 } = v;
   if (!AB.agua) drawReflections(ents, t);
   if (!AB.agua)
     for (let ty = gy0; ty <= gy1; ty++)
@@ -129,6 +150,11 @@ const passEntities = extensible(function passEntities(v, ents) {
         lakeEdge(tx, ty);
         fvBankFX(tx, ty);
       } // bordas sempre acima da água
+});
+
+/** Camada: as entidades já ordenadas por Y, com o mato cobrindo os pés. */
+const layerEntities = extensible(function layerEntities(v, ents) {
+  const { t, gx0, gx1, gy0, gy1 } = v;
   const ML = hydroMatoList(gx0, gx1, gy0, gy1);
   let mi = 0; // mato cobre os pés do personagem, da vaca e do aldeão
   for (const en of ents) {
@@ -142,6 +168,14 @@ const passEntities = extensible(function passEntities(v, ents) {
     if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
     mi++;
   }
+});
+
+/** Passe 2: sombras de contato, ordem Y, reflexos, bordas do lago e o desenho de cada entidade (o mato cobre os pés), nesta ordem. */
+const passEntities = extensible(function passEntities(v, ents) {
+  layerShadows(v, ents);
+  ents.sort((a, b) => a.k - b.k);
+  layerShoreline(v, ents);
+  layerEntities(v, ents);
 });
 
 /** Passe 3a (luz): poeira, respingos e a iluminação (mapa de luz e sombras projetadas). */
@@ -214,6 +248,23 @@ function render() {
   passFinish(v, ents);
 }
 
-export { passEntities, passFinish, passGround, passLight, passOverlays, passSky, passVignette, render, vcam, viewFor };
+export {
+  layerEntities,
+  layerRelief,
+  layerShadows,
+  layerShoreline,
+  layerTerrain,
+  layerWater,
+  passEntities,
+  passFinish,
+  passGround,
+  passLight,
+  passOverlays,
+  passSky,
+  passVignette,
+  render,
+  vcam,
+  viewFor,
+};
 // Compatibilidade: `entityProviders` e `collectEntities` agora moram em rendering/Entities.js (o jogo e o README ainda importam daqui).
 export { collectEntities, entityProviders } from './Entities.js';
