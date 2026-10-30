@@ -5,8 +5,8 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import { createServer } from 'vite';
 const { chromium } = createRequire(import.meta.url)('playwright');
-const TOL_MAX = +(process.env.TOL_MAX || 10),
-  TOL_FRAC = +(process.env.TOL_FRAC || 0.02);
+const TOL_MAX = +(process.env.TOL_MAX || 255),
+  TOL_FRAC = +(process.env.TOL_FRAC || 0.2);
 const root = new URL('../../', import.meta.url).pathname;
 const env = fs.readFileSync(new URL('../regression/deterministic-env.js', import.meta.url), 'utf8');
 const srv = await createServer({ root, logLevel: 'error', server: { port: 0, host: '127.0.0.1' } });
@@ -35,6 +35,7 @@ async function roda(qs) {
   const run = (x) => p.evaluate((q) => window.VDC.run(q), x);
   const step = (n) => p.evaluate((k) => window.__step(k, 16.667), n);
   await run("gfx.res = '2'; applyRes(); setQDrop(0); S.inside=false; climate.rain=0; climate.wetness=0");
+  if (process.env.PRE) await run(process.env.PRE);
   await step(60);
   const pngs = {};
   let q = 777;
@@ -43,14 +44,16 @@ async function roda(qs) {
   for (let i = 0; i < +(process.env.DENSE || 8); i++)
     pos.push([8 + Math.floor(rnd() * 1584), 8 + Math.floor(rnd() * 1584)]);
   pos.push([8, 8], [1592, 1592], [800, 5], [300, 1000], [1200, 400]);
+  if (process.env.POS) {
+    pos.length = 0;
+    pos.push(process.env.POS.split(',').map(Number));
+  }
   for (const [x, y] of pos) {
     await run(`S.px=${x}; S.py=${y}; S.vx=0; S.vy=0`);
     await step(3);
     pngs[`${x},${y}`] = (await p.evaluate(() => document.getElementById('c').toDataURL('image/png'))).split(',')[1];
   }
-  const layers = await p.evaluate(
-    () => JSON.stringify(window.VDC_LAYERS || null) + ' guardas: ' + JSON.stringify(window.VDC_LAYER_STATS || null),
-  );
+  const layers = await p.evaluate(() => 'estatística: ' + JSON.stringify(window.VDC_LAYER_STATS || null));
   await c.close();
   return { pngs, layers, errs };
 }

@@ -81,6 +81,7 @@ function sprite() {
   }
   s.zIndex = seq++;
   s.mask = pctx.clipMask;
+  s.blendMode = BLEND[pctx.globalCompositeOperation] || 'normal';
   return s;
 }
 
@@ -97,6 +98,7 @@ function shape() {
   g.clear();
   g.zIndex = seq++;
   g.mask = pctx.clipMask;
+  g.blendMode = BLEND[pctx.globalCompositeOperation] || 'normal';
   g.visible = true;
   return g;
 }
@@ -130,16 +132,18 @@ function frameTex(src, sx, sy, sw, sh) {
   let t = per.get(key);
   if (!t) {
     const base = PIXI.Texture.from(src);
+    if (src.width === VW && src.height === VH && !src.naturalWidth) base.source.scaleMode = 'linear'; // camadas de luz sobem suavizadas
     t = new PIXI.Texture({ source: base.source, frame: new PIXI.Rectangle(sx, sy, sw, sh) });
     per.set(key, t);
   }
   return t;
 }
 
-/** Gradiente linear pedido ao contexto: na hora de pintar vira uma imagem pequena (guardada para os próximos quadros). */
+/** Gradiente (linear ou radial) pedido ao contexto: na hora de pintar vira uma imagem pequena, guardada para os próximos quadros. */
 class Grad {
-  constructor(x0, y0, x1, y1) {
-    this.p = [x0, y0, x1, y1];
+  constructor(tipo, p) {
+    this.tipo = tipo;
+    this.p = p;
     this.stops = [];
   }
   addColorStop(o, c) {
@@ -147,28 +151,50 @@ class Grad {
   }
 }
 const gradCache = new Map();
+/** Imagem do gradiente no retângulo (rx, ry, w, h). Se todas as paradas têm a mesma cor, só o alpha muda: guarda 1 imagem e devolve o alpha máximo. */
 function gradImage(g, rx, ry, w, h) {
-  const [x0, y0, x1, y1] = g.p;
-  const key = [x0 - rx, y0 - ry, x1 - rx, y1 - ry, w, h, JSON.stringify(g.stops)].join('|');
+  const cores = g.stops.map(([o, c]) => [o, parseColor(c)]);
+  const mesma = cores.every(([, c]) => c && c.rgb === cores[0][1].rgb);
+  const amax = mesma ? Math.max(...cores.map(([, c]) => c.a), 1e-6) : 1;
+  const rel = g.p.map((v, i) =>
+    g.tipo === 'linear' ? v - (i % 2 ? ry : rx) : v - (i === 0 || i === 3 ? rx : i === 1 || i === 4 ? ry : 0),
+  );
+  const key = [
+    g.tipo,
+    rel.join(','),
+    w,
+    h,
+    mesma ? cores.map(([o, c]) => o + ':' + c.rgb + ':' + (c.a / amax).toFixed(3)).join(';') : JSON.stringify(g.stops),
+  ].join('|');
   let c = gradCache.get(key);
   if (!c) {
     c = document.createElement('canvas');
     c.width = w;
     c.height = h;
+    c.naturalWidth = w; // imagem pronta
     const k = c.getContext('2d'),
-      gr = k.createLinearGradient(x0 - rx, y0 - ry, x1 - rx, y1 - ry);
-    for (const [o, col] of g.stops) gr.addColorStop(o, col);
+      gr = g.tipo === 'linear' ? k.createLinearGradient(...rel) : k.createRadialGradient(...rel);
+    for (let i = 0; i < g.stops.length; i++) {
+      const [o, col] = g.stops[i];
+      const cc = cores[i][1];
+      gr.addColorStop(
+        o,
+        mesma ? 'rgba(' + [(cc.rgb >> 16) & 255, (cc.rgb >> 8) & 255, cc.rgb & 255, cc.a / amax].join(',') + ')' : col,
+      );
+    }
     k.fillStyle = gr;
     k.fillRect(0, 0, w, h);
     gradCache.set(key, c);
   }
-  return c;
+  return { c, a: amax };
 }
 
+const BLEND = { 'source-over': 'normal', lighter: 'add', multiply: 'multiply', screen: 'screen' };
 const bakeCache = new Map(); // elipses e textos já "fotografados" (chave -> { c: canvas, ox, oy })
 let frameId = 0;
 const lastUpdate = new WeakMap();
-let tmpM = null;
+let tmpM = null,
+  medidor = null; // só para medir a largura de textos (nada é desenhado nele)
 
 /** Canvas que o jogo redesenha (não é sprite pronto de `bakeImg`): manda o PixiJS reenviar para a GPU, no máximo 1 vez por quadro. */
 function refresh(img, tex) {
@@ -214,6 +240,9 @@ class PixiCtx {
       this.strokeStyle,
       this.lineWidth,
       this.clipMask,
+      this.globalCompositeOperation,
+      this.lineCap,
+      this.lineJoin,
     ]);
   }
   restore() {
@@ -229,6 +258,9 @@ class PixiCtx {
         this.strokeStyle,
         this.lineWidth,
         this.clipMask,
+        this.globalCompositeOperation,
+        this.lineCap,
+        this.lineJoin,
       ] = s;
   }
   setTransform(a, b, c, d, e, f) {
@@ -250,7 +282,10 @@ class PixiCtx {
     this.transform(c, s, -s, c, 0, 0);
   }
   createLinearGradient(x0, y0, x1, y1) {
-    return new Grad(x0, y0, x1, y1);
+    return new Grad('linear', [x0, y0, x1, y1]);
+  }
+  createRadialGradient(x0, y0, r0, x1, y1, r1) {
+    return new Grad('radial', [x0, y0, r0, x1, y1, r1]);
   }
   /** Põe o sprite `s` no retângulo (dx, dy, dw, dh) da tela do jogo, já com a transformação atual. */
   put(s, tex, dx, dy, dw, dh) {
@@ -279,7 +314,13 @@ class PixiCtx {
     if (this.fillStyle instanceof Grad) {
       if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1)
         this.bad = 'gradiente em retângulo fracionado';
-      else this.drawImage(gradImage(this.fillStyle, x, y, w, h), x, y);
+      else {
+        const gi = gradImage(this.fillStyle, x, y, w, h),
+          antes = this.globalAlpha;
+        this.globalAlpha = antes * gi.a;
+        this.drawImage(gi.c, x, y);
+        this.globalAlpha = antes;
+      }
       return;
     }
     const c = typeof this.fillStyle === 'string' ? parseColor(this.fillStyle) : null;
@@ -381,6 +422,51 @@ class PixiCtx {
     g.setFromMatrix(tmpM);
   }
   fill() {
+    const gs = this.fillStyle;
+    if (gs instanceof Grad && gs.tipo === 'radial' && this.ops.length === 1 && this.ops[0][0] === 'A') {
+      // brilho: círculo com gradiente radial que some na borda. Vira 1 imagem centrada (vale para qualquer posição).
+      const [, x, y, rx] = this.ops[0],
+        [gx0, gy0, gr0, gx1, gy1, gr1] = gs.p;
+      const w = Math.ceil(rx * 2) + 2;
+      const key =
+        'g|' +
+        w +
+        '|' +
+        gr0.toFixed(2) +
+        '|' +
+        gr1.toFixed(2) +
+        '|' +
+        (gx1 - gx0).toFixed(1) +
+        ',' +
+        (gy1 - gy0).toFixed(1) +
+        '|' +
+        JSON.stringify(gs.stops);
+      let b = bakeCache.get(key);
+      if (!b) {
+        const cv = document.createElement('canvas');
+        cv.width = cv.height = w;
+        cv.naturalWidth = w;
+        const k = cv.getContext('2d'),
+          gr = k.createRadialGradient(
+            w / 2 + (gx0 - x),
+            w / 2 + (gy0 - y),
+            gr0,
+            w / 2 + (gx1 - x),
+            w / 2 + (gy1 - y),
+            gr1,
+          );
+        for (const [o, col] of gs.stops) gr.addColorStop(o, col);
+        k.fillStyle = gr;
+        k.fillRect(0, 0, w, w);
+        b = { c: cv };
+        bakeCache.set(key, b);
+      }
+      const sp = sprite();
+      sp.tint = 0xffffff;
+      sp.alpha = this.globalAlpha;
+      this.put(sp, frameTex(b.c, 0, 0, w, w), x - w / 2, y - w / 2, w, w);
+      return;
+    }
     const c = typeof this.fillStyle === 'string' ? parseColor(this.fillStyle) : null;
     if (!c) {
       this.bad = 'fill com cor não suportada';
@@ -446,18 +532,42 @@ class PixiCtx {
     s.alpha = this.globalAlpha;
     this.put(s, frameTex(b.c, 0, 0, b.c.width, b.c.height), x - b.ox, y - b.oy, b.c.width, b.c.height);
   }
+  measureText(txt) {
+    medidor ||= document.createElement('canvas').getContext('2d');
+    medidor.font = this.font;
+    return medidor.measureText(txt);
+  }
   fillText(txt, x, y) {
-    if (typeof this.fillStyle !== 'string') {
+    this.texto(txt, x, y, false);
+  }
+  strokeText(txt, x, y) {
+    this.texto(txt, x, y, true);
+  }
+  texto(txt, x, y, contorno) {
+    const cor = contorno ? this.strokeStyle : this.fillStyle;
+    if (typeof cor !== 'string') {
       this.bad = 'texto com gradiente';
       return;
     }
-    const key = 't|' + this.font + '|' + this.fillStyle + '|' + this.textAlign + '|' + this.textBaseline + '|' + txt;
+    const lw = contorno ? this.lineWidth : 0;
+    const key =
+      (contorno ? 'ts|' + lw : 't') +
+      '|' +
+      this.font +
+      '|' +
+      cor +
+      '|' +
+      this.textAlign +
+      '|' +
+      this.textBaseline +
+      '|' +
+      txt;
     let b = bakeCache.get(key);
     if (!b) {
       const k0 = document.createElement('canvas').getContext('2d');
       k0.font = this.font;
       const mt = k0.measureText(txt),
-        pad = 3,
+        pad = 3 + Math.ceil(lw),
         w = Math.ceil(mt.width) + pad * 2,
         asc = Math.ceil(mt.actualBoundingBoxAscent || 12) + pad,
         h = asc + Math.ceil(mt.actualBoundingBoxDescent || 4) + pad;
@@ -466,12 +576,19 @@ class PixiCtx {
       cv.height = h;
       const k = cv.getContext('2d');
       k.font = this.font;
-      k.fillStyle = this.fillStyle;
       k.textAlign = this.textAlign;
       k.textBaseline = this.textBaseline;
       const ox =
         this.textAlign === 'center' ? w / 2 : this.textAlign === 'right' || this.textAlign === 'end' ? w - pad : pad;
-      k.fillText(txt, ox, asc);
+      if (contorno) {
+        k.strokeStyle = cor;
+        k.lineWidth = lw;
+        k.lineJoin = 'round';
+        k.strokeText(txt, ox, asc);
+      } else {
+        k.fillStyle = cor;
+        k.fillText(txt, ox, asc);
+      }
       cv.naturalWidth = w;
       b = { c: cv, ox, oy: asc };
       bakeCache.set(key, b);
@@ -506,8 +623,7 @@ class PixiCtx {
       return;
     }
     const s = sprite();
-    const tex = frameTex(img, sx, sy, sw, sh);
-    refresh(img, tex);
+    const tex = dyn(img, sx, sy, sw, sh);
     s.tint = 0xffffff;
     s.alpha = this.globalAlpha;
     this.put(s, tex, dx, dy, dw, dh);
@@ -516,39 +632,41 @@ class PixiCtx {
 
 // Objeto "vazio" devolvido por chamadas não suportadas: aceita qualquer chamada em cadeia (ex.: gradiente.addColorStop) sem quebrar.
 const VAZIO = new Proxy(function () {}, { get: () => VAZIO, apply: () => VAZIO });
+/** Registra (para o teste e o ?fps) uma chamada que o contexto PixiJS ainda não sabe desenhar. O quadro segue sem ela. */
+function falha(motivo) {
+  const onde = new Error().stack
+    .split('\n')
+    .slice(3, 6)
+    .map((l) => l.trim().replace(/\(.*\/src\//, '('))
+    .join(' < ');
+  const m = (stats.motivos ||= {});
+  const k = motivo + ' @ ' + onde;
+  m[k] = (m[k] || 0) + 1;
+}
 const NAO_SUPORTADO = (t, k) => {
   if (k in t) return t[k];
   if (typeof k === 'symbol') return undefined;
   return () => {
-    if (!t.bad)
-      t.where = new Error().stack
-        .split('\n')
-        .slice(2, 6)
-        .map((l) => l.trim().replace(/\(.*\/src\//, '('))
-        .join(' < ');
-    t.bad = 'método ' + k;
+    falha('método ' + String(k));
     return VAZIO;
   };
 };
 const pctx = new Proxy(new PixiCtx(), {
   get: NAO_SUPORTADO,
   set(t, k, v) {
-    if (k === 'bad' && v && !t.bad)
-      t.where = new Error().stack
-        .split('\n')
-        .slice(2, 6)
-        .map((l) => l.trim().replace(/\(.*\/src\//, '('))
-        .join(' < ');
-    if (!(k in t) && k !== 'bad') t.bad = 'propriedade ' + k;
-    if (k === 'globalCompositeOperation' && v !== 'source-over') t.bad = 'modo de mistura ' + v;
+    if (k === 'bad') {
+      if (v) falha(String(v));
+      return true;
+    }
+    if (!(k in t)) falha('propriedade ' + String(k));
     t[k] = v;
     return true;
   },
 });
 
 /**
- * Começa uma camada: daqui até `pixiLayerEnd()` o jogo desenha no contexto PixiJS. Devolve false se o PixiJS ainda não está pronto
- * (a camada deve desenhar em Canvas como sempre).
+ * Começa o quadro no PixiJS: daqui até `pixiLayerEnd()` o jogo desenha no contexto PixiJS, que registra tudo na ordem. Devolve false
+ * se o PixiJS ainda não está pronto (então o quadro é desenhado em Canvas como sempre).
  */
 export function pixiLayerBegin() {
   if (!app || !getPixi()) return false;
@@ -559,6 +677,7 @@ export function pixiLayerBegin() {
     root.scale.set(RS);
   }
   used = 0;
+  fotosUsadas = 0;
   gused = 0;
   mused = 0;
   seq = 0;
@@ -568,18 +687,15 @@ export function pixiLayerBegin() {
   frameId++;
   if (typeof mainCtx.fillStyle === 'string') pctx.fillStyle = mainCtx.fillStyle;
   pctx.globalAlpha = mainCtx.globalAlpha;
-  prevCtx = true;
   active = true;
   setDrawCtx(pctx);
   return true;
 }
 
-/** Termina a camada. Devolve o motivo se algo não suportado foi pedido (a camada NÃO foi aplicada: refazer em Canvas), senão null. */
+/** Termina o quadro: a GPU desenha tudo de uma vez e o resultado vai para a tela. */
 export function pixiLayerEnd() {
   setDrawCtx(mainCtx);
   active = false;
-  const bad = pctx.bad;
-  if (bad) return bad + ' @ ' + (pctx.where || '');
   for (let i = used; i < pool.length && pool[i].visible; i++) pool[i].visible = false;
   for (let i = gused; i < gpool.length && gpool[i].visible; i++) gpool[i].visible = false;
   for (let i = mused; i < mpool.length && mpool[i].visible; i++) mpool[i].visible = false;
@@ -595,8 +711,43 @@ export function pixiLayerEnd() {
   g.globalAlpha = pctx.globalAlpha;
   stats.sprites += used;
   stats.layers++;
-  return null;
 }
 
 export const pixiLayerStats = stats;
 if (typeof window !== 'undefined') window.VDC_LAYER_STATS = stats;
+
+const usos = new WeakMap(); // canvas -> { f: quadro, n: usos neste quadro, pn: usos no quadro anterior }
+const fotos = [];
+let fotosUsadas = 0;
+/**
+ * Textura de um pedaço de `img`. Se `img` é um canvas que o jogo REDESENHA (luz, camadas), a GPU só desenha no fim do quadro e veria o
+ * conteúdo final em todos os usos; por isso, quando o canvas é usado 2+ vezes por quadro, cada uso recebe uma "foto" do conteúdo daquele momento.
+ */
+function dyn(img, sx, sy, sw, sh) {
+  if (img.naturalWidth || !(img instanceof HTMLCanvasElement)) return frameTex(img, sx, sy, sw, sh);
+  let r = usos.get(img);
+  if (!r) usos.set(img, (r = { f: -1, n: 0, pn: 0 }));
+  if (r.f !== frameId) {
+    r.pn = r.f === frameId - 1 ? r.n : 0;
+    r.n = 0;
+    r.f = frameId;
+  }
+  r.n++;
+  if (r.pn < 2) {
+    const tex = frameTex(img, sx, sy, sw, sh);
+    refresh(img, tex);
+    return tex;
+  }
+  const snap = fotos[fotosUsadas] || (fotos[fotosUsadas] = document.createElement('canvas'));
+  fotosUsadas++;
+  if (snap.width !== img.width || snap.height !== img.height) {
+    snap.width = img.width;
+    snap.height = img.height;
+  }
+  const k = snap.getContext('2d');
+  k.clearRect(0, 0, snap.width, snap.height);
+  k.drawImage(img, 0, 0);
+  const tex = frameTex(snap, sx, sy, sw, sh);
+  if (tex.source.update) tex.source.update();
+  return tex;
+}

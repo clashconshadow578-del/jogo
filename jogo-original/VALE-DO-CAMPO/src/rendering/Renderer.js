@@ -23,6 +23,7 @@ import { drawPlayer } from '../entities/Player.js';
 import { drawFaunaLabels } from '../entities/wild/Fauna.js';
 import { drawAnimalStatus } from './AnimalStatus.js';
 import { AB } from './Ablate.js';
+import { pixiLayerBegin, pixiLayerEnd } from './pixi/PixiCtx.js';
 import { drawAtmosphere } from './Atmosphere.js';
 import { ctx } from './Canvas.js';
 import { collectEntities } from './Entities.js';
@@ -252,10 +253,16 @@ function render() {
   }
   const v = viewFor();
   vcam = { x: v.camX, y: v.camY };
-  passGround(v);
-  const ents = collectEntities(v);
-  passEntities(v, ents);
-  passFinish(v, ents);
+  // com o PixiJS pronto o quadro inteiro é desenhado por ele (uma passagem só: luz e clima misturam com o que está embaixo)
+  const noPixi = pixiLayerBegin();
+  try {
+    passGround(v);
+    const ents = collectEntities(v);
+    passEntities(v, ents);
+    passFinish(v, ents);
+  } finally {
+    if (noPixi) pixiLayerEnd();
+  }
 }
 
 export {
