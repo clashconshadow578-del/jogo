@@ -352,6 +352,12 @@ function drawTrampledGrass(tx, ty, t) {
     ctx.drawImage(idleLayer, tx * TS, ty * TS, TS, TS, tx * TS, ty * TS, TS, TS);
     return;
   }
+  // Contexto do PixiJS: não lê Path2D, então o tile parado vem da imagem pronta (a mesma que o celular usa).
+  if (ctx.isPixiCtx && climate.wind < IDLE_WIND_MAX && tileIdle(tx, ty)) {
+    if (!idleLayer) bakeIdleTile();
+    ctx.drawImage(idleLayer, tx * TS, ty * TS, TS, TS, tx * TS, ty * TS, TS, TS);
+    return;
+  }
   // Desktop (camada gigante desligada): tile parado desenha só com os Path2D do tile.
   if (idleOff() && climate.wind < IDLE_WIND_MAX && tileIdle(tx, ty)) {
     drawIdleTilePaths(tx, ty);

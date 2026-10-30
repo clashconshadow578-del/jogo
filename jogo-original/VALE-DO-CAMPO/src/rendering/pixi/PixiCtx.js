@@ -12,7 +12,10 @@ import { VH, VW } from '../../config/constants.js';
 import { RS, mainCtx, setDrawCtx } from '../Canvas.js';
 import { getPixi } from './PixiBridge.js';
 
-let seq = 0,
+let cur = null, // sequência atual de partículas (mesma textura, mistura e máscara)
+  runs = [],
+  rused = 0,
+  seq = 0,
   gpool = [],
   gused = 0,
   mpool = [],
@@ -73,11 +76,32 @@ export function pixiLayersInit() {
   return initPromise;
 }
 
+function novaRun(tex, blend, mask) {
+  let r;
+  if (rused < runs.length) r = runs[rused++];
+  else {
+    const pc = new PIXI.ParticleContainer({
+      dynamicProperties: { vertex: true, position: true, rotation: true, uvs: true, color: true },
+    });
+    r = { pc, parts: [], n: 0 };
+    runs.push(r);
+    root.addChild(pc);
+    rused++;
+  }
+  r.n = 0;
+  r.src = tex.source;
+  r.blend = blend;
+  r.mask = mask;
+  r.pc.texture = tex;
+  r.pc.zIndex = seq++;
+  return r;
+}
+
 function sprite() {
   let s;
   if (used < pool.length) s = pool[used++];
   else {
-    s = new PIXI.Sprite(PIXI.Texture.WHITE);
+    s = new PIXI.Sprite(branco());
     pool.push(s);
     root.addChild(s);
     used++;
@@ -98,6 +122,7 @@ function shape() {
     root.addChild(g);
     gused++;
   }
+  cur = null;
   g.clear();
   g.zIndex = seq++;
   g.mask = pctx.clipMask;
@@ -125,6 +150,138 @@ function maskPath(c) {
   return g;
 }
 
+/**
+ * ATLAS: todas as imagens "prontas" (sprites, tiles, elipses, textos, gradientes guardados) são copiadas uma vez para páginas grandes de
+ * textura (1024x1024); um retângulo branco fica na página 0 para os retângulos coloridos. Assim quase tudo que o jogo desenha vem da MESMA
+ * textura e o PixiJS junta o quadro inteiro em poucos lotes (antes: um lote por troca de imagem, centenas por quadro).
+ * Só entram imagens que nunca mudam (imagens e canvases marcados com `naturalWidth`, como os de `bakeImg`); canvases redesenhados
+ * (luz, camadas) continuam com textura própria.
+ */
+const PAGINA = 1024;
+
+/**
+ * Cada canvas ganha um número de versão (`__v`) que sobe a cada escrita nele. Assim o atlas sabe se uma imagem copiada mudou depois
+ * (e só então copia de novo), sem precisar adivinhar quais canvases são "prontos".
+ */
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.__rastreado) {
+  const proto = CanvasRenderingContext2D.prototype;
+  proto.__rastreado = true;
+  for (const nome of [
+    'fillRect',
+    'strokeRect',
+    'clearRect',
+    'fill',
+    'stroke',
+    'fillText',
+    'strokeText',
+    'drawImage',
+    'putImageData',
+  ]) {
+    const orig = proto[nome];
+    proto[nome] = function () {
+      const c = this.canvas;
+      c.__v = (c.__v | 0) + 1;
+      return orig.apply(this, arguments);
+    };
+  }
+}
+const paginas = [];
+const noAtlas = new WeakMap(); // fonte -> { pg, ox, oy } ou null (não cabe / não é imagem pronta)
+let brancoTex = null;
+
+function novaPagina() {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = PAGINA;
+  const k = cv.getContext('2d');
+  k.imageSmoothingEnabled = false;
+  const tex = PIXI.Texture.from(cv);
+  tex.source.scaleMode = 'nearest';
+  const pg = { cv, k, tex, x: 0, y: 0, linha: 0, suja: false };
+  paginas.push(pg);
+  return pg;
+}
+
+function elegivel(src) {
+  if (src instanceof HTMLImageElement) return src.complete && src.naturalWidth > 0;
+  // canvases pequenos que não são as camadas do tamanho da tela (luz, atmosfera), que são redesenhadas todo quadro
+  return (
+    src instanceof HTMLCanvasElement && src.width > 0 && src.height > 0 && !(src.width === VW && src.height === VH)
+  );
+}
+
+/** Reserva um retângulo w x h numa página do atlas (prateleiras). */
+function reservar(w, h) {
+  let pg = paginas[paginas.length - 1] || novaPagina();
+  if (pg.x + w + 1 > PAGINA) {
+    pg.x = 0;
+    pg.y += pg.linha + 1;
+    pg.linha = 0;
+  }
+  if (pg.y + h + 1 > PAGINA) pg = novaPagina();
+  const r = { pg, ox: pg.x, oy: pg.y };
+  pg.x += w + 1;
+  pg.linha = Math.max(pg.linha, h);
+  return r;
+}
+
+function colocar(src) {
+  let r = noAtlas.get(src);
+  if (r === null) return null;
+  if (r) {
+    // já está no atlas: se o canvas foi escrito depois da cópia, copia de novo (mesmo tamanho) ou refaz o lugar (tamanho novo)
+    if (src.__v !== r.v) {
+      if (src.width === r.w && src.height === r.h) {
+        r.pg.k.clearRect(r.ox, r.oy, r.w, r.h);
+        r.pg.k.drawImage(src, r.ox, r.oy);
+        r.pg.suja = true;
+        r.v = src.__v;
+        stats.recopias = (stats.recopias || 0) + 1;
+      } else {
+        noAtlas.delete(src);
+        texCache.delete(src);
+        return colocar(src);
+      }
+    }
+    return r;
+  }
+  const w = src.naturalWidth || src.width,
+    h = src.naturalHeight || src.height;
+  if (elegivel(src) && w <= 256 && h <= 256) {
+    const c = reservar(w, h);
+    c.pg.k.drawImage(src, c.ox, c.oy);
+    c.pg.suja = true;
+    r = { pg: c.pg, ox: c.ox, oy: c.oy, w, h, v: src.__v };
+    noAtlas.set(src, r);
+    return r;
+  }
+  noAtlas.set(src, null); // grande demais ou camada da tela: textura própria
+  return null;
+}
+
+/** Sobe para a GPU as páginas que ganharam imagens novas neste quadro (no máximo 1 envio por página e quadro). */
+function enviarPaginas() {
+  for (const pg of paginas)
+    if (pg.suja) {
+      pg.suja = false;
+      pg.tex.source.update();
+    }
+}
+
+/** O pedacinho branco (2x2) que os retângulos coloridos usam: fica na página 0 do atlas. */
+function branco() {
+  if (brancoTex) return brancoTex;
+  const pg = paginas[0] || novaPagina();
+  if (pg.x === 0 && pg.y === 0 && pg.linha === 0) {
+    pg.k.fillStyle = '#fff';
+    pg.k.fillRect(0, 0, 4, 4);
+    pg.x = 5;
+    pg.linha = 4;
+    pg.suja = true;
+  }
+  brancoTex = new PIXI.Texture({ source: pg.tex.source, frame: new PIXI.Rectangle(1, 1, 2, 2) });
+  return brancoTex;
+}
+
 function frameTex(src, sx, sy, sw, sh) {
   let per = texCache.get(src);
   if (!per) {
@@ -132,14 +289,47 @@ function frameTex(src, sx, sy, sw, sh) {
     texCache.set(src, per);
   }
   const key = ((sx * 4096 + sy) * 4096 + sw) * 4096 + sh;
+  const a = colocar(src);
+  per = texCache.get(src) || (texCache.set(src, (per = new Map())), per);
   let t = per.get(key);
   if (!t) {
-    const base = PIXI.Texture.from(src);
-    if (src.width === VW && src.height === VH && !src.naturalWidth) base.source.scaleMode = 'linear'; // camadas de luz sobem suavizadas
-    t = new PIXI.Texture({ source: base.source, frame: new PIXI.Rectangle(sx, sy, sw, sh) });
+    if (a) t = new PIXI.Texture({ source: a.pg.tex.source, frame: new PIXI.Rectangle(a.ox + sx, a.oy + sy, sw, sh) });
+    else if (pedacoElegivel(src, sw, sh)) {
+      // imagem grande (folha de tiles, camada do chão): só o pedaço usado entra no atlas
+      const c = reservar(sw, sh);
+      c.pg.k.drawImage(src, sx, sy, sw, sh, c.ox, c.oy, sw, sh);
+      c.pg.suja = true;
+      t = new PIXI.Texture({ source: c.pg.tex.source, frame: new PIXI.Rectangle(c.ox, c.oy, sw, sh) });
+      t._pedaco = { src, sx, sy, sw, sh, ox: c.ox, oy: c.oy, pg: c.pg, v: src.__v };
+    } else {
+      const dk =
+        (src.constructor && src.constructor.name) +
+        ' ' +
+        src.width +
+        'x' +
+        src.height +
+        (src.naturalWidth ? ' pronta' : ' dinamica');
+      (stats.semAtlas ||= {})[dk] = (stats.semAtlas[dk] || 0) + 1;
+      const base = PIXI.Texture.from(src);
+      if (src.width === VW && src.height === VH && !src.naturalWidth) base.source.scaleMode = 'linear'; // camadas de luz sobem suavizadas
+      t = new PIXI.Texture({ source: base.source, frame: new PIXI.Rectangle(sx, sy, sw, sh) });
+    }
     per.set(key, t);
   }
+  const pd = t._pedaco;
+  if (pd && pd.v !== src.__v) {
+    // o canvas grande foi escrito depois da cópia: refaz só este pedaço
+    pd.pg.k.clearRect(pd.ox, pd.oy, pd.sw, pd.sh);
+    pd.pg.k.drawImage(src, pd.sx, pd.sy, pd.sw, pd.sh, pd.ox, pd.oy, pd.sw, pd.sh);
+    pd.pg.suja = true;
+    pd.v = src.__v;
+    stats.recopias = (stats.recopias || 0) + 1;
+  }
   return t;
+}
+
+function pedacoElegivel(src, sw, sh) {
+  return sw <= 256 && sh <= 256 && elegivel(src) && !(src.width === VW && src.height === VH);
 }
 
 /** Gradiente (linear ou radial) pedido ao contexto: na hora de pintar vira uma imagem pequena, guardada para os próximos quadros. */
@@ -291,6 +481,52 @@ class PixiCtx {
     return new Grad('radial', [x0, y0, r0, x1, y1, r1]);
   }
   /** Põe o sprite `s` no retângulo (dx, dy, dw, dh) da tela do jogo, já com a transformação atual. */
+  /** Um retângulo (cor ou textura) na ordem de desenho: vira uma partícula do PixiJS (objeto simples, em lote por textura). */
+  quad(tex, dx, dy, dw, dh, rgb, alpha) {
+    const [A, B, C, D, E, F] = this.m;
+    const fw = tex.frame.width,
+      fh = tex.frame.height;
+    let rot = 0,
+      sxs,
+      sys;
+    if (B === 0 && C === 0) {
+      sxs = (A * dw) / fw;
+      sys = (D * dh) / fh;
+    } else {
+      const l = Math.hypot(A, B);
+      if (l && Math.abs(A * C + B * D) < 1e-6 * l * l) {
+        rot = Math.atan2(B, A);
+        sxs = (l * dw) / fw;
+        sys = (((A * D - B * C) / l) * dh) / fh;
+      } else {
+        // inclinada (ex.: reflexo com skew): um sprite comum, mais caro, só nesse caso raro
+        const sp = sprite();
+        sp.tint = rgb;
+        sp.alpha = alpha;
+        this.put(sp, tex, dx, dy, dw, dh);
+        cur = null;
+        return;
+      }
+    }
+    const blend = BLEND[this.globalCompositeOperation] || 'normal',
+      mask = this.clipMask;
+    if (!cur || cur.src !== tex.source || cur.blend !== blend || cur.mask !== mask) {
+      const w = (stats.why ||= {});
+      const k = !cur ? 'sem run' : cur.src !== tex.source ? 'fonte' : cur.blend !== blend ? 'mistura' : 'máscara';
+      w[k] = (w[k] || 0) + 1;
+      cur = novaRun(tex, blend, mask);
+    }
+    let p = cur.parts[cur.n];
+    if (!p) p = cur.parts[cur.n] = new PIXI.Particle(tex);
+    cur.n++;
+    p.texture = tex;
+    p.x = A * dx + C * dy + E;
+    p.y = B * dx + D * dy + F;
+    p.scaleX = sxs;
+    p.scaleY = sys;
+    p.rotation = rot;
+    p.color = (((rgb & 255) << 16) | (rgb & 0xff00) | (rgb >> 16)) + ((alpha * 255) | 0) * 16777216;
+  }
   put(s, tex, dx, dy, dw, dh) {
     const [A, B, C, D, E, F] = this.m;
     const sx = dw / tex.frame.width,
@@ -331,10 +567,7 @@ class PixiCtx {
       this.bad = typeof this.fillStyle === 'string' ? 'cor ' + this.fillStyle : 'gradiente';
       return;
     }
-    const s = sprite();
-    s.tint = c.rgb;
-    s.alpha = c.a * this.globalAlpha;
-    this.put(s, PIXI.Texture.WHITE, x, y, w, h);
+    this.quad(branco(), x, y, w, h, c.rgb, c.a * this.globalAlpha);
   }
   beginPath() {
     this.ops = [];
@@ -464,10 +697,7 @@ class PixiCtx {
         b = { c: cv };
         bakeCache.set(key, b);
       }
-      const sp = sprite();
-      sp.tint = 0xffffff;
-      sp.alpha = this.globalAlpha;
-      this.put(sp, frameTex(b.c, 0, 0, w, w), x - w / 2, y - w / 2, w, w);
+      this.quad(frameTex(b.c, 0, 0, w, w), x - w / 2, y - w / 2, w, w, 0xffffff, this.globalAlpha);
       return;
     }
     const c = typeof this.fillStyle === 'string' ? parseColor(this.fillStyle) : null;
@@ -530,10 +760,15 @@ class PixiCtx {
       b = { c: cv, ox: w / 2, oy: h / 2 };
       bakeCache.set(key, b);
     }
-    const s = sprite();
-    s.tint = 0xffffff;
-    s.alpha = this.globalAlpha;
-    this.put(s, frameTex(b.c, 0, 0, b.c.width, b.c.height), x - b.ox, y - b.oy, b.c.width, b.c.height);
+    this.quad(
+      frameTex(b.c, 0, 0, b.c.width, b.c.height),
+      x - b.ox,
+      y - b.oy,
+      b.c.width,
+      b.c.height,
+      0xffffff,
+      this.globalAlpha,
+    );
   }
   measureText(txt) {
     medidor ||= document.createElement('canvas').getContext('2d');
@@ -596,10 +831,15 @@ class PixiCtx {
       b = { c: cv, ox, oy: asc };
       bakeCache.set(key, b);
     }
-    const s = sprite();
-    s.tint = 0xffffff;
-    s.alpha = this.globalAlpha;
-    this.put(s, frameTex(b.c, 0, 0, b.c.width, b.c.height), x - b.ox, y - b.oy, b.c.width, b.c.height);
+    this.quad(
+      frameTex(b.c, 0, 0, b.c.width, b.c.height),
+      x - b.ox,
+      y - b.oy,
+      b.c.width,
+      b.c.height,
+      0xffffff,
+      this.globalAlpha,
+    );
   }
   drawImage(img, ...r) {
     let sx = 0,
@@ -625,11 +865,7 @@ class PixiCtx {
       this.bad = 'recorte fora da imagem';
       return;
     }
-    const s = sprite();
-    const tex = dyn(img, sx, sy, sw, sh);
-    s.tint = 0xffffff;
-    s.alpha = this.globalAlpha;
-    this.put(s, tex, dx, dy, dw, dh);
+    this.quad(dyn(img, sx, sy, sw, sh), dx, dy, dw, dh, 0xffffff, this.globalAlpha);
   }
 }
 
@@ -683,6 +919,8 @@ export function pixiLayerBegin() {
     root.scale.set(RS);
   }
   used = 0;
+  rused = 0;
+  cur = null;
   fotosUsadas = 0;
   gused = 0;
   mused = 0;
@@ -694,6 +932,7 @@ export function pixiLayerBegin() {
   if (typeof mainCtx.fillStyle === 'string') pctx.fillStyle = mainCtx.fillStyle;
   pctx.globalAlpha = mainCtx.globalAlpha;
   active = true;
+  stats.t0 = performance.now();
   mostrar(!copiar());
   if (app.canvas.style.imageRendering !== mainCtx.canvas.style.imageRendering)
     app.canvas.style.imageRendering = mainCtx.canvas.style.imageRendering;
@@ -707,7 +946,24 @@ export function pixiLayerEnd() {
   active = false;
   for (let i = used; i < pool.length && pool[i].visible; i++) pool[i].visible = false;
   for (let i = gused; i < gpool.length && gpool[i].visible; i++) gpool[i].visible = false;
+  enviarPaginas();
+  stats.runs = rused;
+  for (let i = 0; i < rused; i++) {
+    const r = runs[i],
+      pc = r.pc,
+      arr = pc.particleChildren;
+    arr.length = r.n;
+    for (let k = 0; k < r.n; k++) arr[k] = r.parts[k];
+    pc.blendMode = r.blend;
+    pc.mask = r.mask;
+    pc.visible = true;
+    pc.update();
+  }
+  for (let i = rused; i < runs.length && runs[i].pc.visible; i++) runs[i].pc.visible = false;
+  const tA = performance.now();
   app.render({ container: root });
+  stats.msOps = (stats.msOps || 0) * 0.9 + (tA - stats.t0) * 0.1;
+  stats.msRender = (stats.msRender || 0) * 0.9 + (performance.now() - tA) * 0.1;
   const g = mainCtx;
   if (copiar()) {
     // só nos testes automáticos (precisam ler os pixels do canvas do jogo): copia o quadro do PixiJS para ele
@@ -735,7 +991,8 @@ let fotosUsadas = 0;
  * conteúdo final em todos os usos; por isso, quando o canvas é usado 2+ vezes por quadro, cada uso recebe uma "foto" do conteúdo daquele momento.
  */
 function dyn(img, sx, sy, sw, sh) {
-  if (img.naturalWidth || !(img instanceof HTMLCanvasElement)) return frameTex(img, sx, sy, sw, sh);
+  if (img.naturalWidth || !(img instanceof HTMLCanvasElement) || colocar(img) || pedacoElegivel(img, sw, sh))
+    return frameTex(img, sx, sy, sw, sh); // no atlas: a versão é conferida lá
   let r = usos.get(img);
   if (!r) usos.set(img, (r = { f: -1, n: 0, pn: 0 }));
   if (r.f !== frameId) {
