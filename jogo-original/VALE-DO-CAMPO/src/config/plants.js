@@ -87,6 +87,12 @@ export const PLANTS = {
 /** Nutrientes mínimos do solo para qualquer planta do mato (o piso da samambaia; ver `nutrienteMin` de cada espécie). */
 export const NUT_PISO = 0.2;
 
+/**
+ * Cobertura (0..1) que o mato dá a quem se esconde nele, por fase da planta (0-4): planta crescida (3) já esconde bem, planta
+ * fechada (4) esconde de verdade. É daqui que vêm a camuflagem da onça e da sucuri e a visão de quem os procura.
+ */
+export const COBERTURA = [0, 0.12, 0.3, 0.7, 1];
+
 /** Fase 0-4 (0 = sem planta visível) para a quantidade de mato (0-255). */
 export function plantStage(m) {
   if (m <= FASE[0]) return 0;

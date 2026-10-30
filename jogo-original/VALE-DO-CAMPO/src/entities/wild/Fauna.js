@@ -48,6 +48,7 @@ import { rr } from '../../utils/Random.js';
 import { DOOR } from '../../world/HouseInterior.js';
 import { bio, mato, om, prox, seedAge, sm } from '../../world/hydrology/Hydrology.js';
 import { TRAMPLE } from '../../config/trampling.js';
+import { COBERTURA, plantStage } from '../../config/plants.js';
 import { walkTrample } from '../../world/GrassSystem.js';
 import { animalSpeed, trailK } from '../../world/Trails.js';
 import { flowAt, FQX, FQY } from '../../world/hydrology/RiverFlow.js';
@@ -282,7 +283,7 @@ setEcoHooks({
   coverAt: (x, y) => {
     const tx = Math.floor(x / TS),
       ty = Math.floor(y / TS);
-    return tx < 0 || ty < 0 || tx >= MW || ty >= MH ? 0 : Math.min(1, mato[ty * MW + tx] / 255);
+    return tx < 0 || ty < 0 || tx >= MW || ty >= MH ? 0 : COBERTURA[plantStage(mato[ty * MW + tx])]; // mato alto esconde (config/plants.js)
   },
   playerLit: () => {
     try {
@@ -1299,8 +1300,10 @@ function faUpd(a, dt) {
         a.tgt = null;
         a.lastSeen = null;
       }
+      // diante da onça a presa foge cedo (antes ficava de "alerta" olhando até a onça chegar): predador à vista não é para ficar perto
       const near =
-        th.d <= th.r * (a.sp === 'grouse' ? 0.8 : 0.68) || ((st === 'alert' || st === 'freeze') && th.d <= th.r * 0.74);
+        th.d <= th.r * (th.src === 'jaguar' ? 0.95 : a.sp === 'grouse' ? 0.8 : 0.68) ||
+        ((st === 'alert' || st === 'freeze') && th.d <= th.r * 0.74);
       if (a.sp === 'fox' || near) {
         faFlee(a, th);
         return;

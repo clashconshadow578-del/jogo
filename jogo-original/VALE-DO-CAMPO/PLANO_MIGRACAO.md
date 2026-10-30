@@ -416,3 +416,9 @@ limite de 300 no cache. `findPath` virou A* com memória de buscas sem saída (t
 Atenção para quem testa: os testes de navegador antigos NÃO ligam o PixiJS (o servidor estático não resolve `pixi.js`); só `tests/browser/pixi-leak.mjs` sobe o jogo pelo Vite com WebGL.
 Nota: "canvas" aqui são as imagens-buffer que o PixiJS usa como textura (seção 21); a cena inteira continua desenhada pelo PixiJS.
 
+## 26. Onça, sucuri, camuflagem no mato e fome (feito)
+
+Pedido do dono: o mato alto esconde onça e sucuri, ataques mais fortes (sucuri trava o jogador; onça salta e corre rápido), faro de longe, presas que fogem e
+predadores que esgueiram, e agressividade que sobe com a fome. Detalhes e números em `docs/ECOSSISTEMA_VIVO.md` (seção "revisão"). Testes: `tests/browser/predadores.mjs` (novo),
+`ecosystem-a/b` ajustados ao novo equilíbrio e `tests/systems/ecosystem.test.js`. Nota: `ecosystem-b` conferência 18 ("a onça derruba o jogador") falha desde antes (branch original).
+

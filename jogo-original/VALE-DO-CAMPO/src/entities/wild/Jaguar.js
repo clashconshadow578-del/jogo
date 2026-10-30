@@ -8,7 +8,7 @@ import { MH, MW, TREE, TS, WATER, WN } from '../../config/constants.js';
 import { S } from '../../core/GameState.js';
 import { nightF, sunInfo } from '../../core/TimeManager.js';
 import { turnTo, wpick } from '../ai/Steering.js';
-import { ECO, HUNT, PLAYER_PREY, huntDecision } from '../../config/ecosystem.js';
+import { ECO, HUNT, PLAYER_PREY, aggression, huntDecision, huntFor } from '../../config/ecosystem.js';
 import {
   animalTarget as animalTargetOf,
   claimPlayerHunt,
@@ -16,6 +16,7 @@ import {
   evalPrey,
   memAdd,
   percTick,
+  playerFx,
   playerTarget,
   releasePlayerHunt,
   senseTarget,
@@ -183,6 +184,9 @@ function jagOk(p) {
  * com dec 'attack' | 'observe'. Presas atrás de cercas são inacessíveis. Não depende de fome.
  */
 function jagPrey(a, R, sport) {
+  // faminta (aggr): enxerga oportunidade em mais presas, de mais longe, e aceita mais risco (ver huntFor em config/ecosystem.js)
+  const HH = huntFor(HUNT.jaguar, aggression(a.hun));
+  R = Math.max(R, HH.scanR);
   let best = null;
   for (const p of fauna) {
     const P = JG.prey[p.sp];
@@ -201,7 +205,7 @@ function jagPrey(a, R, sport) {
     const bm = p.sp === 'boar' ? boarMates(p, 55) : 0;
     if (bm >= 2 && a.hun < 0.85) continue; // bando de queixadas é perigoso demais
     const r = evalPrey(a, p, {
-      hunt: HUNT.jaguar,
+      hunt: HH,
       vPred: FA_SP.jaguar.run,
       vPrey: FA_SP[p.sp].run,
       value: P.hun,
@@ -212,7 +216,7 @@ function jagPrey(a, R, sport) {
     if (!r) continue;
     r.dec = huntDecision(
       r.ev,
-      HUNT.jaguar,
+      HH,
       (Math.random() - 0.5) * 0.05 + ((a.bold == null ? 0.5 : a.bold) - 0.5) * 0.05,
     );
     if (r.dec === 'skip') continue;
@@ -242,8 +246,9 @@ function jagEngage(a, r, sport) {
 function jagSees(a, p, dt) {
   if (!percTick(a, dt, 'j')) return a.seeTgt;
   const s = senseTarget(a, animalTargetOf(p));
-  a.seeTgt = s.any;
-  if (s.any) {
+  // o faro (420 px) serve para ENCONTRAR a presa e ir até onde ela estava; acompanhá-la na corrida exige ver, ouvir ou estar bem perto
+  a.seeTgt = s.seen || s.heard || (s.smelled && s.dist <= 150);
+  if (a.seeTgt) {
     a.lastSeen = { x: p.x, y: p.y, t: ecoNow() };
     a.loseT = 0;
   } else a.loseT = (a.loseT || 0) + 0.25;
@@ -254,22 +259,23 @@ function jagSees(a, p, dt) {
 function jagDecide(a, p) {
   const P = JG.prey[p.sp];
   if (!P) return 'skip';
-  const bm = p.sp === 'boar' ? boarMates(p, 55) : 0,
+  const HH = huntFor(HUNT.jaguar, aggression(a.hun)),
+    bm = p.sp === 'boar' ? boarMates(p, 55) : 0,
     r = evalPrey(a, p, {
-      hunt: HUNT.jaguar,
+      hunt: HH,
       vPred: FA_SP.jaguar.run,
       vPrey: FA_SP[p.sp].run,
       value: P.hun,
       counter: Math.min(1, (P.ctr * (1 + bm * 0.9)) / 4),
-      scanR: HUNT.jaguar.scanR,
+      scanR: HH.scanR,
       driveMul: a.sport ? 1.4 : 1,
     });
-  return r ? huntDecision(r.ev, HUNT.jaguar, (Math.random() - 0.5) * 0.05) : 'skip';
+  return r ? huntDecision(r.ev, HH, (Math.random() - 0.5) * 0.05) : 'skip';
 }
 
 /** Encerra uma tentativa de caça. `rest` = fôlego esgotado (pant). Só tenta de novo depois do intervalo. */
 function jagGiveUp(a, rest, coolMul = 1) {
-  const H = HUNT.jaguar;
+  const H = huntFor(HUNT.jaguar, aggression(a.hun));
   a.state = rest ? 'pant' : 'idle';
   a.t = rest ? H.recoverT : 2.5;
   a.cd = Math.max(a.cd, H.cool * coolMul * (0.8 + Math.random() * 0.5));
@@ -342,11 +348,13 @@ function jagFear(a, f) {
   // raio-base de medo de cada presa: [passeando, à espreita, caçando]. O alcance REAL de detecção depende ainda de
   // linha de visão, atenção da presa, luz e movimento da onça (ver Perception.senseTarget).
   const t = {
-    deer: [60, 190, 160],
-    hare: [46, 150, 140],
-    grouse: [32, 100, 95],
-    fox: [80, 130, 120],
-    boar: [0, 130, 120],
+    // passeando: as presas já ficam de olho numa onça visível a ~140 px (antes ~60: muitas nem ligavam para ela)
+    // à espreita em chão ABERTO a presa a vê de longe e foge cedo (a onça precisa do mato alto para chegar perto: a camuflagem decide)
+    deer: [150, 260, 220],
+    hare: [110, 200, 170],
+    grouse: [80, 130, 115],
+    fox: [110, 170, 140],
+    boar: [100, 170, 150],
   }[a.sp];
   if (!t) return 0;
   const st = f.state;
@@ -354,7 +362,7 @@ function jagFear(a, f) {
   if (st === 'pounce' || st === 'chase' || st === 'pchase' || st === 'pattack' || st === 'drop' || st === 'charge')
     return t[2];
   if (st === 'rest' || st === 'perch' || st === 'eat' || st === 'climb' || st === 'drag' || st === 'mate')
-    return t[0] * 0.5;
+    return t[0] * 0.7;
   return t[0];
 }
 
@@ -597,7 +605,8 @@ const JG_LOOK = {
 
 function jagPlayerEval(a, h) {
   if (S.inside || a.age < JG.KID) return null;
-  const H = HUNT.jaguar,
+  const ag = aggression(a.hun),
+    H = huntFor(HUNT.jaguar, ag),
     spd = Math.hypot(S.vx || 0, S.vy || 0),
     r = evalPrey(
       a,
@@ -609,7 +618,7 @@ function jagPlayerEval(a, h) {
         value: 0.7,
         counter: 0.12,
         scanR: H.scanR,
-        driveMul: 0.5 + jagAct(h), // crepuscular/noturna: mais interessada ao anoitecer
+        driveMul: 0.5 + jagAct(h) + 1.2 * ag, // crepuscular/noturna: mais interessada ao anoitecer; faminta, de qualquer hora
       },
     );
   if (!r) return null;
@@ -671,10 +680,13 @@ function jagWatchPlayer(a, dt, h) {
 
 function jagPlayerGiveUp(a, cool) {
   const PP = PLAYER_PREY.jaguar;
-  releasePlayerHunt(a.id, PP.cool);
+  const fm = 1 - 0.75 * aggression(a.hun); // faminta quase não descansa entre as tentativas
+  a.leapT = 0;
+  a.z = 0;
+  releasePlayerHunt(a.id, PP.cool * fm);
   a.state = 'idle';
   a.t = 2.5;
-  a.cd = Math.max(a.cd, cool == null ? PP.cool * (0.8 + Math.random() * 0.5) : cool);
+  a.cd = Math.max(a.cd, (cool == null ? PP.cool * (0.8 + Math.random() * 0.5) : cool) * fm);
   a.pl = null;
   a.bites = 0;
   a.atk = false;
@@ -716,11 +728,13 @@ function jagPlan(a, h) {
     }
     return;
   } // brincando perto da mãe
+  const ag = aggression(a.hun); // fome → agressividade: faminta quase só caça (não descansa nem passeia)
+  if (ag > 0.5) a.cd = Math.min(a.cd, 4);
   const o = [];
-  o.push(['wander', 14 * (0.3 + act)]);
-  o.push(['rest', (1 - act) * 105 * (1 - a.hun * 0.6)]);
+  o.push(['wander', 14 * (0.3 + act) * (1 - 0.7 * ag)]);
+  o.push(['rest', (1 - act) * 105 * (1 - a.hun * 0.6) * (1 - 0.9 * ag)]);
   if (a.thi > 0.45) o.push(['drink', 34 + a.thi * 110]);
-  if (a.cd <= 0) o.push(['hunt', 14 + 34 * act + a.hun * 260 * (0.4 + act)]); // a fome pesa, mas não é pré-requisito: a oportunidade decide
+  if (a.cd <= 0) o.push(['hunt', 14 + 34 * act + a.hun * 260 * (0.4 + act) + ag * 900]); // a fome pesa, mas não é pré-requisito: a oportunidade decide; faminta, caçar é o foco
   if (
     a.hun > 0.35 &&
     a.cd <= 0 &&
@@ -730,7 +744,7 @@ function jagPlan(a, h) {
     o.push(['fish', 16 + a.hun * 45]);
   if (sunInfo(h).day > 0.6) o.push(['bathe', 3 + 10 * (1 - act)]);
   if (act > 0.35) o.push(['roar', a.sex === 'm' ? 5 : 2]);
-  if (climate.rain > 0.3) o.push(['rest', 60]);
+  if (climate.rain > 0.3) o.push(['rest', 60 * (1 - 0.9 * ag)]);
   if (a.hun > 0.4 && jagCarrion(a)) o.push(['return', 45 + a.hun * 170]); // volta à presa abandonada (ou fareja carniça)
   if (a.mcd <= 0 && jagCount() < 5) {
     const m = jagMate(a);
@@ -1205,9 +1219,9 @@ function jagUpd(a, I, h, dt) {
         break;
       }
       if (seen && p.state === 'flee') {
-        if (d < 75 && a.stam > 0.4) {
+        if (d < 75 + 8 * aggression(a.hun) && a.stam > 0.4) {
           a.state = 'chase';
-          a.t = HUNT.jaguar.giveUp;
+          a.t = HUNT.jaguar.giveUp * (1 + 0.6 * aggression(a.hun));
         } else jagGiveUp(a, false, 0.7);
         break;
       } // presa percebeu: ou persegue ou desiste
@@ -1317,7 +1331,8 @@ function jagUpd(a, I, h, dt) {
       if (a.stT < dt * 1.5) a.gapRef = null;
       const d = Math.hypot(p.x - a.x, p.y - a.y);
       a.t -= dt;
-      a.stam -= dt / I.stam;
+      const agC = aggression(a.hun); // faminta: corre mais rápido, gasta menos fôlego e só desiste quando a presa abre MUITA distância
+      a.stam -= (dt / I.stam) * (1 - 0.15 * agC);
       const seen = jagSees(a, p, dt),
         ls = a.lastSeen;
       if (!seen && (a.loseT || 0) > 0.9) {
@@ -1329,7 +1344,7 @@ function jagUpd(a, I, h, dt) {
       const gx = seen || !ls ? p.x : ls.x,
         gy = seen || !ls ? p.y : ls.y,
         ramp = 0.6 + 0.4 * (1 - Math.exp(-3.6 * a.stT)); // aceleração: não é instantânea
-      jStep(a, gx, gy, I.run * (a.stam > 0.1 ? 1 : 0.5) * ramp, dt);
+      jStep(a, gx, gy, I.run * (1 + 0.05 * agC) * (a.stam > 0.1 ? 1 : 0.5) * ramp, dt);
       if (a.gapRef == null) {
         a.gapRef = d;
         a.gapT = 1.5;
@@ -1344,7 +1359,7 @@ function jagUpd(a, I, h, dt) {
       if (d < 10) {
         if (p.hunter && p.hunter !== a) jagGiveUp(a, false, 0.4);
         else jagBegin(p, a);
-      } else if (a.t <= 0 || a.stam <= 0 || d > 230 || (a.gapBad || 0) >= 2 || a.stuck > 0.8) {
+      } else if (a.t <= 0 || a.stam <= 0 || d > 230 + 50 * agC || (a.gapBad || 0) >= 2 + Math.round(agC) || a.stuck > 0.8) {
         a.state = 'pant';
         a.t = HUNT.jaguar.recoverT;
         a.cd = 30;
@@ -1439,7 +1454,8 @@ function jagUpd(a, I, h, dt) {
       const dd = Math.hypot(pl.x - a.x, pl.y - a.y),
         k = 1 - Math.exp(-PP.accel * a.burstT),
         fatigue = a.burstT <= PP.burstT ? 1 : Math.max(0.45, 1 - (a.burstT - PP.burstT) * 0.55),
-        v = (I.walk * 0.9 + (PP.burst - I.walk * 0.9) * k) * fatigue; // aceleração rápida, sem salto instantâneo de velocidade
+        agP = aggression(a.hun),
+        v = (I.walk * 0.9 + (PP.burst * (1 + 0.07 * agP) - I.walk * 0.9) * k) * fatigue; // aceleração rápida, sem salto instantâneo de velocidade
       // a onça ESTIMA a velocidade do jogador com atraso (leadLag): uma guinada brusca engana a interceptação por um instante
       if (a.burstT <= dt * 1.5 || a.pvx == null) {
         a.pvx = pl.vx;
@@ -1452,6 +1468,30 @@ function jagUpd(a, I, h, dt) {
       const tl = Math.min(0.9, dd / Math.max(60, v)) * 0.7, // intercepta a posição futura (estimada) do jogador
         gx = seen ? pl.x + a.pvx * tl : pl.x,
         gy = seen ? pl.y + a.pvy * tl : pl.y;
+      // SALTO: perto o bastante, a onça se lança sobre o jogador num disparo curtíssimo e muito rápido, derruba e morde
+      const L = PP.leap;
+      if (a.leapT > 0) {
+        a.leapT -= dt;
+        a.z = Math.sin(Math.PI * Math.max(0, 1 - a.leapT / L.time)) * 8;
+        // o salto vai reto para onde o jogador ESTAVA ao saltar (não corrige no ar): um passo de lado no último instante a faz errar
+        jStep(a, a.x + Math.cos(a.pdir) * 60, a.y + Math.sin(a.pdir) * 60, L.speed, dt, 9);
+        if (dP <= PP.biteReach + 2 && !S.inside) {
+          a.leapT = 0;
+          a.z = 0;
+          playerFx.snareUntil = ecoNow() + L.pin; // derrubado: não anda por um instante
+          playerFx.snareSlow = 0;
+          jagBitePlayer(a);
+          break;
+        }
+        if (a.leapT <= 0) a.z = 0;
+        break;
+      }
+      if (seen && !S.inside && dd >= L.range[0] && dd <= L.range[1] && ecoNow() - (a.leapAt || -99) > L.cd && ecoNow() >= playerFx.freeUntil) {
+        a.leapT = L.time;
+        a.leapAt = ecoNow();
+        a.pdir = Math.atan2(S.py - a.y, S.px - a.x);
+        break;
+      }
       jStep(a, gx, gy, v, dt, 1.8 * PP.turn);
       if (seen && dP <= PP.biteReach && !S.inside) {
         jagBitePlayer(a);
@@ -1464,12 +1504,12 @@ function jagUpd(a, I, h, dt) {
         a.stuck = 0;
         break;
       }
-      if ((a.burstT > PP.burstT + 1 && dd > 40) || dd > PP.giveUpDist || a.stuck > 0.6) {
+      if ((a.burstT > PP.burstT * (1 + 0.3 * agP) + 1 && dd > 40) || dd > PP.giveUpDist * (1 + 0.4 * agP) || a.stuck > 0.6) {
         // o jogador escapou: ficou longe (distância), travou em obstáculo (árvore, cerca) ou o fôlego acabou e ele já está fora de alcance
         releasePlayerHunt(a.id, PP.cool);
         a.state = 'pant';
         a.t = HUNT.jaguar.recoverT;
-        a.cd = Math.max(a.cd, PP.cool * (0.8 + Math.random() * 0.4));
+        a.cd = Math.max(a.cd, PP.cool * (0.8 + Math.random() * 0.4) * (1 - 0.75 * agP));
         a.pl = null;
         a.bites = 0;
       }

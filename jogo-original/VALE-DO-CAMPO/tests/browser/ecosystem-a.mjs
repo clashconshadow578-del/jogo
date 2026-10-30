@@ -61,7 +61,9 @@ const J = async (code) => JSON.parse(await run(p, `JSON.stringify((() => {${code
     // idle: o cervo parado e sem presença de bando; 'rest' (deitado, atenção baixa) é o caso mais difícil
     const need = st === 'rest' ? 0.6 : 0.7;
     ok(eng > 0 && (q.A + q.B) / eng >= need, `2. cervo ${st}: detecta a onça ANTES do bote em ${q.A + q.B}/${eng} aproximações (${Math.round(((q.A + q.B) / eng) * 100)}%), distância mediana ${q.med} px`);
-    ok(q.kill <= q.n * 0.4, `2. cervo ${st}: onça faminta mata ${q.kill}/${q.n} (≤ 40%): a caça é arriscada para o predador`);
+    // onça FAMINTA (agressiva: foco em caçar, descansa pouco): comendo/parado em chão aberto a presa ainda escapa bastante; deitado é o alvo mais fácil
+    const maxKill = st === 'idle' ? 0.4 : st === 'forage' ? 0.65 : 0.95;
+    ok(q.kill <= q.n * maxKill, `2. cervo ${st}: onça faminta mata ${q.kill}/${q.n} (≤ ${Math.round(maxKill * 100)}%): a caça é arriscada para o predador`);
   }
 }
 
@@ -104,14 +106,14 @@ const J = async (code) => JSON.parse(await run(p, `JSON.stringify((() => {${code
 }
 
 /* ---------- 4. presa escapa e o predador desiste ---------- */
-{
-  const r = await J(`
+const run4 = (HUN) => J(`
+    const HUN = ${HUN};
     // perseguição já em andamento, com a presa fugindo a 70–110 px (inviável para a onça): ela deve desistir sem oscilar
     const res = { n: 40, gaveUp: 0, kills: 0, maxChase: 0, reenter: 0, cdSet: 0 };
     for (let k = 0; k < res.n; k++) {
       T.seed(3000 + k); const c = T.open();
       const gap = 70 + (k % 5) * 10;
-      const j = T.mk('jaguar', c.x - gap, c.y, { hun: 0.7, sex: 'm', hx: c.x - gap, hy: c.y });
+      const j = T.mk('jaguar', c.x - gap, c.y, { hun: HUN, sex: 'm', hx: c.x - gap, hy: c.y });
       const d = T.mk(k % 2 ? 'hare' : 'deer', c.x, c.y, { state: 'flee', t: 12, fang: 0, zz: 1 });
       j.state = 'chase'; j.tgt = d; j.t = T.Eco.HUNT.jaguar.giveUp; j.lastSeen = { x: d.x, y: d.y, t: 0 };
       let ct = 0, entries = 1, last = 'chase', ended = null;
@@ -126,11 +128,17 @@ const J = async (code) => JSON.parse(await run(p, `JSON.stringify((() => {${code
     }
     res.giveUp = T.Eco.HUNT.jaguar.giveUp;
     return res;`);
+{
+  const r = await run4(0.3); // fome baixa (sem agressividade): o comportamento-base de desistência
   console.log('  [4]', JSON.stringify(r));
   ok(r.gaveUp >= r.n * 0.5, `4. presa escapou e a onça DESISTIU em ${r.gaveUp}/${r.n} perseguições inviáveis (matou ${r.kills})`);
   ok(r.maxChase <= r.giveUp + 3, `4. tempo total em perseguição por tentativa ≤ limite (${r.maxChase.toFixed(1)} s ≤ ${r.giveUp} s + folga)`);
   ok(r.cdSet >= r.gaveUp * 0.9, `4. depois de desistir deixa de caçar/espera (${r.cdSet}/${r.gaveUp})`);
   ok(r.reenter <= r.n * 0.25, `4. sem oscilação perseguir↔desistir (${r.reenter} reentradas em ${r.n} tentativas)`);
+  const h = await run4(0.95); // faminta: persegue por mais tempo e desiste menos
+  console.log('  [4h]', JSON.stringify(h));
+  ok(h.kills >= r.kills, `4. onça faminta persiste mais que a saciada (mata ${h.kills}/${h.n} contra ${r.kills}/${r.n})`);
+  ok(h.maxChase >= r.maxChase - 0.5, `4. faminta não desiste antes da saciada (${h.maxChase.toFixed(1)} s ≥ ${r.maxChase.toFixed(1)} s)`);
 }
 
 /* ---------- 5. bando de queixadas reage a um predador ---------- */
@@ -270,7 +278,8 @@ const J = async (code) => JSON.parse(await run(p, `JSON.stringify((() => {${code
       T.step(0.05, 30, () => {
         const ti = Math.floor(j.y / TS) * MW + Math.floor(j.x / TS);
         if (obj[ti] === ROCK) inRock = true;
-        if (['observe', 'stalk', 'chase', 'pounce'].includes(j.state) && j.x < (tx - 3) * TS && j.tgt === d && T.d(j, d) < 140 && Math.abs(j.y - d.y) < 20) sawThrough = true;
+        // o faro da onça (420 px) sente a presa atrás da pedra e ela pode ir até lá (observar/espreitar); o que NÃO pode é atacar através da parede
+        if (['chase', 'pounce'].includes(j.state) && j.x < (tx - 3) * TS && j.tgt === d && T.d(j, d) < 140 && Math.abs(j.y - d.y) < 20) sawThrough = true;
       });
       if (inRock) res.rockInside++;
       if (sawThrough) res.throughWall++;

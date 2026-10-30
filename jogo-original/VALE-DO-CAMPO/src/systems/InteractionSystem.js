@@ -6,10 +6,12 @@
 
 import { CROP } from '../config/balance.js';
 import { BIN, GRASS, MH, MW, PATH, SOIL, TS, WATER } from '../config/constants.js';
+import { PLAYER_PREY } from '../config/ecosystem.js';
 import { toolFx } from '../config/progression.js';
 import { extensible } from '../core/extensions.js';
 import { S } from '../core/GameState.js';
 import { dormir } from '../core/TimeManager.js';
+import { playerSnared, playerStruggle } from '../entities/ai/Perception.js';
 import { aniInfo, aniInit, say } from '../entities/animals/AnimalSocial.js';
 import { herd } from '../entities/cow/Herd.js';
 import { chxInfoNear } from '../entities/farm/Chickens.js';
@@ -55,6 +57,12 @@ function lineTiles(t, n) {
 }
 
 const actionA = extensible(function actionA() {
+  if (playerSnared()) {
+    // preso pela sucuri (ou derrubado pela onça): Usar vira "se debater" e afrouxa o aperto
+    playerStruggle(PLAYER_PREY.anaconda.struggle);
+    beep(150, 0.05, 'square');
+    return;
+  }
   if (qIdx !== -1) {
     qClose();
     return;

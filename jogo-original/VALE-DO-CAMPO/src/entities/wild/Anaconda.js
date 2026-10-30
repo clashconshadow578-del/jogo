@@ -725,7 +725,7 @@ const PA = PLAYER_PREY.anaconda;
 
 /** Ela decide investir contra o jogador que entrou no alcance? (uma vez por entrada; saciada investe bem menos). */
 function anaPlayerGo(a, dP) {
-  if (S.inside || a.dg >= 0.3 || a.cd > 0 || playerFx.snareUntil > ecoNow()) return false;
+  if (S.inside || a.dg >= 0.3 || a.cd > 0 || playerFx.snareUntil > ecoNow() || ecoNow() < playerFx.freeUntil) return false;
   if (a.camo < PA.minCamo) return false; // sem camuflagem não há emboscada: ela prefere sumir
   if (a.plRoll) return false; // já decidiu nesta aproximação
   a.plRoll = true;
@@ -745,7 +745,7 @@ function anaPlayerGo(a, dP) {
 /** Persegue o jogador que está perto (rasteja atrás dele). Só com linha de visão e se nenhum outro predador já caça. */
 function anaPursue(a) {
   if (a.state === 'pcrawl') return true;
-  if (S.inside || sleeping || !hasLOS(a.x, a.y, S.px, S.py) || !claimPlayerHunt(a.id, 2)) return false;
+  if (S.inside || sleeping || ecoNow() < playerFx.freeUntil || !hasLOS(a.x, a.y, S.px, S.py) || !claimPlayerHunt(a.id, 2)) return false;
   a.state = 'pcrawl';
   a.t = 999; // sem prazo: termina quando o jogador escapa
   a.loseT = 0;
@@ -1152,7 +1152,8 @@ function anaUpd0(a, I, h, dt) {
           playerFx.snareSlow = PA.holdSlow;
           a.state = 'phold';
           a.t = PA.holdT;
-          toast('🐍 Presa pela sucuri! Ela não é venenosa — se debata para se soltar');
+          a.hgap = PA.holdEvery;
+          toast('🐍 A sucuri te laçou e te trava! Toque em Usar várias vezes para se debater e se soltar');
         } else anaAfterPlayer(a, PA.cool);
       } else if (arr || a.t <= 0 || a.stuck > 0.1) {
         if (dP < 140) toast('🐍 O bote da sucuri errou');
@@ -1183,22 +1184,38 @@ function anaUpd0(a, I, h, dt) {
         a.bgap = PA.holdEvery;
         a.mv = false;
         if (
-          hurtPlayer({ dmg: PA.holdBite, from: a, label: '🐍 A sucuri te prendeu!', kick: PA.kick, source: 'A sucuri' })
+          hurtPlayer({ dmg: PA.bite, from: a, label: '🐍 A sucuri te prendeu!', kick: PA.kick, source: 'A sucuri' })
         ) {
-          playerFx.snareUntil = ecoNow() + PA.holdT; // preso: anda mais devagar, mas ainda consegue escapar
+          playerFx.snareUntil = ecoNow() + PA.holdT; // preso de verdade: ela enrola o corpo e trava o jogador
           playerFx.snareSlow = PA.holdSlow;
+          a.state = 'phold';
+          a.t = PA.holdT;
+          a.hgap = PA.holdEvery;
+          toast('🐍 A sucuri te enrolou! Toque em Usar várias vezes para se debater e se soltar');
         }
       }
       break;
     }
     case 'phold': {
+      // constrição: o jogador fica travado; a cada aperto perde vida; cada toque em Usar (debater-se) afrouxa o aperto
       a.mv = false;
       a.hide = false;
-      a.t -= dt;
+      const sg = playerFx.struggle;
+      playerFx.struggle = 0;
+      a.t -= dt + sg;
       turnTo(a, Math.atan2(S.py - a.y, S.px - a.x), dt * 4);
-      if (S.vida <= 0 || S.inside || sleeping || dP > PA.reach * 1.4 || a.t <= 0) {
+      a.hgap = (a.hgap == null ? PA.holdEvery : a.hgap) - dt;
+      if (a.hgap <= 0 && S.vida > 0) {
+        a.hgap = PA.holdEvery;
+        hurtPlayer({ dmg: PA.holdBite, from: a, label: '🐍 A sucuri aperta!', kick: 0, source: 'A sucuri' });
+      }
+      playerFx.snareUntil = ecoNow() + 0.4; // renovado a cada quadro enquanto ela prende
+      playerFx.snareSlow = PA.holdSlow;
+      if (S.vida <= 0 || S.inside || sleeping || dP > PA.reach * 1.6 || a.t <= 0) {
         playerFx.snareUntil = 0;
-        anaAfterPlayer(a, PA.cool);
+        playerFx.freeUntil = ecoNow() + PA.freeT; // solto: tem alguns segundos para fugir sem ser preso de novo
+        if (S.vida > 0) toast('Você se soltou da sucuri!');
+        anaDisengage(a, PA.cool);
       }
       break;
     }

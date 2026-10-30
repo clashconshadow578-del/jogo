@@ -100,9 +100,13 @@ export function playerTarget() {
     frozen: false,
     cover: S.inside ? 1 : coverAt(S.px, S.py),
     camo: 0,
+    scentMul: 0.65, // o cheiro do jogador chega menos longe que o de uma presa grande
+    scentNeedsHunger: true, // e a onça só o fareja de longe quando está com fome
     lit: env.playerLit ? !!env.playerLit() : false,
   };
 }
+
+const stalkLike = (st) => st === 'stalk' || st === 'pstalk' || st === 'observe' || st === 'pobserve' || st === 'ambush' || st === 'investigate';
 
 /** Descritor de um animal como alvo (para outro animal). `camo` vem de a.camo (sucuri). */
 export function animalTarget(a) {
@@ -115,8 +119,10 @@ export function animalTarget(a) {
     running: run && !!a.mv,
     stalking: st === 'stalk' || st === 'pstalk' || st === 'ambush' || st === 'investigate',
     frozen: st === 'freeze',
-    cover: a.sp === 'hare' || a.sp === 'grouse' ? coverAt(a.x, a.y) : 0,
-    camo: a.camo || 0,
+    // a vegetação alta esconde quem está nela; a onça, parada ou espreitando no mato alto, quase some (camuflagem de felino emboscador)
+    cover: a.sp === 'hare' || a.sp === 'grouse' || a.sp === 'jaguar' || a.sp === 'fox' ? coverAt(a.x, a.y) : 0,
+    camo: a.sp === 'jaguar' ? (a.mv && !stalkLike(st) ? 0.1 : 0.7) * coverAt(a.x, a.y) : a.camo || 0,
+    predator: a.sp === 'jaguar', // as presas sentem o cheiro dela de perto (ECO[presa].nose), mesmo escondida
     lit: false,
   };
 }
@@ -135,7 +141,7 @@ export function senseTarget(o, T, rangeOverride) {
     dist = Math.hypot(dx, dy);
   const base =
     rangeOverride != null ? rangeOverride : sightRange(o.sp, env.night, ATTN[o.state] != null ? ATTN[o.state] : 1);
-  if (dist > Math.max(base * 1.9, P ? Math.max(P.hear, P.scent || 0, P.heat || 0) : 0) + 1)
+  if (dist > Math.max(base * 1.9, P ? Math.max(P.hear, P.scent || 0, P.heat || 0, P.nose || 0) : 0) + 1)
     return { seen: false, heard: false, smelled: false, any: false, dist, occ: 0, range: base, eff: 0 };
   const occ = occlusion(o.x, o.y, T.x, T.y),
     // quem come/descansa vira a cabeça o tempo todo: a direção do olhar oscila ±~57° em torno do corpo (fases distintas por animal)
@@ -146,13 +152,20 @@ export function senseTarget(o, T, rangeOverride) {
     rear = rearFactor(cosF);
   const r = detects({ dist, range: base, vis, occlusion: occ, rear, hear: P ? P.hear : 0, loud: !!T.running });
   // olfato (predador com fome farejando) e sentido de calor (sucuri): alcance curto, atravessam a vegetação
-  const scent = P && P.scent && o.hun != null && o.hun >= 0.5 && dist <= P.scent * (1 - 0.3 * occ),
+  const scent =
+      P &&
+      P.scent &&
+      o.hun != null &&
+      ((P.scentAlways && !T.scentNeedsHunger) || o.hun >= 0.5) &&
+      dist <= P.scent * (T.scentMul || 1) * (1 - 0.3 * occ),
+    // nariz das presas: sentem o predador (onça) de perto, escondido ou não; quem espreita chega mais perto antes de ser sentido
+    nose = P && P.nose && T.predator && dist <= P.nose * (T.stalking ? 0.55 : 1),
     heat = P && P.heat && !T.cold && dist <= P.heat * (1 - 0.5 * occ);
   return {
     seen: r.seen,
     heard: r.heard,
-    smelled: !!(scent || heat),
-    any: r.any || !!(scent || heat),
+    smelled: !!(scent || heat || nose),
+    any: r.any || !!(scent || heat || nose),
     dist,
     occ,
     range: base,
@@ -301,10 +314,22 @@ export function resetEcology() {
   lock.id = 0;
   lock.until = 0;
   lock.cool = 0;
+  playerFx.snareUntil = 0;
+  playerFx.snareSlow = 1;
+  playerFx.struggle = 0;
+  playerFx.freeUntil = 0;
 }
 
 /** Efeitos temporários sobre o jogador causados por animais (não são salvos). `snareUntil`: preso pela sucuri até esse instante (ecoNow). */
-export const playerFx = { snareUntil: 0, snareSlow: 1 };
+export const playerFx = { snareUntil: 0, snareSlow: 1, struggle: 0, freeUntil: 0 };
+
+/** O jogador está preso (sucuri, bote da onça)? */
+export const playerSnared = () => playerFx.snareUntil > env.t;
+
+/** O jogador se debate (toque em Usar): afrouxa o aperto da sucuri em `t` segundos (consumido por Anaconda.js). */
+export function playerStruggle(t) {
+  playerFx.struggle += t;
+}
 
 /** Fator de velocidade do jogador devido a efeitos de animais (1 = normal). */
 export const playerSlow = () => (playerFx.snareUntil > env.t ? playerFx.snareSlow : 1);

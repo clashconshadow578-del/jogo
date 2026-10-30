@@ -52,6 +52,7 @@ export const ATTN = {
    calmAfter s sem ameaça para voltar à rotina · avoidFor/avoidR: tempo e raio em que evita o lugar onde viu o predador */
 export const ECO = {
   deer: {
+    nose: 80, // sente o cheiro do predador a esta distância (px), mesmo escondido no mato
     sight: 215,
     nightMul: 0.55,
     hear: 60,
@@ -64,6 +65,7 @@ export const ECO = {
     avoidR: 90,
   },
   hare: {
+    nose: 60, // sente o cheiro do predador a esta distância (px), mesmo escondido no mato
     sight: 135,
     nightMul: 0.6,
     hear: 75,
@@ -78,6 +80,7 @@ export const ECO = {
     shelterR: 130,
   },
   grouse: {
+    nose: 45, // sente o cheiro do predador a esta distância (px), mesmo escondido no mato
     sight: 115,
     nightMul: 0.45,
     hear: 55,
@@ -105,6 +108,7 @@ export const ECO = {
     avoidR: 0,
   },
   fox: {
+    nose: 60,
     sight: 150,
     nightMul: 0.85,
     hear: 85,
@@ -118,6 +122,7 @@ export const ECO = {
     avoidR: 90,
   },
   boar: {
+    nose: 70, // sente o cheiro do predador a esta distância (px), mesmo escondido no mato
     sight: 125,
     nightMul: 0.5,
     hear: 75,
@@ -133,7 +138,8 @@ export const ECO = {
     sight: 195,
     nightMul: 0.78,
     hear: 95,
-    scent: 140,
+    scent: 420, // faro: sente o cheiro de qualquer presa de longe (px)
+    scentAlways: true, // mesmo saciada (as outras só farejam com fome)
     vigil: 0.7,
     courage: 0.9,
     herdAlarm: 0,
@@ -182,15 +188,15 @@ export const HUNT = {
     scanR: 190,
   },
   jaguar: {
-    drive: 0.16,
+    drive: 0.16, // saciada: interesse normal (a fome sobe tudo isto: ver aggression/huntFor)
     commitMin: 0.16,
     observeMin: 0.06,
-    giveUp: 6,
+    giveUp: 6, // s de perseguição (a faminta persiste mais: ver huntFor)
     loseT: 7,
     recoverT: 4,
-    cool: 22,
+    cool: 22, // s entre tentativas (a faminta quase não descansa: ver huntFor)
     riskAv: 0.55,
-    scanR: 320,
+    scanR: 320, // saciada; faminta enxerga oportunidade até 1,5× mais longe (huntFor)
   },
   anaconda: {
     drive: 0.08,
@@ -204,6 +210,27 @@ export const HUNT = {
     scanR: 70,
   },
 };
+
+/* ============ fome → agressividade do predador ============ */
+/**
+ * Quão agressivo (0..1) o predador está por fome: 0 até ~35% de fome (comportamento normal), sobe até 1 em ~90%. Faminto ele deixa de
+ * observar e passa a caçar de verdade: aceita mais risco, comete a caçada com menos oportunidade, persegue por mais tempo e quase não descansa.
+ */
+export const aggression = (hun) => clamp(((hun || 0) - 0.35) / 0.55);
+
+/** Parâmetros de caça (HUNT) ajustados pela agressividade `ag` (0..1). Devolve uma cópia: HUNT em si nunca muda. */
+export function huntFor(h, ag) {
+  return {
+    ...h,
+    drive: h.drive + 0.25 * ag,
+    commitMin: h.commitMin * (1 - 0.7 * ag),
+    observeMin: h.observeMin * (1 - 0.7 * ag),
+    riskAv: h.riskAv * (1 - 0.6 * ag),
+    giveUp: h.giveUp * (1 + 0.6 * ag),
+    cool: h.cool * (1 - 0.75 * ag),
+    scanR: h.scanR * (1 + 0.5 * ag),
+  };
+}
 
 /* ============ o jogador como presa ============
    Velocidades do jogador (balance.js): andar ≈ 60 px/s, correr ≈ 78 px/s (+30%).
@@ -221,43 +248,47 @@ export const PLAYER_PREY = {
     stuckT: 0.5, // s travada num obstáculo antes de desistir
   },
   jaguar: {
-    burst: 102, // velocidade de perseguição (≈1,7× andar, ≈1,3× correr)
-    accel: 3.6, // 1/s: rapidez com que a velocidade sobe até o burst (63% em 0,28 s; 90% em 0,64 s)
-    turn: 0.15, // fração da agilidade de giro durante o burst (raio de curva ~50 px a 102 px/s: uma guinada brusca do jogador faz a onça passar direto)
-    startDist: [60, 95], // distância em que a espreita vira corrida [mín,máx]
-    biteReach: 15, // alcance da mordida (px)
-    bite: 13, // vida perdida por mordida
+    burst: 94, // velocidade de perseguição (≈2× andar, ≈1,5× correr): fugir em linha reta quase nunca funciona
+    accel: 5.5, // 1/s: rapidez com que a velocidade sobe até o burst (63% em 0,18 s)
+    turn: 0.15, // fração da agilidade de giro durante o burst: uma guinada brusca ainda a faz errar, mas bem menos
+    startDist: [60, 95], // distância em que a espreita vira corrida [mín,máx]: ela só arranca bem de perto (quem reage cedo escapa)
+    biteReach: 18, // alcance da mordida (px)
+    bite: 18, // vida perdida por mordida
     bites: Infinity, // sem limite: morde até o jogador morrer ou escapar
-    biteGap: 0.8, // intervalo entre mordidas (s)
-    giveUpDist: 200, // longe demais: desiste
+    biteGap: 0.75, // intervalo entre mordidas (s)
+    giveUpDist: 280, // longe demais: desiste
     leadLag: 0.45, // s: atraso com que a onça estima a velocidade do jogador (guinadas bruscas enganam a interceptação)
-    burstT: 2.4, // s de corrida em velocidade máxima; depois o fôlego acaba e a velocidade cai até ~45% em 1 s
+    burstT: 1.9, // s de corrida em velocidade máxima; depois o fôlego acaba e a velocidade cai até ~45% em 1 s
     afterBiteCool: 0, // (sem trégua: depois de morder, a onça continua a perseguição)
-    lostGrace: 0.9, // s correndo na última direção vista antes de investigar
+    lostGrace: 1.2, // s correndo na última direção vista antes de investigar
     investigate: [5, 8], // s procurando na última posição vista
-    cool: 40, // s sem caçar o jogador depois de desistir
+    cool: 22, // s sem caçar o jogador depois de desistir (a faminta quase não descansa: ver aggr)
+    // bote: a onça SALTA sobre o jogador quando chega perto (disparo curto e muito rápido), prende por um instante e morde
+    leap: { range: [22, 36], speed: 320, time: 0.22, pin: 0.7, cd: 2.5 },
   },
   anaconda: {
-    reach: 34, // alcance do bote contra o jogador (px)
-    telegraph: 0.45, // s de aviso (corpo se contrai) antes do bote: dá para reagir
-    bite: 14,
-    holdT: 1.5, // s presos
-    holdSlow: 0.35, // fração da velocidade enquanto preso
+    reach: 38, // alcance do bote contra o jogador (px)
+    telegraph: 0.45, // s de aviso (corpo se contrai) antes do bote: dá para reagir (sair de lado) se for rápido
+    bite: 20,
+    holdT: 5, // s presos (constrição)
+    holdSlow: 0, // fração da velocidade enquanto preso: 0 = travado, não anda
+    struggle: 0.5, // s a menos de aperto por toque em Usar (o jogador se debate)
+    freeT: 4, // s em que ela não volta a prender depois de soltar (dá tempo de fugir)
     cool: 22,
-    chance: 0.5, // chance base de investir quando o jogador entra no alcance e as condições são boas (sobe com a fome)
-    minCamo: 0.45, // só embosca se a camuflagem estiver pelo menos nisso (à vista, ela prefere fugir)
+    chance: 0.7, // chance base de investir quando o jogador entra no alcance e as condições são boas (sobe com a fome)
+    minCamo: 0.35, // só embosca se a camuflagem estiver pelo menos nisso (à vista, ela prefere fugir)
     stayCamo: 0.5, // camuflada assim, ela fica parada até o jogador chegar ao alcance (em vez de fugir aos 72 px)
-    dash: 260, // velocidade do bote (px/s)
-    dashT: 0.22, // duração máxima do bote (s): ~57 px, pouco além do alcance
-    hitR: 9, // distância em que o bote acerta o jogador
-    defendBite: 9, // mordida de defesa quando pisam nela
+    dash: 300, // velocidade do bote (px/s)
+    dashT: 0.25, // duração máxima do bote (s): ~57 px, pouco além do alcance
+    hitR: 10, // distância em que o bote acerta o jogador
+    defendBite: 14, // mordida de defesa quando pisam nela
     defendR: 24,
     fleeR: 72, // distância em que ela deixa a emboscada e passa a perseguir (não foge)
     chaseR: 110, // longe demais: desiste da perseguição
     crawlLand: 16, // px/s rastejando em terra (lenta: o jogador escapa andando)
     crawlWater: 40, // px/s na água
-    holdBite: 9, // mordida durante a perseguição (vida)
-    holdEvery: 1.4, // s entre mordidas enquanto persegue
+    holdBite: 12, // dano da constrição a cada aperto (vida)
+    holdEvery: 1, // s entre apertos enquanto prende
     kick: 25, // empurrão (pequeno: ela prende, não arremessa)
     stayAfterMiss: 0.5, // chance de continuar escondida na água depois de errar (senão muda de lugar)
     truce: 0, // (sem trégua: nenhum predador dá trégua ao jogador)
@@ -267,7 +298,7 @@ export const PLAYER_PREY = {
 /* ============ camuflagem da sucuri ============ */
 export const CAMO = {
   water: 0.88,
-  grassMax: 0.7,
+  grassMax: 0.84, // mato alto fechado (fase 4): a sucuri some nele (quase como na água, 0,88)
   grassMin: 0.3,
   soil: 0.35,
   sand: 0.1,

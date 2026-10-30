@@ -50,6 +50,26 @@ Histerese: duração mínima por estado, `cd` (cooldown) após desistir e `canSw
   detecção da raposa passou de 50 px fixos para visão por percepção (~89–117 px).
 - **Tetraz.** Vigia, exibição (`display`, macho adulto, pouco faminto) e resposta a ameaça.
 
+## Predadores mais fortes, camuflagem no mato e fome (revisão)
+
+Valores em `config/ecosystem.js` (`ECO`, `HUNT`, `PLAYER_PREY`, `CAMO`, `aggression`/`huntFor`) e `config/plants.js` (`COBERTURA`).
+
+- **Esconderijo no mato alto.** A cobertura de um tile vem da fase da planta (`COBERTURA = [0, .12, .3, .7, 1]`). Onça parada ou espreitando no
+  mato fechado (fase 4) quase some (camuflagem até 0,7; no teste, à vista em 40/40 no chão limpo e 0/40 no mato fechado). A sucuri
+  usa a mesma cobertura (camuflagem de mato até 0,84; água 0,88). Em chão aberto a presa vê a onça espreitando de longe e foge cedo: sem cobertura, a caça falha.
+- **Faro da onça.** Sente qualquer presa a até 420 px (80 % disso atrás de árvores), mesmo saciada, e o jogador a até 270 px só com fome. O faro serve para
+  ENCONTRAR a presa (ir até onde ela estava); acompanhá-la na corrida exige ver, ouvir ou estar a ≤ 150 px.
+- **Presas fogem.** O raio de medo de uma onça visível passeando subiu (cervo 150 px, antes 60) e, diante da onça, a presa foge a 95 % do raio em vez de ficar de
+  "alerta". Cervo, lebre, galo-lira e queixada também **sentem** a onça de perto (`ECO[sp].nose`, metade quando ela espreita), mesmo escondida no mato.
+- **Sucuri trava o jogador.** O bote acerta e a constrição prende por 5 s: o jogador **não anda** (`holdSlow: 0`), perde 12 de vida por segundo (`holdBite`) e o
+  toque em **Usar** (se debater) afrouxa o aperto em 0,5 s por toque (~10 toques). Solto, ela não prende de novo por 4 s (`freeT`). Bote de 20 de vida.
+- **Onça mais forte.** Mordida 18 (intervalo 0,75 s), corrida 94 px/s (1,2× a corrida do jogador), e **salto**: a ≤ 36 px ela se lança a 320 px/s por 0,22 s na direção
+  onde o jogador ESTAVA ao saltar (um passo de lado no ar a faz errar), derruba por 0,7 s e morde. Quem reage cedo à espreita escapa (~80 %); depois
+  que ela arranca, a chance é de ~30 % com fome moderada e ~0 % com fome alta.
+- **Fome → agressividade** (`aggression(hun)`: 0 até 35 % de fome, 1 em ~90 %). Faminta ela quase só caça (pesos do plano de ação), enxerga oportunidade
+  em mais presas e de mais longe (`scanR` ×1,5), aceita mais risco, persiste mais (perseguição ×1,6, fôlego +15 %), descansa até 75 % menos entre tentativas
+  e caça o jogador a qualquer hora. Saciada, o comportamento é o de antes.
+
 ## Indicadores
 
 Barras de fome e sede + idade compacta (`fmtAge`, `lifeStage`) sobre cada animal, com dados reais (`hun`/`thi`/`age`;

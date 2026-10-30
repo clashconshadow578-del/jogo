@@ -6,6 +6,8 @@ import {
   ECO,
   HUNT,
   PLAYER_PREY,
+  aggression,
+  huntFor,
   STATUS_COLORS,
   STATUS_LAYOUT,
   camouflage,
@@ -152,7 +154,7 @@ test('jogador como presa: onça é rápida mas não instantânea e dá para esca
   const J = PLAYER_PREY.jaguar;
   const walk = 60,
     run = 78;
-  assert.ok(J.burst > run * 1.3, 'burst bem acima de correr');
+  assert.ok(J.burst > run * 1.15, 'burst acima de correr (a fome ainda soma +7%)');
   assert.ok(J.burst < run * 2.0, 'mas não absurdo');
   assert.ok(J.accel > 0 && J.accel < 10, 'acelera, não teleporta');
   assert.ok(J.burstT < 5, 'o fôlego acaba');
@@ -165,12 +167,33 @@ test('jogador como presa: onça é rápida mas não instantânea e dá para esca
   assert.ok(walk < run);
 });
 
-test('sucuri: aviso (telégrafo) dá tempo de reagir; bote é curto; preso é parcial e curto', () => {
+test('sucuri: aviso curto; bote curto; presa TRAVA o jogador e dá para se debater para sair', () => {
   const A = PLAYER_PREY.anaconda;
-  assert.ok(A.telegraph >= 0.3 && A.telegraph <= 0.8);
-  assert.ok(A.dashT * A.dash < A.reach * 2.2, 'o bote não alcança muito além do alcance');
-  assert.ok(A.holdSlow > 0 && A.holdSlow < 1 && A.holdT < 3);
+  assert.ok(A.telegraph >= 0.25 && A.telegraph <= 0.8);
+  assert.ok(A.dashT * A.dash < A.reach * 2.4, 'o bote não alcança muito além do alcance');
+  assert.equal(A.holdSlow, 0, 'preso pela sucuri o jogador não anda');
+  assert.ok(A.holdT >= 3 && A.holdT <= 7, 'a constrição dura alguns segundos');
+  assert.ok(A.struggle > 0 && A.holdT / A.struggle <= 14, 'dá para se soltar se debatendo (poucos toques)');
+  assert.ok(A.freeT >= 3, 'depois de soltar, o jogador tem tempo de fugir');
+  assert.ok(A.holdBite * Math.ceil(A.holdT / A.holdEvery) < 100, 'a constrição inteira, sem se debater, ainda não mata sozinha de 100 de vida');
   assert.ok(A.minCamo > 0.3, 'sem camuflagem não há emboscada');
+});
+
+test('onça: bote (salto) é mais rápido que a corrida e curto; fome só deixa mais agressiva', () => {
+  const J = PLAYER_PREY.jaguar;
+  assert.ok(J.leap.speed > J.burst * 2, 'o salto é muito mais rápido que a corrida');
+  assert.ok(J.leap.speed * J.leap.time < 100, 'mas curto: cobre menos de ~100 px');
+  assert.ok(J.leap.range[0] < J.leap.range[1] && J.leap.range[1] <= J.leap.speed * J.leap.time, 'o salto alcança o que mira');
+  assert.ok(J.bite >= 18, 'a mordida pesa');
+  assert.equal(aggression(0), 0);
+  assert.equal(aggression(0.35), 0, 'saciada ou com fome leve: comportamento normal');
+  assert.ok(aggression(0.7) > 0.4 && aggression(0.7) < 0.8);
+  assert.equal(aggression(1), 1);
+  const calm = huntFor(HUNT.jaguar, 0),
+    hot = huntFor(HUNT.jaguar, 1);
+  assert.equal(calm.commitMin, HUNT.jaguar.commitMin);
+  assert.ok(hot.commitMin < calm.commitMin && hot.drive > calm.drive && hot.riskAv < calm.riskAv, 'faminta ataca com mais facilidade e aceita mais risco');
+  assert.ok(hot.giveUp > calm.giveUp && hot.cool < calm.cool, 'faminta persegue por mais tempo e descansa menos');
 });
 
 /* ---------- memória e trava de caça ---------- */
