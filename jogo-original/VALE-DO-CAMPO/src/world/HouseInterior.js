@@ -84,6 +84,23 @@ function useDoor() {
   }, 350);
 }
 
+/**
+ * Renasce dentro da casa, ao lado da cama (usado quando o personagem morre: dormir(true) chama isto). Cai na porta se a cama ainda não carregou.
+ */
+function respawnInHouse() {
+  const m = SPR.bed,
+    spots = m && m.ready ? [[14 + m.w / 2, 62], [14 + m.w + 12, 60], [128, 54]] : [[128, 54]];
+  const pt = spots.find(([x, y]) => !inBlocked(x, y)) || [128, 54];
+  S.inside = true;
+  ip.x = pt[0];
+  ip.y = pt[1];
+  S.fx = 0;
+  S.fy = 1;
+  S.vx = S.vy = 0;
+  S.mv = false;
+  doorBusy = false;
+}
+
 function moveInside(dt) {
   const kx = Math.max(
       -1,
@@ -180,4 +197,4 @@ function syncDoorUI() {
   b.style.display = nearBed() ? '' : 'none';
 }
 
-export { DOOR, moveInside, nearBed, nearDoor, renderInterior, syncDoorUI, useDoor };
+export { DOOR, moveInside, nearBed, nearDoor, renderInterior, respawnInHouse, syncDoorUI, useDoor };

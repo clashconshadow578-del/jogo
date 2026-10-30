@@ -15,6 +15,7 @@ import { recoverGrassDay } from '../world/GrassSystem.js';
 import { fvAdvance } from '../world/hydrology/Fluvial.js';
 import { hydroAdvance, hydroDaily, nut } from '../world/hydrology/Hydrology.js';
 import { shroomDaily } from '../world/Mushrooms.js';
+import { respawnInHouse } from '../world/HouseInterior.js';
 import { climate } from '../world/WeatherSystem.js';
 import { crops, wet } from '../world/World.js';
 import { clearVitals, VIDA_MAX } from '../systems/Vitals.js';
@@ -58,6 +59,8 @@ function dormir(auto) {
     hydroAdvance(40);
     hydroDaily();
     ecoDaily();
+    // morreu (animal ou lobisomem): renasce dentro da casa, ao lado da cama (desmaio de cansaço continua onde estava)
+    if (auto && (window.NT_KILL || window.NT_WOLF)) respawnInHouse();
     climate.day = 0;
     climate.rain = 0;
     climate.wetness = Math.max(0, climate.wetness - 0.3);

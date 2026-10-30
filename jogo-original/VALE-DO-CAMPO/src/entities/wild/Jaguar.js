@@ -965,10 +965,7 @@ function jagUpd(a, I, h, dt) {
         a.t = 2.4;
         return;
       }
-      a.state = 'retreat';
-      a.t = 3;
-      a.fang = Math.atan2(a.y - S.py, a.x - S.px) + rr(-0.5, 0.5);
-      return;
+      // (antes a onça RECUAVA correndo ao ficar perto de gente depois de atacar: parecia medo; predador não foge do jogador)
     }
   }
   switch (a.state) {
@@ -1123,9 +1120,8 @@ function jagUpd(a, I, h, dt) {
         a.growl = 0;
       } else if (dP > 110 || a.t <= 0) {
         a.growl = 0;
-        a.state = 'retreat';
+        a.state = 'idle'; // o aviso acabou: segue a vida (sem recuar correndo)
         a.t = 2.5;
-        a.fang = Math.atan2(a.y - S.py, a.x - S.px);
         a.cd = 12;
       }
       break;
@@ -1141,9 +1137,8 @@ function jagUpd(a, I, h, dt) {
         a.t = PLAYER_PREY.jaguar.biteGap;
         a.atk = true;
       } else if (a.t <= 0 || dP > 150) {
-        a.state = 'retreat';
+        a.state = 'idle'; // errou a investida: não foge, só para
         a.t = 2.5;
-        a.fang = Math.atan2(a.y - S.py, a.x - S.px);
         a.cd = 20;
       }
       break;
@@ -1389,9 +1384,8 @@ function jagUpd(a, I, h, dt) {
           a.bites = 0;
         } else if (dec !== 'skip' && (a.obsN = (a.obsN || 0) + 1) < 3) a.t = rr(3, 5);
         else {
-          a.state = 'retreat'; // sem interesse: se afasta com calma
+          a.state = 'idle'; // sem interesse: segue a vida
           a.t = 2.5;
-          a.fang = Math.atan2(a.y - pl.y, a.x - pl.x) + rr(-0.4, 0.4);
           a.cd = Math.max(a.cd, PP.cool * 0.6);
           a.pl = null;
           releasePlayerHunt(a.id);

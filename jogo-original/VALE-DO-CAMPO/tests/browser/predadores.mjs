@@ -115,6 +115,22 @@ const leap = JSON.parse(await run(p, `(() => {
 ok(leap.saltou && leap.mordeu, 'a onça salta sobre o jogador e morde (saltou=' + leap.saltou + ', mordeu=' + leap.mordeu + ', vida ' + leap.vida + ')');
 ok(leap.travou, 'o salto derruba o jogador por um instante');
 
+// 7b) a onça NÃO recua correndo depois de atacar (parecia medo): sem estado 'retreat' perto do jogador
+const noFear = JSON.parse(await run(p, `(() => {
+  fauna.length = 0; resetEcology();
+  const [px, py] = [${T(20, 18).join(',')}];
+  S.px = px; S.py = py; S.vida = 100; S.inside = false; S.vx = 0; S.vy = 0;
+  const seen = new Set(); let maxD = 0;
+  for (const hun of [0.1, 0.6, 0.95]) {
+    fauna.length = 0; resetEcology(); S.vida = 100;
+    const a = faSpawn('jaguar', px - 25, py, false); a.age = 9999; a.hun = hun; a.id = 90; a.cd = 0; a.state = 'pattack'; a.t = 0.1; a.bites = 0; a.atk = true;
+    a.pl = { x: px, y: py, vx: 0, vy: 0, sp: 0, t: ecoNow() }; a.seePl = true;
+    for (let k = 0; k < 200; k++) { S.vx = 0; S.vy = 0; S.vida = Math.max(S.vida, 60); update(0.05); seen.add(a.state); maxD = Math.max(maxD, Math.hypot(a.x - px, a.y - py)); }
+  }
+  fauna.length = 0; return JSON.stringify({ estados: [...seen], maxD: Math.round(maxD) });
+})()`));
+ok(!noFear.estados.includes('retreat'), 'depois de atacar a onça não entra em recuo (estados: ' + noFear.estados.join(',') + ')');
+
 // 8) fome → agressividade: a onça faminta caça uma presa distante; a saciada não se compromete tanto
 const trial = async (hun) => JSON.parse(await run(p, `(() => {
   let caca = 0, tot = 6;
@@ -134,6 +150,13 @@ const faminta = await trial(0.95), saciada = await trial(0.05);
 console.log('caçadas iniciadas em 90 s: faminta', JSON.stringify(faminta), 'saciada', JSON.stringify(saciada));
 ok(faminta.caca >= 5, 'a onça faminta parte para a caça em quase todas as tentativas (' + faminta.caca + '/' + faminta.tot + ')');
 ok(faminta.caca > saciada.caca, 'a faminta caça bem mais que a saciada (' + faminta.caca + ' x ' + saciada.caca + ')');
+
+// 9) quando o personagem morre, renasce DENTRO da casa (ao lado da cama), de vida cheia, no dia seguinte
+await run(p, `(() => { fauna.length = 0; resetEcology(); S.inside = false; S.vida = 100; window.__d0 = S.day; hurtPlayer({ dmg: 999, from: { x: S.px - 5, y: S.py }, label: 'teste', source: 'A onça' }); return 1; })()`);
+await p.waitForTimeout(3500);
+const rev = JSON.parse(await run(p, `JSON.stringify({ inside: S.inside, vida: S.vida, dia: S.day - window.__d0, nearBed: nearBed() })`));
+ok(rev.inside === true && rev.vida >= 100 && rev.dia === 1, 'morreu: renasce dentro da casa, de vida cheia, no dia seguinte (' + JSON.stringify(rev) + ')');
+ok(rev.nearBed === true, 'renasce ao lado da cama (dá para dormir logo)');
 
 ok(errs.length === 0, 'sem erros no console' + (errs.length ? ': ' + errs.slice(0, 2).join(' | ') : ''));
 await close();
