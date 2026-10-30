@@ -197,16 +197,29 @@ arredondamento de 1-2 níveis em vez de idêntico) · 5 = entidades (árvores, a
 · 7 = PixiJS vira o padrão. A razão: o PixiJS ganha de verdade quando substitui **milhares de chamadas por quadro** por objetos que ficam na
 placa de vídeo; as camadas que ainda são feitas de muitas chamadas pequenas (mato, sombras, relevo, água) vêm primeiro.
 
-## 14. Teste de desempenho no aparelho (`?bench`)
+## 14. O que o celular ensinou, e o teste de desempenho no aparelho (`?bench`)
 
-O que mais faltava era medir **no celular**. Abra o jogo com `?bench` no fim do endereço (ex.: `...app.github.dev/?bench`). Sem tocar em nada,
-o jogo roda sozinho cerca de 2,5 minutos e mostra uma tabela: em 3 lugares (onde você está, rio e floresta) mede **fps**, **tempo de
-desenho** e **pior quadro** com cada recurso ligado ou desligado (jogo padrão, mato em imagens, grama na GPU, cache do chão) e, na primeira
-cena, o que mais pesa (qualidade mínima, sem raios e partículas, resolução x1). No fim, um resumo diz se o aparelho é limitado por
-**pixels** (placa de vídeo/tela) ou pelo **processador** (JavaScript), e mostra a placa de vídeo, o tamanho da tela e se há WebGL.
+**Primeira medição real (celular do dono do jogo):** com o mato em imagens ligado o jogo rodava a **4 fps**. Com ele desligado (como está
+agora por padrão) passou a **51 fps longe da casa e 25 fps em volta dela**. Lição: no celular, **muitas imagens pequenas e separadas custam
+mais que muitos retângulos** (cada uma vira uma textura na placa de vídeo). Para imagens prontas valerem a pena elas precisam estar numa
+**única textura grande e fixa** (um atlas), que é justamente o que o PixiJS faz bem. Por isso o mato em imagens fica **desligado**
+(`?matocache` liga) até ser refeito assim.
 
-Segurança do seu jogo: durante o teste **nada é gravado** (o jogo salva sozinho a cada minuto e ao esconder a aba; isso fica bloqueado), os
-toques são ignorados e a resolução fica fixa. No fim aparece o botão **Recarregar o jogo**, que volta ao último save exatamente como estava.
+**Próximo alvo:** em volta da casa o jogo cai para a metade (51 -> 25 fps). O `?bench` agora mede isso diretamente.
 
-Como usar a tabela: tire um print e me mande. Com os números do seu aparelho eu decido o que fica ligado por padrão e qual é a Fase 4.
-Observação: o navegador de teste do desenvolvimento não tem placa de vídeo; os números dele não valem para o seu celular.
+**Como usar:** abra o jogo com `?bench` no fim do endereço (ex.: `...app.github.dev/?bench`). Sem tocar em nada, o jogo roda sozinho cerca de
+3 minutos e mostra uma tabela com **fps** (mediana por segundo), **tempo de desenho** e **pior quadro** em 3 lugares (onde você está, **em
+volta da casa** e o rio):
+- recursos opcionais: jogo padrão, grama na GPU (fase 2), cache do chão;
+- só em volta da casa, **uma etapa desligada de cada vez**: sombras de contato, mato, relevo, umidade do chão, água, luz e sombras do sol,
+  clima e atmosfera, entidades, qualidade mínima, sem raios e partículas, resolução x1.
+
+No fim mostra o **ranking do que mais pesa em volta da casa** (quantos milissegundos por quadro cada etapa custa naquele aparelho) e diz se
+o aparelho é limitado por **pixels** (placa de vídeo/tela) ou pelo **processador** (JavaScript). Também mostra a placa de vídeo, a tela e se
+há WebGL.
+
+**Segurança do seu jogo:** durante o teste **nada é gravado** (o jogo salva sozinho a cada minuto e ao esconder a aba; isso fica bloqueado),
+os toques são ignorados e a resolução fica fixa. No fim aparece o botão **Recarregar o jogo**, que volta ao último save como estava.
+
+Com o ranking do aparelho eu escolho a Fase 4 pelo que realmente pesa (e não por palpite). O navegador de teste do desenvolvimento não tem
+placa de vídeo: os números dele não valem para o celular.

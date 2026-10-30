@@ -15,6 +15,7 @@
  */
 import { gfx, Q, qDrop, setQDrop } from '../config/settings.js';
 import { RS, applyRes } from '../rendering/Canvas.js';
+import { setAblate } from '../rendering/Renderer.js';
 import { SPR } from '../rendering/Sprites.js';
 import { getPixi, initPixi, setPixiEnabled } from '../rendering/pixi/PixiBridge.js';
 import { setMatoLive } from '../world/Vegetation.js';
@@ -25,27 +26,35 @@ export const benchRequested = (search) => /[?&]bench\b/.test(search || '');
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const CASA = 'EM VOLTA DA CASA';
 const CENAS = [
-  { nome: 'FAZENDA (onde você está)', pos: null },
+  { nome: 'ONDE VOCÊ ESTÁ', pos: null },
+  { nome: CASA, pos: [280, 504] }, // onde o jogo novo começa: bem embaixo da casa
   { nome: 'RIO', pos: [300, 1000] },
-  { nome: 'FLORESTA', pos: [1200, 400] },
 ];
-// cada modo liga só o que diz; o resto fica no padrão do jogo
+// cada modo liga só o que diz; o resto fica no padrão do jogo (o mato em imagens da fase 3 já foi medido: ficou de fora)
 const MODOS = [
-  { nome: 'jogo padrão', mato: false, pixi: false, chunks: false },
-  { nome: 'mato em imagens (fase 3)', mato: true, pixi: false, chunks: false },
-  { nome: 'grama na GPU (fase 2)', mato: false, pixi: true, chunks: false },
-  { nome: 'cache do chão', mato: false, pixi: false, chunks: true },
+  { nome: 'jogo padrão', pixi: false, chunks: false },
+  { nome: 'grama na GPU (fase 2)', pixi: true, chunks: false },
+  { nome: 'cache do chão', pixi: false, chunks: true },
 ];
-// só na primeira cena: o que pesa mais neste aparelho?
-const EXTRAS = [
+// só em volta da casa: quanto custa cada etapa do desenho NESTE aparelho? (cada linha desliga UMA etapa e mede de novo)
+const ETAPAS = [
+  { nome: 'sem sombras de contato', abl: { sombras: true } },
+  { nome: 'sem mato', abl: { mato: true } },
+  { nome: 'sem relevo', abl: { relevo: true } },
+  { nome: 'sem umidade do chão', abl: { hidro: true } },
+  { nome: 'sem água (rio, reflexos)', abl: { agua: true } },
+  { nome: 'sem luz e sombras do sol', abl: { luz: true } },
+  { nome: 'sem clima e atmosfera', abl: { clima: true } },
+  { nome: 'sem desenhar as entidades', abl: { entidades: true } },
   { nome: 'qualidade mínima', quality: 'low' },
   { nome: 'sem raios e partículas', rays: false, particles: false },
   { nome: 'resolução x1 (4x menos pixels)', res: '1' },
 ];
 
-const ASSENTA_MS = 3000; // tempo para o jogo se ajustar depois de mudar de modo (caches, texturas)
-const MEDE_MS = 6000;
+const ASSENTA_MS = 2500; // tempo para o jogo se ajustar depois de mudar de modo (caches, texturas)
+const MEDE_MS = 5000;
 
 // Mede quadros por segundo (rAF) em fatias de 1 s e devolve a MEDIANA delas (um congelamento isolado não estraga o número),
 // o pior intervalo entre quadros e o tempo médio gasto em desenhar (GameLoop -> fpsSample).
@@ -125,7 +134,12 @@ async function iniciarBench() {
     'position:fixed;left:6px;top:6px;z-index:10000;padding:8px 10px;font:12px/1.4 monospace;color:#fff;background:rgba(0,0,0,.86);' +
     'border-radius:6px;pointer-events:none;white-space:pre;max-width:96vw';
   document.body.appendChild(painel);
-  const mostra = (t) => (painel.textContent = t);
+  const mostra = (t) => {
+    painel.textContent = t;
+    // a tabela cresce: reduz a letra para caber na altura da tela (deixa espaço para o botão no fim)
+    const linhas = t.split('\n').length;
+    painel.style.fontSize = Math.max(8, Math.min(12, Math.floor((innerHeight - 80) / (linhas * 1.4)))) + 'px';
+  };
 
   // espera o jogo carregar a textura do chão e se acalmar (no máximo ~90 s)
   let falta = 8;
@@ -148,7 +162,8 @@ async function iniciarBench() {
     '\nGPU: ' + gpuInfo() + '\nWebGL: ' + (pixiOk ? 'sim' : 'não') + ' · modo celular: ' + (matchMedia('(pointer:coarse)').matches ? 'sim' : 'não');
 
   const aplica = (m) => {
-    setMatoLive(!m.mato);
+    setMatoLive(true); // o mato em imagens fica fora do teste (desenho original)
+    setAblate(m.abl || null);
     setPixiEnabled(!!m.pixi && pixiOk);
     gfx.chunks = !!m.chunks;
     gfx.quality = m.quality || orig.quality;
@@ -167,7 +182,7 @@ async function iniciarBench() {
   }
 
   const saida = []; // { cena, modo, r }
-  const total = CENAS.length * MODOS.length + EXTRAS.length;
+  const total = CENAS.length * MODOS.length + ETAPAS.length;
   let feito = 0;
   const tabela = (rodando) => {
     let t = 'TESTE DE DESEMPENHO — ' + (rodando ? 'não toque na tela (' + feito + '/' + total + ')' : 'PRONTO: tire um print desta tela') + '\n' + aparelho + '\n';
@@ -196,7 +211,7 @@ async function iniciarBench() {
         S.vx = 0;
         S.vy = 0;
       }
-      const lista = c === 0 ? [...MODOS, ...EXTRAS] : MODOS;
+      const lista = cena.nome === CASA ? [...MODOS, ...ETAPAS] : MODOS;
       for (const m of lista) {
         aplica(m);
         mostra(tabela(true) + '\n\n> medindo: ' + cena.nome.split(' ')[0] + ' / ' + m.nome + '…');
@@ -215,6 +230,7 @@ async function iniciarBench() {
     gfx.particles = orig.particles;
     gfx.chunks = orig.chunks;
     setQDrop(qd0);
+    setAblate(null);
     setMatoLive(matoPadrao);
     setPixiEnabled(true);
     applyRes();
@@ -224,21 +240,32 @@ async function iniciarBench() {
     S.vy = 0;
   }
 
-  // resumo: quanto cada recurso muda o fps em relação ao jogo padrão (média das 3 cenas)
+  // resumo 1: recursos opcionais (média das 3 cenas, fps comparado ao jogo padrão)
   const rel = {};
   for (const cena of CENAS) {
     const base = saida.find((l) => l.cena === cena.nome && l.modo === 'jogo padrão');
     if (!base || !base.r) continue;
-    for (const l of saida) if (l.cena === cena.nome && l.r && l.modo !== 'jogo padrão') (rel[l.modo] = rel[l.modo] || []).push(l.r.fps / base.r.fps);
+    for (const l of saida)
+      if (l.cena === cena.nome && l.r && MODOS.some((m) => m.nome === l.modo) && l.modo !== 'jogo padrão') (rel[l.modo] = rel[l.modo] || []).push(l.r.fps / base.r.fps);
   }
-  let resumo = '\n\nRESUMO (fps comparado ao jogo padrão)';
+  let resumo = '\n\nRECURSOS (fps comparado ao jogo padrão)';
   for (const [modo, v] of Object.entries(rel)) {
     const media = v.reduce((a, b) => a + b, 0) / v.length;
     resumo += '\n  ' + modo.padEnd(32) + (media >= 1 ? '+' : '') + Math.round((media - 1) * 100) + '%';
   }
-  const x1 = rel['resolução x1 (4x menos pixels)'];
-  if (x1 && x1.length) {
-    resumo += x1[0] >= 1.4 ? '\n  => limitado por PIXELS (placa de vídeo / tela)' : '\n  => limitado pelo PROCESSADOR (JavaScript), não pelos pixels';
+  // resumo 2: o que mais pesa em volta da casa = quanto o quadro encurta quando a etapa é desligada
+  const baseCasa = saida.find((l) => l.cena === CASA && l.modo === 'jogo padrão');
+  if (baseCasa && baseCasa.r) {
+    const ms0 = 1000 / baseCasa.r.fps;
+    const custo = saida
+      .filter((l) => l.cena === CASA && l.r && ETAPAS.some((e) => e.nome === l.modo))
+      .map((l) => ({ nome: l.modo, ms: ms0 - 1000 / l.r.fps, fps: l.r.fps }))
+      .sort((a, b) => b.ms - a.ms);
+    resumo += '\n\nO QUE MAIS PESA EM VOLTA DA CASA (jogo padrão: ' + Math.round(baseCasa.r.fps) + ' fps)';
+    for (const c of custo) resumo += '\n  ' + c.nome.padEnd(32) + (c.ms >= 0 ? '-' : '+') + Math.abs(c.ms).toFixed(1).padStart(5) + ' ms  (' + Math.round(c.fps) + ' fps)';
+    resumo += '\n  (diferença menor que 2 ms é ruído da medição)';
+    const x1 = saida.find((l) => l.cena === CASA && l.modo.indexOf('resolução x1') === 0);
+    if (x1 && x1.r) resumo += x1.r.fps / baseCasa.r.fps >= 1.4 ? '\n  => limitado por PIXELS (placa de vídeo / tela)' : '\n  => limitado pelo PROCESSADOR (JavaScript), não pelos pixels';
   }
   mostra(tabela(false) + resumo + '\n\nDepois do print, recarregue o jogo (ele volta ao último save).');
   const botao = document.createElement('button');

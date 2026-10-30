@@ -66,6 +66,16 @@ let vcam = null;
  * Exemplo de uso em README.md ("Como adicionar novos animais").
  */
 export const entityProviders = [];
+
+// Etapas do desenho que o teste de desempenho (core/Bench.js) pode DESLIGAR uma de cada vez para medir quanto cada uma custa
+// no aparelho. Tudo fica ligado (false) fora do teste; o custo é uma leitura de propriedade por etapa.
+const AB = { sombras: false, mato: false, relevo: false, hidro: false, agua: false, luz: false, clima: false, entidades: false };
+
+/** Desliga as etapas marcadas em `map` (ex.: { sombras: true }); as demais voltam a ligar. */
+export function setAblate(map) {
+  for (const k in AB) AB[k] = !!(map && map[k]);
+}
+
 function render() {
   if (S.inside) {
     renderInterior();
@@ -109,14 +119,14 @@ function render() {
       if (terrainServed[ty * MW + tx]) continue;
       drawTile(tx, ty, t);
       drawTrampledGrass(tx, ty, t);
-      drawHydro(tx, ty, t);
+      if (!AB.hidro) drawHydro(tx, ty, t);
     }
   pixiPlanEnd();
-  drawRelief(x0, x1, y0, y1);
+  if (!AB.relevo) drawRelief(x0, x1, y0, y1);
   drawPrints();
   wCam.x = camX;
   wCam.y = camY;
-  drawWaterFX(t, camX, camY, x0, x1, y0, y1);
+  if (!AB.agua) drawWaterFX(t, camX, camY, x0, x1, y0, y1);
 
   // 2) entidades (Y-sort) e sombras
   const sunS = (h - 6) / 14;
@@ -233,34 +243,36 @@ function render() {
   ents.push({ k: S.py, sh: [S.px, S.py, 8, 14, 'person'], draw: drawPlayer });
 
   const fillBefore = ctx.fillStyle; // contactShadow não faz mais save/restore por entidade: devolvemos o fillStyle aqui
-  for (const en of ents) {
-    if (en.draw === drawPlayer && (S.wetK || 0) > 0.3) continue;
-    contactShadow(en.sh[0], en.sh[1], en.sh[2]);
-  }
+  if (!AB.sombras)
+    for (const en of ents) {
+      if (en.draw === drawPlayer && (S.wetK || 0) > 0.3) continue;
+      contactShadow(en.sh[0], en.sh[1], en.sh[2]);
+    }
   ctx.fillStyle = fillBefore;
   ents.sort((a, b) => a.k - b.k);
-  drawReflections(ents, t);
-  for (let ty = gy0; ty <= gy1; ty++)
-    for (let tx = gx0; tx <= gx1; tx++) {
-      lakeEdge(tx, ty);
-      fvBankFX(tx, ty);
-    } // bordas sempre acima da água
+  if (!AB.agua) drawReflections(ents, t);
+  if (!AB.agua)
+    for (let ty = gy0; ty <= gy1; ty++)
+      for (let tx = gx0; tx <= gx1; tx++) {
+        lakeEdge(tx, ty);
+        fvBankFX(tx, ty);
+      } // bordas sempre acima da água
   const ML = hydroMatoList(gx0, gx1, gy0, gy1);
   let mi = 0; // mato cobre os pés do personagem, da vaca e do aldeão
   for (const en of ents) {
     while (mi < ML.length && ML[mi].k <= en.k) {
-      drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
+      if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
       mi++;
     }
-    en.draw();
+    if (!AB.entidades) en.draw();
   }
   while (mi < ML.length) {
-    drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
+    if (!AB.mato) drawMato(ML[mi].tx, ML[mi].ty, t, ML[mi].i);
     mi++;
   }
   drawDust();
-  drawSplash();
-  applyLighting(t, h, camX, camY, ents);
+  if (!AB.agua) drawSplash();
+  if (!AB.luz) applyLighting(t, h, camX, camY, ents);
   drawBubbles(camX, camY);
   drawAnimalStatus();
   drawFaunaLabels();
@@ -277,10 +289,10 @@ function render() {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  drawWeather(t, camX, camY);
+  if (!AB.clima) drawWeather(t, camX, camY);
   // 4b) Raios de sol, bloom seletivo e poeira atmosférica
-  drawAtmosphere(t, h, camX, camY, ents);
-  drawLightning();
+  if (!AB.clima) drawAtmosphere(t, h, camX, camY, ents);
+  if (!AB.clima) drawLightning();
   // 5) vinheta
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const v = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VW * 0.65);
