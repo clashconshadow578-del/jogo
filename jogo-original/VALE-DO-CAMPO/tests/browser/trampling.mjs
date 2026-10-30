@@ -94,6 +94,18 @@ const comp = JSON.parse(await run(p, `(() => {
 })()`));
 ok(comp[1] === 0 || comp[0] === comp[1], 'broto ao lado de helicônia adulta perde mato (' + comp + ' de ' + comp[1] + ' helicônias)');
 
+// 8) regressão do loop infinito do Dijkstra (arredondamento Float32): 300 caminhos aleatórios, com trilhas e mato, nunca podem demorar
+const rnd = JSON.parse(await run(p, `(() => {
+  const px = Math.floor(S.px / 16), py = Math.floor(S.py / 16); let worst = 0, total = 0;
+  for (let k = 0; k < 300; k++) {
+    const a = [(px + ((Math.random() * 120) | 0) - 60) * 16 + 8, (py + ((Math.random() * 120) | 0) - 60) * 16 + 8];
+    const b = [(px + ((Math.random() * 120) | 0) - 60) * 16 + 8, (py + ((Math.random() * 120) | 0) - 60) * 16 + 8];
+    const t = performance.now(); findPath(a[0], a[1], b[0], b[1]); const d = performance.now() - t; worst = Math.max(worst, d); total += d;
+  }
+  return JSON.stringify({ worst, total });
+})()`));
+ok(rnd.worst < 80 && rnd.total < 2500, 'findPath nunca prende: pior ' + rnd.worst.toFixed(1) + ' ms, total ' + rnd.total.toFixed(0) + ' ms para 300 caminhos');
+
 await p.waitForTimeout(1000);
 ok(errs.length === 0, 'sem erros no console' + (errs.length ? ': ' + errs.join(' | ') : ''));
 await close();

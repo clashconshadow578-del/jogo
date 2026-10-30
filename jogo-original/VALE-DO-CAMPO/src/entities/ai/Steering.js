@@ -86,7 +86,7 @@ function findPath(x0, y0, x1, y1, canF) {
   // Dijkstra em grade: o tile custa menos em trilha batida e mais em mato fechado (world/Trails.js), então o caminho
   // segue as trilhas e contorna o mato alto. Num terreno liso é o mesmo trajeto de antes (todos os custos = 1).
   const prev = new Int32Array(MW * MH).fill(-2),
-    dist = new Float32Array(MW * MH).fill(Infinity),
+    dist = new Float64Array(MW * MH).fill(Infinity), // precisão dupla: com Float32 o arredondamento fazia um tile "melhorar" para sempre (loop infinito)
     heap = [[0, sy * MW + sx]];
   prev[heap[0][1]] = -1;
   dist[heap[0][1]] = 0;
@@ -117,9 +117,11 @@ function findPath(x0, y0, x1, y1, canF) {
     }
     return top;
   };
+  let guard = 0;
   while (heap.length) {
+    if (++guard > 120000) break; // trava de segurança (a área tem no máximo ~8 mil tiles): nunca deixa a página presa
     const [cd, c] = pop();
-    if (cd > dist[c]) continue;
+    if (cd > dist[c] + 1e-9) continue;
     const cx = c % MW,
       cy = (c / MW) | 0;
     if (cx === gx && cy === gy) break;
@@ -134,7 +136,7 @@ function findPath(x0, y0, x1, y1, canF) {
       if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1 || solid(nx, ny)) continue;
       const n = ny * MW + nx,
         nd = cd + tilePathCost(n);
-      if (nd >= dist[n]) continue;
+      if (nd >= dist[n] - 1e-9) continue;
       dist[n] = nd;
       prev[n] = c;
       push(nd, n);

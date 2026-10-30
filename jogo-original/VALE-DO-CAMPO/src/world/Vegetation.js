@@ -19,8 +19,8 @@ import { ITEMS } from '../systems/InventorySystem.js';
 import { toast } from '../ui/Toast.js';
 import { hash2 } from '../utils/MathUtils.js';
 import { mato, sapl, seedAge, wearT, wl } from './hydrology/Hydrology.js';
+import { grassBendX, gid } from './GrassSystem.js';
 import { speciesAt, stageAt } from './PlantSpecies.js';
-import { climate } from './WeatherSystem.js';
 import { crops, ground, obj } from './World.js';
 
 function crowd(i) {
@@ -146,7 +146,6 @@ function hydroMatoList(x0, x1, y0, y1) {
 /**
  * Desenha a planta (helicônia ou samambaia, fase 1-4) do tile de mato, num ponto sorteado dentro do tile (matoDX/DY)
  * e com a copa passando para cima; a ordem Y (hydroMatoList) faz o mato cobrir os pés de quem está atrás dele.
- * `t` é o tempo em segundos: o vento balança a planta 1 px e o jogador por perto a faz tremer.
  */
 function drawMato(tx, ty, t, i) {
   const sp = speciesAt(i),
@@ -158,10 +157,14 @@ function drawMato(tx, ty, t, i) {
   if (!m || !m.ready) return;
   const x = tx * TS,
     y = ty * TS,
-    ws = Math.sin(t * 1.3 + tx * 0.7 + ty * 0.4) * (0.6 + climate.wind * 0.6),
-    rs = Math.hypot(x + 8 - S.px, y + 8 - S.py) < 22 ? Math.sin(t * 14) * 1.3 : 0,
-    lean = Math.round(ws * 0.5 + rs);
-  ctx.drawImage(m.img, Math.round(x + 8 - m.w / 2) + matoDX(tx, ty) + lean, y + 14 + matoDY(tx, ty) - m.h);
+    px = x + 8 + matoDX(tx, ty),
+    py = y + 14 + matoDY(tx, ty);
+  // A planta fica parada (sem balanço de vento): só mexe quando algo passa por ela. A "dobra" por pisada de quem anda
+  // (jogador, aldeã, vaca, fauna: world/GrassSystem.js) empurra a planta no sentido do passo, treme um instante e volta.
+  const id = gid(px, py - 2),
+    bend = id < 0 ? 0 : grassBendX[id] / 110,
+    lean = bend === 0 ? 0 : Math.round(bend * 2.5 + Math.sin(t * 14) * Math.min(1, Math.abs(bend)) * 0.8);
+  ctx.drawImage(m.img, Math.round(px - m.w / 2) + lean, py - m.h);
 }
 
 /** Compatibilidade com o teste de desempenho (core/Bench.js): o mato agora é sempre uma sprite pronta. */
