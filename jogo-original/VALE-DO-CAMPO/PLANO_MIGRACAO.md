@@ -302,4 +302,4 @@ corrigido antes do commit.
 - `tests/perf/posgrid.mjs` (24 posições da câmera, com bordas do mapa): **0 quadros diferentes** da referência do jogo original;
 - `?pixi` (`tests/perf/pixi-equal.mjs`, `DENSE=10`): resultado **idêntico antes e depois** da divisão (mesmos números). Atenção: nesse teste o modo `2d`
   (que deveria dar 0) mostra **1 quadro com 4 pixels diferentes** (posição `800,5`, topo do mapa, até 121 níveis). Isso já acontecia **antes** da Fase 4
-  (veio de algum commit entre a Fase 2 e o `?bench`), só afeta o `?pixi` (experimental, desligado por padrão) e **não** o jogo normal.
+  (veio de algum commit depois da Fase 2, ainda não identificado), só afeta o `?pixi` (experimental, desligado por padrão) e **não** o jogo normal.
