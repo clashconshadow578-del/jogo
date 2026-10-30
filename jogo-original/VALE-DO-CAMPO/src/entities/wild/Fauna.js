@@ -642,7 +642,8 @@ function foxScan(a) {
   let best = null;
   for (const p of fauna) {
     const F = FOX_PREY[p.sp];
-    if (!F || p.state === 'dead' || p.state === 'fly' || p.state === 'land' || p.state === 'fight' || p.hunter) continue;
+    if (!F || p.state === 'dead' || p.state === 'fly' || p.state === 'land' || p.state === 'fight' || p.hunter)
+      continue;
     if (Math.abs(p.x - a.x) > H.scanR || Math.abs(p.y - a.y) > H.scanR) continue;
     const r = evalPrey(a, p, {
       hunt: H,
@@ -678,7 +679,13 @@ function foxOk(p) {
 function foxDecide(a, p) {
   const F = FOX_PREY[p.sp];
   if (!F) return 'skip';
-  const r = evalPrey(a, p, { hunt: HUNT.fox, vPred: FA_SP.fox.run, vPrey: FA_SP[p.sp].run, value: F.value, counter: F.counter });
+  const r = evalPrey(a, p, {
+    hunt: HUNT.fox,
+    vPred: FA_SP.fox.run,
+    vPrey: FA_SP[p.sp].run,
+    value: F.value,
+    counter: F.counter,
+  });
   return r ? huntDecision(r.ev, HUNT.fox, (Math.random() - 0.5) * 0.05) : 'skip';
 }
 
@@ -715,7 +722,8 @@ function faSense(a, I, dt, withPlayer) {
   let mates = 0; // bando: mais olhos = alcance de detecção maior (cervo, queixada, galo-lira)
   if (P.herdAlarm)
     for (const f of fauna)
-      if (f !== a && f.sp === a.sp && f.state !== 'dead' && Math.abs(f.x - a.x) < 70 && Math.abs(f.y - a.y) < 70) mates++;
+      if (f !== a && f.sp === a.sp && f.state !== 'dead' && Math.abs(f.x - a.x) < 70 && Math.abs(f.y - a.y) < 70)
+        mates++;
   const k = attn * nk * (1 + 0.12 * Math.min(4, mates));
   let th = null,
     bu = 1e9;
@@ -757,12 +765,26 @@ function faAlarm(a, th) {
   const P = ECO[a.sp];
   if (!P || !P.herdAlarm) return;
   for (const q of fauna) {
-    if (q === a || q.sp !== a.sp || q.state === 'dead' || q.state === 'flee' || q.state === 'fly' || q.state === 'fight') continue;
+    if (
+      q === a ||
+      q.sp !== a.sp ||
+      q.state === 'dead' ||
+      q.state === 'flee' ||
+      q.state === 'fly' ||
+      q.state === 'fight'
+    )
+      continue;
     if (Math.hypot(q.x - a.x, q.y - a.y) > P.herdAlarm) continue;
     memAdd(q, 'threat', th.x, th.y, th.id, { src: th.src });
     q.nerv = ecoNow() + P.calmAfter;
     if (a.sp === 'boar') {
-      if (q.state !== 'warn' && q.state !== 'charge' && q.state !== 'retreat' && q.state !== 'alert' && q.state !== 'eat') {
+      if (
+        q.state !== 'warn' &&
+        q.state !== 'charge' &&
+        q.state !== 'retreat' &&
+        q.state !== 'alert' &&
+        q.state !== 'eat'
+      ) {
         q.state = 'alert';
         q.t = rr(P.alertFor[0], P.alertFor[1]);
         q.th = th;
@@ -788,7 +810,8 @@ function faSafeAngle(a, th) {
       x = a.x + Math.cos(an) * R,
       y = a.y + Math.sin(an) * R;
     if (!faFree(x, y)) continue;
-    const s = faHab(a.sp, Math.floor(x / TS), Math.floor(y / TS), 'shelter') - Math.abs(an - away) * 0.5 + Math.random() * 0.2;
+    const s =
+      faHab(a.sp, Math.floor(x / TS), Math.floor(y / TS), 'shelter') - Math.abs(an - away) * 0.5 + Math.random() * 0.2;
     if (s > bs) {
       bs = s;
       best = an;
@@ -998,7 +1021,8 @@ function foxPlayerGiveUp(a) {
 
 function foxPlayerUpd(a, dt, th0) {
   const P = PLAYER_PREY.fox;
-  if (a.state === 'eat' || a.state === 'fly' || a.state === 'land' || a.state === 'fight' || a.state === 'dead') return false;
+  if (a.state === 'eat' || a.state === 'fly' || a.state === 'land' || a.state === 'fight' || a.state === 'dead')
+    return false;
   if (a.state !== 'pchase') {
     if (!th0 || th0.src !== 'player' || S.inside || sleeping) return false;
     if (a.state === 'pant' && (a.t -= dt) > 0) {
@@ -1020,7 +1044,14 @@ function foxPlayerUpd(a, dt, th0) {
   const s = senseTarget(a, playerTarget());
   a.loseT = s.any ? 0 : (a.loseT || 0) + dt;
   const dd = Math.hypot(S.px - a.x, S.py - a.y);
-  if (S.inside || sleeping || dd > P.reach || a.loseT > P.lostGrace || a.stuck > P.stuckT || !claimPlayerHunt(a.id, 1.5)) {
+  if (
+    S.inside ||
+    sleeping ||
+    dd > P.reach ||
+    a.loseT > P.lostGrace ||
+    a.stuck > P.stuckT ||
+    !claimPlayerHunt(a.id, 1.5)
+  ) {
     foxPlayerGiveUp(a);
     return true;
   }
@@ -1116,7 +1147,15 @@ function faUpd(a, dt) {
   if (a.sp === 'fox' && foxPlayerUpd(a, dt, th0)) return; // raposa não foge de gente: persegue e morde
   if (a.sp === 'boar' && !S.inside && st !== 'eat') {
     const mates = boarMates(a, 70);
-    if (mates >= 1 && st !== 'warn' && st !== 'charge' && st !== 'retreat' && a.seePl && dP < I.fear * 1.25 && a.cd <= 0) {
+    if (
+      mates >= 1 &&
+      st !== 'warn' &&
+      st !== 'charge' &&
+      st !== 'retreat' &&
+      a.seePl &&
+      dP < I.fear * 1.25 &&
+      a.cd <= 0
+    ) {
       for (const q of fauna)
         if (
           q.sp === 'boar' &&
@@ -1149,7 +1188,13 @@ function faUpd(a, dt) {
       faStep(a, S.px, S.py, I.run * 1.1, dt, false);
       a.atk = dP < 30;
       if (dP < 15) {
-        hurtPlayer({ dmg: 8, from: a, label: '🐗 A queixada te mordeu com os caninos!', kick: 170, source: 'A queixada' });
+        hurtPlayer({
+          dmg: 8,
+          from: a,
+          label: '🐗 A queixada te mordeu com os caninos!',
+          kick: 170,
+          source: 'A queixada',
+        });
         a.cd = 10;
         a.state = 'retreat';
         a.t = 2.5;
@@ -1325,7 +1370,7 @@ function faUpd(a, dt) {
       a.t -= dt;
       a.mv = false;
       a.dz = true;
-      a.z = Math.abs(Math.sin(performance.now() / 1000 * 7 + a.t0)) * 1.6;
+      a.z = Math.abs(Math.sin((performance.now() / 1000) * 7 + a.t0)) * 1.6;
       if (a.t <= 0) {
         a.z = 0;
         a.dz = false;
@@ -1579,7 +1624,13 @@ function faSheet(a) {
   if (a.state === 'fly' || (a.state === 'land' && a.z > 2)) return 'fly';
   if (a.atk && (a.state === 'charge' || a.state === 'fight')) return 'attack';
   if (a.mv)
-    return a.state === 'flee' || a.state === 'chase' || a.state === 'charge' || a.state === 'retreat' || a.state === 'pchase' ? 'run' : 'walk';
+    return a.state === 'flee' ||
+      a.state === 'chase' ||
+      a.state === 'charge' ||
+      a.state === 'retreat' ||
+      a.state === 'pchase'
+      ? 'run'
+      : 'walk';
   return 'idle';
 }
 

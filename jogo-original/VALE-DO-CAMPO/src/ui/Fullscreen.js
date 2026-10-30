@@ -42,7 +42,8 @@ export async function toggleFullscreen() {
     const req = root.requestFullscreen || root.webkitRequestFullscreen;
     await req.call(root, { navigationUI: 'hide' });
     // Celular: deixa o jogo na horizontal (alguns navegadores recusam; tudo bem).
-    if (isTouch() && screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape').catch(() => {});
+    if (isTouch() && screen.orientation && screen.orientation.lock)
+      await screen.orientation.lock('landscape').catch(() => {});
   } catch (e) {
     toast('Não foi possível entrar em tela cheia');
   }

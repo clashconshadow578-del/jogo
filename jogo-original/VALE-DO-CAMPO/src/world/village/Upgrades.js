@@ -66,7 +66,10 @@ function renderTools(npcName, tools, back) {
     const head = row(
       `<span style="display:inline-block;vertical-align:middle;width:32px">${itemIcon(id)}</span> <b>${TOOL_NAMES[id]}</b> · ${TOOL_TIER_NAMES[lv]} <span style="opacity:.7">(nível ${lv}/${TOOL_MAX_LEVEL})</span>`,
     );
-    box.append(head, row(`<span style="opacity:.8">Agora:</span> ${toolBenefitText(id, lv)}`, 'font-size:13px;margin-top:3px'));
+    box.append(
+      head,
+      row(`<span style="opacity:.8">Agora:</span> ${toolBenefitText(id, lv)}`, 'font-size:13px;margin-top:3px'),
+    );
     if (ev.maxed) {
       box.append(row(`<span style="color:#7CFC8A">✔ ${ev.reason}</span>`, 'margin-top:5px;font-size:13px'));
     } else {
@@ -111,10 +114,7 @@ function renderSeed(npcName, back) {
     box = row('', 'margin-top:8px;padding:8px;border:1px solid rgba(217,164,65,.35);border-radius:8px');
   box.append(
     row(`🌱 <b>Recuperação de sementes</b> <span style="opacity:.7">(nível ${ev.level}/${SEED_CFG.upgrades})</span>`),
-    row(
-      `Chance atual de uma colheita devolver a semente: <b>${pctNow}%</b>`,
-      'font-size:13px;margin-top:3px',
-    ),
+    row(`Chance atual de uma colheita devolver a semente: <b>${pctNow}%</b>`, 'font-size:13px;margin-top:3px'),
   );
   // barra de progresso até o máximo
   const bar = row(

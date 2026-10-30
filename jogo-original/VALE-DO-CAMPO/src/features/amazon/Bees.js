@@ -177,7 +177,9 @@ function hvSting(t, H) {
     const n = performance.now();
     if (n - stingT > 4500) {
       stingT = n;
-      toast('🐝 Ferroadas! Vida perdida e veneno: a estamina cai aos poucos. Corra para longe da colmeia ou entre na água!');
+      toast(
+        '🐝 Ferroadas! Vida perdida e veneno: a estamina cai aos poucos. Corra para longe da colmeia ou entre na água!',
+      );
     }
     if (n - stingBeepT > 250) {
       stingBeepT = n;

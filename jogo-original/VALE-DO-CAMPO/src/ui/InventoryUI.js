@@ -35,7 +35,11 @@ export function initInventoryUI() {
     if (!(c[1] || c[2] || c[3])) return '';
     return (
       c
-        .map((n, q) => (n ? `<span class="qline" style="color:${QUALITIES[q].color}">${QUALITIES[q].mark} ${QUALITIES[q].name}: ${n}</span>` : ''))
+        .map((n, q) =>
+          n
+            ? `<span class="qline" style="color:${QUALITIES[q].color}">${QUALITIES[q].mark} ${QUALITIES[q].name}: ${n}</span>`
+            : '',
+        )
         .join('') + ''
     );
   }

@@ -228,7 +228,13 @@ function drawMato(tx, ty, t, i) {
     y = ty * TS,
     ws = Math.sin(t * 1.3 + tx * 0.7 + ty * 0.4) * (0.6 + climate.wind * 0.6),
     rs = Math.hypot(x + 8 - S.px, y + 8 - S.py) < 22 ? Math.sin(t * 14) * 1.3 : 0;
-  if (matoLive || rs !== 0 || ctx !== mainCtx || ctx.globalAlpha !== 1 || ctx.globalCompositeOperation !== 'source-over')
+  if (
+    matoLive ||
+    rs !== 0 ||
+    ctx !== mainCtx ||
+    ctx.globalAlpha !== 1 ||
+    ctx.globalCompositeOperation !== 'source-over'
+  )
     return drawMatoLive(tx, ty, t, i, ws, rs);
   const m255 = mato[i],
     qb = Q() > 1 ? 2 : Q() > 0 ? 1 : 0;

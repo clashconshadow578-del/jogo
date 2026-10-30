@@ -24,6 +24,15 @@ let sprite = null,
 export function pixiGroundDraw(g, plan, gx0, gx1, gy0, gy1) {
   const px = getPixi();
   if (!px) return false;
+  if (g.isPixiCtx) {
+    // camadas inteiras no PixiJS (PixiCtx.js): cada trecho de tiles vira 1 sprite da textura do chão, sem recorte nem cópia
+    const r = plan.runs;
+    for (let i = 0; i < r.length; i += 3)
+      g.drawImage(plan.fuse, r[i], r[i + 1], r[i + 2], TS, r[i], r[i + 1], r[i + 2], TS);
+    px.groundFrames = (px.groundFrames || 0) + 1;
+    px.coveredTiles = plan.n;
+    return true;
+  }
   const { PIXI, app } = px;
   const w = (gx1 - gx0 + 1) * TS,
     h = (gy1 - gy0 + 1) * TS;

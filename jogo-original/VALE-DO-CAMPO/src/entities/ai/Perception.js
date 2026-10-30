@@ -7,7 +7,17 @@
  */
 
 import { BIN, HOUSE, MH, MW, ROCK, TREE, TS } from '../../config/constants.js';
-import { ATTN, ECO, MEM, PERC_DT, detects, huntOpportunity, rearFactor, sightRange, targetVisibility } from '../../config/ecosystem.js';
+import {
+  ATTN,
+  ECO,
+  MEM,
+  PERC_DT,
+  detects,
+  huntOpportunity,
+  rearFactor,
+  sightRange,
+  targetVisibility,
+} from '../../config/ecosystem.js';
 import { S } from '../../core/GameState.js';
 import { obj } from '../../world/World.js';
 
@@ -123,7 +133,8 @@ export function senseTarget(o, T, rangeOverride) {
   const dx = T.x - o.x,
     dy = T.y - o.y,
     dist = Math.hypot(dx, dy);
-  const base = rangeOverride != null ? rangeOverride : sightRange(o.sp, env.night, ATTN[o.state] != null ? ATTN[o.state] : 1);
+  const base =
+    rangeOverride != null ? rangeOverride : sightRange(o.sp, env.night, ATTN[o.state] != null ? ATTN[o.state] : 1);
   if (dist > Math.max(base * 1.9, P ? Math.max(P.hear, P.scent || 0, P.heat || 0) : 0) + 1)
     return { seen: false, heard: false, smelled: false, any: false, dist, occ: 0, range: base, eff: 0 };
   const occ = occlusion(o.x, o.y, T.x, T.y),
@@ -158,7 +169,10 @@ export function evalPrey(pred, p, o) {
   const T = p.isPlayer ? playerTarget() : animalTarget(p),
     s = senseTarget(pred, T);
   if (!s.any) return null;
-  const alert = p.state === 'alert' || p.state === 'freeze' || p.state === 'flee' || p.state === 'fly' || p.state === 'alertp' ? 1 : 0;
+  const alert =
+    p.state === 'alert' || p.state === 'freeze' || p.state === 'flee' || p.state === 'fly' || p.state === 'alertp'
+      ? 1
+      : 0;
   const ev = huntOpportunity({
     need: pred.hun,
     dist: s.dist,

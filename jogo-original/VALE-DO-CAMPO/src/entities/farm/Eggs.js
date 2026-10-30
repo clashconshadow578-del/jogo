@@ -67,7 +67,12 @@ export function findHatchSpot(egg) {
   const sx = Math.floor(egg.x / TS),
     sy = Math.floor(egg.y / TS);
   if (!solid(sx, sy)) return chxWalkOK(egg.x, egg.y) ? { x: egg.x, y: egg.y } : { x: sx * TS + 8, y: sy * TS + 8 };
-  for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) {
+  for (const [dx, dy] of [
+    [0, 1],
+    [1, 0],
+    [-1, 0],
+    [0, -1],
+  ]) {
     const nx = sx + dx,
       ny = sy + dy;
     if (nx >= 0 && ny >= 0 && nx < MW && ny < MH && !solid(nx, ny)) return { x: nx * TS + 8, y: ny * TS + 8 };
@@ -130,7 +135,8 @@ export function collectEggNear() {
 }
 
 /* ============ SALVAMENTO ============ */
-export const eggSave = () => eggs.map((e) => ({ id: e.id, x: e.x, y: e.y, layT: e.layT, hatchAt: e.hatchAt, hen: e.hen }));
+export const eggSave = () =>
+  eggs.map((e) => ({ id: e.id, x: e.x, y: e.y, layT: e.layT, hatchAt: e.hatchAt, hen: e.hen }));
 
 /**
  * Restaura os ovos. Saves antigos não têm `arr`: os ovos que estavam contados dentro de ninhos viram ovos do

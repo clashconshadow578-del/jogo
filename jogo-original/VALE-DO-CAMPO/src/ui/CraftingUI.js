@@ -19,7 +19,8 @@ const isOpen = () => !!panel && panel.style.display === 'block';
 
 function render() {
   if (!panel) return;
-  let h = '<div style="display:flex;justify-content:space-between;align-items:center"><b>🔨 Fabricação</b>' +
+  let h =
+    '<div style="display:flex;justify-content:space-between;align-items:center"><b>🔨 Fabricação</b>' +
     '<button id="craftX" style="background:#555;color:#fff;border:0;border-radius:6px;padding:4px 10px">Fechar</button></div>';
   for (const r of RECIPES) {
     const lack = [];
@@ -38,7 +39,8 @@ function render() {
       (lack.length ? `<br><span style="opacity:.8">Faltam ${lack.join(' e ')}</span>` : '') +
       `</div><button data-craft="${r.id}" style="padding:8px 12px;border:0;border-radius:6px;color:#fff;background:${lack.length ? '#555' : '#2e7d32'}">Fabricar</button></div>`;
   }
-  h += '<div style="margin-top:8px;font-size:12px;opacity:.75">Com a peça na mão, use o botão Usar para colocá-la à frente. O machado recolhe cercas e portões.</div>';
+  h +=
+    '<div style="margin-top:8px;font-size:12px;opacity:.75">Com a peça na mão, use o botão Usar para colocá-la à frente. O machado recolhe cercas e portões.</div>';
   panel.innerHTML = h;
 }
 

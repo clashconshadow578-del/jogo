@@ -119,12 +119,24 @@ function gpuInfo() {
   }
 }
 
-
 // ---------------------------------------------------------------------------------------------------------------------
 // Micro-teste: o MESMO trabalho (2.200 operações por quadro: retângulos, retângulos translúcidos, imagens de um atlas e elipses)
 // em Canvas 2D e em WebGL (PixiJS), com o jogo pausado. Mostra o quanto o Canvas 2D é lento NESTE aparelho para trabalho que o
 // WebGL faz em lote, que é o que decide se vale a pena levar o desenho do jogo para o PixiJS.
-const PAL = ['#2f7a34', '#3f9a42', '#58b04c', '#8fd36a', '#5a3d24', '#a2ae88', '#2f75b4', '#d9b77e', '#9a6b43', '#e8d9a2', '#8d9296', '#c4c9a6'];
+const PAL = [
+  '#2f7a34',
+  '#3f9a42',
+  '#58b04c',
+  '#8fd36a',
+  '#5a3d24',
+  '#a2ae88',
+  '#2f75b4',
+  '#d9b77e',
+  '#9a6b43',
+  '#e8d9a2',
+  '#8d9296',
+  '#c4c9a6',
+];
 const PAL_HEX = PAL.map((c) => parseInt(c.slice(1), 16));
 
 function prng(seed) {
@@ -137,10 +149,38 @@ const MICRO_K = 4; // o micro-teste geral roda com 4x as 2.200 operações do qu
 function microOps() {
   const r = prng(99),
     ops = [];
-  for (let i = 0; i < 1500 * MICRO_K; i++) ops.push({ t: 'r', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 1 + ((r() * 6) | 0), h: 1 + ((r() * 10) | 0), c: (r() * PAL.length) | 0, k: r() });
-  for (let i = 0; i < 300 * MICRO_K; i++) ops.push({ t: 'a', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 16, h: 16, c: (r() * PAL.length) | 0, k: r() });
-  for (let i = 0; i < 300 * MICRO_K; i++) ops.push({ t: 'i', x: (r() * 920) | 0, y: (r() * 500) | 0, w: 32, h: 32, sx: ((r() * 14) | 0) * 32, sy: ((r() * 14) | 0) * 32, k: r() });
-  for (let i = 0; i < 100 * MICRO_K; i++) ops.push({ t: 'e', x: 20 + ((r() * 900) | 0), y: 20 + ((r() * 500) | 0), rx: 6 + ((r() * 10) | 0), ry: 3 + ((r() * 5) | 0), k: r() });
+  for (let i = 0; i < 1500 * MICRO_K; i++)
+    ops.push({
+      t: 'r',
+      x: (r() * 940) | 0,
+      y: (r() * 520) | 0,
+      w: 1 + ((r() * 6) | 0),
+      h: 1 + ((r() * 10) | 0),
+      c: (r() * PAL.length) | 0,
+      k: r(),
+    });
+  for (let i = 0; i < 300 * MICRO_K; i++)
+    ops.push({ t: 'a', x: (r() * 940) | 0, y: (r() * 520) | 0, w: 16, h: 16, c: (r() * PAL.length) | 0, k: r() });
+  for (let i = 0; i < 300 * MICRO_K; i++)
+    ops.push({
+      t: 'i',
+      x: (r() * 920) | 0,
+      y: (r() * 500) | 0,
+      w: 32,
+      h: 32,
+      sx: ((r() * 14) | 0) * 32,
+      sy: ((r() * 14) | 0) * 32,
+      k: r(),
+    });
+  for (let i = 0; i < 100 * MICRO_K; i++)
+    ops.push({
+      t: 'e',
+      x: 20 + ((r() * 900) | 0),
+      y: 20 + ((r() * 500) | 0),
+      rx: 6 + ((r() * 10) | 0),
+      ry: 3 + ((r() * 5) | 0),
+      k: r(),
+    });
   ops.sort((a, b) => a.k - b.k); // ordem misturada, como num quadro de verdade
   return ops;
 }
@@ -218,7 +258,6 @@ async function microCanvas(ops, atlas) {
   return fps;
 }
 
-
 // Custo de cada TIPO de operação do Canvas 2D neste aparelho, no volume que o jogo usa por quadro (mede a taxa de quadros de
 // uma tela que só faz aquilo; 60 fps = não pesa). Mostra qual tipo é o lento em vez de adivinhar.
 async function perfilOperacoes(atlas) {
@@ -230,7 +269,13 @@ async function perfilOperacoes(atlas) {
   const g = cv.getContext('2d', { alpha: false });
   g.imageSmoothingEnabled = false;
   const r = prng(5),
-    pos = Array.from({ length: 2000 }, () => ({ x: (r() * 920) | 0, y: (r() * 500) | 0, c: (r() * PAL.length) | 0, s: ((r() * 14) | 0) * 32, t: ((r() * 14) | 0) * 32 }));
+    pos = Array.from({ length: 2000 }, () => ({
+      x: (r() * 920) | 0,
+      y: (r() * 500) | 0,
+      c: (r() * PAL.length) | 0,
+      s: ((r() * 14) | 0) * 32,
+      t: ((r() * 14) | 0) * 32,
+    }));
   const camada = document.createElement('canvas');
   camada.width = 480;
   camada.height = 270;
@@ -314,15 +359,102 @@ async function perfilOperacoes(atlas) {
   // [nome, volume por quadro no jogo, K, desenho]
   const tipos = [
     ['vazio (só limpar a tela)', 0, 1, () => {}],
-    ['retângulos opacos', 3000, 4, (f, dx) => { for (let i = 0; i < 12000; i++) { const p = pos[i % 2000]; g.fillStyle = PAL[p.c]; g.fillRect(p.x + dx, p.y, 3, 5); } }],
-    ['retângulos translúcidos', 500, 4, (f, dx) => { g.globalAlpha = 0.2; for (let i = 0; i < 2000; i++) { const p = pos[i % 2000]; g.fillStyle = PAL[p.c]; g.fillRect(p.x + dx, p.y, 16, 16); } g.globalAlpha = 1; }],
-    ['imagens de um atlas', 1000, 4, (f, dx) => { for (let i = 0; i < 4000; i++) { const p = pos[i % 2000]; g.drawImage(atlas, p.s, p.t, 32, 32, p.x + dx, p.y, 32, 32); } }],
-    ['imagens espelhadas (save/scale)', 100, 4, (f, dx) => { for (let i = 0; i < 400; i++) { const p = pos[i]; g.save(); g.translate(p.x + dx + 32, p.y); g.scale(-1, 1); g.drawImage(atlas, p.s, p.t, 32, 32, 0, 0, 32, 32); g.restore(); } }],
-    ['elipses translúcidas', 270, 4, (f, dx) => { g.fillStyle = 'rgba(22,28,28,.1)'; for (let i = 0; i < 1080; i++) { const p = pos[i % 2000]; g.beginPath(); g.ellipse(p.x + dx + 20, p.y + 20, 12, 5, 0, 0, 6.283); g.fill(); } }],
-    ['gradientes radiais', 30, 4, (f, dx) => { for (let i = 0; i < 120; i++) { const p = pos[i], gr = g.createRadialGradient(p.x + dx, p.y, 2, p.x + dx, p.y, 32); gr.addColorStop(0, 'rgba(255,200,120,.5)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = gr; g.fillRect(p.x + dx - 32, p.y - 32, 64, 64); } }],
+    [
+      'retângulos opacos',
+      3000,
+      4,
+      (f, dx) => {
+        for (let i = 0; i < 12000; i++) {
+          const p = pos[i % 2000];
+          g.fillStyle = PAL[p.c];
+          g.fillRect(p.x + dx, p.y, 3, 5);
+        }
+      },
+    ],
+    [
+      'retângulos translúcidos',
+      500,
+      4,
+      (f, dx) => {
+        g.globalAlpha = 0.2;
+        for (let i = 0; i < 2000; i++) {
+          const p = pos[i % 2000];
+          g.fillStyle = PAL[p.c];
+          g.fillRect(p.x + dx, p.y, 16, 16);
+        }
+        g.globalAlpha = 1;
+      },
+    ],
+    [
+      'imagens de um atlas',
+      1000,
+      4,
+      (f, dx) => {
+        for (let i = 0; i < 4000; i++) {
+          const p = pos[i % 2000];
+          g.drawImage(atlas, p.s, p.t, 32, 32, p.x + dx, p.y, 32, 32);
+        }
+      },
+    ],
+    [
+      'imagens espelhadas (save/scale)',
+      100,
+      4,
+      (f, dx) => {
+        for (let i = 0; i < 400; i++) {
+          const p = pos[i];
+          g.save();
+          g.translate(p.x + dx + 32, p.y);
+          g.scale(-1, 1);
+          g.drawImage(atlas, p.s, p.t, 32, 32, 0, 0, 32, 32);
+          g.restore();
+        }
+      },
+    ],
+    [
+      'elipses translúcidas',
+      270,
+      4,
+      (f, dx) => {
+        g.fillStyle = 'rgba(22,28,28,.1)';
+        for (let i = 0; i < 1080; i++) {
+          const p = pos[i % 2000];
+          g.beginPath();
+          g.ellipse(p.x + dx + 20, p.y + 20, 12, 5, 0, 0, 6.283);
+          g.fill();
+        }
+      },
+    ],
+    [
+      'gradientes radiais',
+      30,
+      4,
+      (f, dx) => {
+        for (let i = 0; i < 120; i++) {
+          const p = pos[i],
+            gr = g.createRadialGradient(p.x + dx, p.y, 2, p.x + dx, p.y, 32);
+          gr.addColorStop(0, 'rgba(255,200,120,.5)');
+          gr.addColorStop(1, 'rgba(255,200,120,0)');
+          g.fillStyle = gr;
+          g.fillRect(p.x + dx - 32, p.y - 32, 64, 64);
+        }
+      },
+    ],
     ['camadas cheias "lighter"', 4, 4, camadaCheia('lighter', 16)],
     ['camadas cheias "multiply"', 1, 10, camadaCheia('multiply', 10)],
-    ['canvases auxiliares redesenhados', 10, 2, (f) => { for (let i = 0; i < 20; i++) { const a = aux[i % 10][1]; a.fillStyle = PAL[(f + i) % PAL.length]; a.fillRect(0, 0, 480, 270); g.drawImage(aux[i % 10][0], 0, 0, 960, 540); } }],
+    [
+      'canvases auxiliares redesenhados',
+      10,
+      2,
+      (f) => {
+        for (let i = 0; i < 20; i++) {
+          const a = aux[i % 10][1];
+          a.fillStyle = PAL[(f + i) % PAL.length];
+          a.fillRect(0, 0, 480, 270);
+          g.drawImage(aux[i % 10][0], 0, 0, 960, 540);
+        }
+      },
+    ],
     ['raios do sol (gradiente em polígono)', 20, 3, raios(60)],
     ['fatias de canvases PEQUENOS', 650, 3, fatias(fPeq, 1950)],
     ['fatias de canvases GRANDES', 650, 3, fatias(fGrande, 1950)],
@@ -345,7 +477,16 @@ async function perfilOperacoes(atlas) {
 async function microPixi(ops, atlas) {
   const { PIXI } = window.VDC_PIXI;
   const app = new PIXI.Application();
-  await app.init({ width: 960, height: 540, preference: 'webgl', backgroundColor: 0x5aa846, backgroundAlpha: 1, antialias: false, autoStart: false, sharedTicker: false });
+  await app.init({
+    width: 960,
+    height: 540,
+    preference: 'webgl',
+    backgroundColor: 0x5aa846,
+    backgroundAlpha: 1,
+    antialias: false,
+    autoStart: false,
+    sharedTicker: false,
+  });
   app.canvas.style.cssText = CANTO;
   document.body.appendChild(app.canvas);
   const atlasTex = PIXI.Texture.from(atlas),
@@ -372,7 +513,11 @@ async function microPixi(ops, atlas) {
     } else if (o.t === 'i') {
       const key = o.sx + ',' + o.sy;
       let tx = quadros.get(key);
-      if (!tx) quadros.set(key, (tx = new PIXI.Texture({ source: atlasTex.source, frame: new PIXI.Rectangle(o.sx, o.sy, 32, 32) })));
+      if (!tx)
+        quadros.set(
+          key,
+          (tx = new PIXI.Texture({ source: atlasTex.source, frame: new PIXI.Rectangle(o.sx, o.sy, 32, 32) })),
+        );
       sp = new PIXI.Sprite(tx);
     } else {
       sp = new PIXI.Sprite(elipTex);
@@ -400,7 +545,12 @@ async function microPixi(ops, atlas) {
 const n1 = (v, w) => v.toFixed(1).padStart(w);
 const fmt = (r) =>
   r
-    ? String(Math.round(r.fps)).padStart(3) + '  ' + n1(r.upd, 5) + n1(r.js, 6) + n1(r.ui, 5) + String(Math.round(r.worst)).padStart(6)
+    ? String(Math.round(r.fps)).padStart(3) +
+      '  ' +
+      n1(r.upd, 5) +
+      n1(r.js, 6) +
+      n1(r.ui, 5) +
+      String(Math.round(r.worst)).padStart(6)
     : '  -- indisponível';
 
 async function iniciarBench() {
@@ -412,9 +562,17 @@ async function iniciarBench() {
   };
   // 2) camada transparente que engole os toques (o jogador não pode andar nem usar nada durante o teste)
   const bloqueio = document.createElement('div');
-  bloqueio.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:9999;background:transparent;touch-action:none';
+  bloqueio.style.cssText =
+    'position:fixed;left:0;top:0;right:0;bottom:0;z-index:9999;background:transparent;touch-action:none';
   for (const ev of ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'click'])
-    bloqueio.addEventListener(ev, (e) => { e.stopPropagation(); e.preventDefault(); }, { passive: false });
+    bloqueio.addEventListener(
+      ev,
+      (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      { passive: false },
+    );
   document.body.appendChild(bloqueio);
 
   // painel: cabeçalho em cima e duas colunas (resumo à esquerda, tabela à direita) para caber em telas baixas
@@ -462,9 +620,21 @@ async function iniciarBench() {
   await initPixi('?pixi'); // liga o PixiJS (se houver WebGL) para poder comparar; fica desligado até o modo que o usa
   const pixiOk = !!(window.VDC_PIXI && window.VDC_PIXI.ok);
   const aparelho =
-    'Tela ' + innerWidth + 'x' + innerHeight + ' · DPR ' + (window.devicePixelRatio || 1).toFixed(2) + ' · ' + (navigator.hardwareConcurrency || '?') + ' núcleos' +
-    ' · WebGL: ' + (pixiOk ? 'sim' : 'não') + ' · modo celular: ' + (matchMedia('(pointer:coarse)').matches ? 'sim' : 'não') +
-    '\nGPU: ' + gpuInfo();
+    'Tela ' +
+    innerWidth +
+    'x' +
+    innerHeight +
+    ' · DPR ' +
+    (window.devicePixelRatio || 1).toFixed(2) +
+    ' · ' +
+    (navigator.hardwareConcurrency || '?') +
+    ' núcleos' +
+    ' · WebGL: ' +
+    (pixiOk ? 'sim' : 'não') +
+    ' · modo celular: ' +
+    (matchMedia('(pointer:coarse)').matches ? 'sim' : 'não') +
+    '\nGPU: ' +
+    gpuInfo();
 
   // Configuração em uso: o jogo reduz resolução e qualidade SOZINHO quando o aparelho não acompanha. Para o teste refletir o jogo
   // como você joga, ele primeiro roda em volta da casa com o ajuste automático ligado por ~22 s e só depois trava o que sobrou.
@@ -475,12 +645,16 @@ async function iniciarBench() {
     S.vy = 0;
   }
   for (let w = 22; w > 0; w--) {
-    mostra('TESTE DE DESEMPENHO\nDeixando o jogo se ajustar sozinho em volta da casa… ' + w + ' s\n' + aparelho, 'resolução x' + RS + ' · qualidade ' + Q());
+    mostra(
+      'TESTE DE DESEMPENHO\nDeixando o jogo se ajustar sozinho em volta da casa… ' + w + ' s\n' + aparelho,
+      'resolução x' + RS + ' · qualidade ' + Q(),
+    );
     await espera(1000);
   }
   const NOMES_Q = ['low', 'medium', 'high', 'ultra'];
   const conf = { res: String(RS), quality: NOMES_Q[Math.min(3, Q())], rs: RS, q: Q() };
-  const aparelhoCfg = aparelho + '\nConfiguração em uso (ajustada pelo jogo): resolução x' + conf.rs + ' · qualidade ' + conf.q + ' de 3';
+  const aparelhoCfg =
+    aparelho + '\nConfiguração em uso (ajustada pelo jogo): resolução x' + conf.rs + ' · qualidade ' + conf.q + ' de 3';
 
   const aplica = (m) => {
     setMatoLive(true); // o mato em imagens fica fora do teste (desenho original)
@@ -541,7 +715,11 @@ async function iniciarBench() {
       }
       for (const m of lista(cena)) {
         aplica(m);
-        mostra('TESTE DE DESEMPENHO — não toque na tela (' + feito + '/' + total + ')\n' + aparelhoCfg, tabela(), '> medindo: ' + cena.nome + ' / ' + m.nome + '…');
+        mostra(
+          'TESTE DE DESEMPENHO — não toque na tela (' + feito + '/' + total + ')\n' + aparelhoCfg,
+          tabela(),
+          '> medindo: ' + cena.nome + ' / ' + m.nome + '…',
+        );
         await espera(ASSENTA_MS);
         const semPixi = m.pixi && !pixiOk;
         const r = semPixi ? null : await medir(MEDE_MS);
@@ -570,11 +748,19 @@ async function iniciarBench() {
   // ---- micro-teste: o mesmo trabalho em Canvas 2D e em WebGL, com o jogo pausado ----
   let micro = null;
   try {
-    mostra('TESTE DE DESEMPENHO — micro-teste (jogo pausado, não toque na tela)\n' + aparelhoCfg, tabela(), '> medindo o Canvas 2D e o WebGL…');
+    mostra(
+      'TESTE DE DESEMPENHO — micro-teste (jogo pausado, não toque na tela)\n' + aparelhoCfg,
+      tabela(),
+      '> medindo o Canvas 2D e o WebGL…',
+    );
     setLoopPaused(true);
     const ops = microOps(),
       atlas = microAtlas();
-    micro = { canvas: await microCanvas(ops, atlas), webgl: pixiOk ? await microPixi(ops, atlas) : null, ops: await perfilOperacoes(atlas) };
+    micro = {
+      canvas: await microCanvas(ops, atlas),
+      webgl: pixiOk ? await microPixi(ops, atlas) : null,
+      ops: await perfilOperacoes(atlas),
+    };
   } catch (e) {
     console.error('[Vale do Campo] micro-teste falhou:', e);
   } finally {
@@ -597,29 +783,43 @@ async function iniciarBench() {
     const x1 = saida.find((l) => l.cena === CASA && l.modo.indexOf('resolução x1') === 0);
     if (ocupado / iv >= 0.8) resumo += '  => limitado pelo PROCESSADOR (JavaScript)\n';
     else if (x1 && x1.r && x1.r.fps / base.r.fps >= 1.4) resumo += '  => limitado por PIXELS (placa de vídeo / tela)\n';
-    else resumo += '  => o JavaScript fica ESPERANDO: limite da placa de\n     vídeo (quantidade de operações), não dos pixels\n';
+    else
+      resumo +=
+        '  => o JavaScript fica ESPERANDO: limite da placa de\n     vídeo (quantidade de operações), não dos pixels\n';
     const custo = saida
       .filter((l) => l.cena === CASA && l.r && ETAPAS.some((e) => e.nome === l.modo))
       .map((l) => ({ nome: l.modo, ms: iv - 1000 / l.r.fps, fps: l.r.fps }))
       .sort((a, b) => b.ms - a.ms);
     resumo += '\nO QUE MAIS PESA EM VOLTA DA CASA\n(ms por quadro que a etapa custa)\n';
-    for (const c of custo) resumo += '  ' + c.nome.padEnd(31) + (c.ms >= 0 ? ' ' : '+') + Math.abs(c.ms).toFixed(1).padStart(5) + '\n';
+    for (const c of custo)
+      resumo += '  ' + c.nome.padEnd(31) + (c.ms >= 0 ? ' ' : '+') + Math.abs(c.ms).toFixed(1).padStart(5) + '\n';
     resumo += '  (menos de 2 ms é ruído da medição)';
   }
   let microTxt = '';
   if (micro) {
     microTxt += 'MICRO-TESTE (jogo pausado)\n';
-    const por2200 = (fps) => (fps >= 59 ? '< ' + (16.7 / MICRO_K).toFixed(1) : (Math.max(0, 1000 / fps - 16.7) / MICRO_K).toFixed(1)) + ' ms por 2.200 operações';
+    const por2200 = (fps) =>
+      (fps >= 59 ? '< ' + (16.7 / MICRO_K).toFixed(1) : (Math.max(0, 1000 / fps - 16.7) / MICRO_K).toFixed(1)) +
+      ' ms por 2.200 operações';
     microTxt += 'O mesmo trabalho (' + 2200 * MICRO_K + ' operações por quadro):\n';
-    microTxt += '  Canvas 2D (como o jogo desenha)  ' + Math.round(micro.canvas) + ' fps  ' + por2200(micro.canvas) + '\n';
-    microTxt += micro.webgl === null ? '  WebGL (PixiJS)                   indisponível\n' : '  WebGL (PixiJS)                   ' + Math.round(micro.webgl) + ' fps  ' + por2200(micro.webgl) + '\n';
+    microTxt +=
+      '  Canvas 2D (como o jogo desenha)  ' + Math.round(micro.canvas) + ' fps  ' + por2200(micro.canvas) + '\n';
+    microTxt +=
+      micro.webgl === null
+        ? '  WebGL (PixiJS)                   indisponível\n'
+        : '  WebGL (PixiJS)                   ' + Math.round(micro.webgl) + ' fps  ' + por2200(micro.webgl) + '\n';
     if (micro.ops && micro.ops.length) {
       const vazio = micro.ops[0].fps;
-      microTxt += '\nCUSTO POR TIPO DE OPERAÇÃO (Canvas 2D), em ms por quadro\nno volume que o jogo usa (testado com 2 a 10 vezes isso)\n';
+      microTxt +=
+        '\nCUSTO POR TIPO DE OPERAÇÃO (Canvas 2D), em ms por quadro\nno volume que o jogo usa (testado com 2 a 10 vezes isso)\n';
       for (const o of micro.ops.slice(1)) {
         const extra = Math.max(0, 1000 / o.fps - 1000 / vazio) / o.k,
           cheio = o.fps >= vazio * 0.97;
-        microTxt += '  ' + (o.nome + ' ' + o.n).padEnd(40) + (cheio ? ' < ' + (1000 / vazio / o.k).toFixed(1) : n1(extra, 5)) + ' ms\n';
+        microTxt +=
+          '  ' +
+          (o.nome + ' ' + o.n).padEnd(40) +
+          (cheio ? ' < ' + (1000 / vazio / o.k).toFixed(1) : n1(extra, 5)) +
+          ' ms\n';
       }
     }
   }

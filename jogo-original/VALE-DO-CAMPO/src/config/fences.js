@@ -8,7 +8,22 @@
  * Origem: novo (sistema de cercas)
  */
 
-import { BED, FENCE, FORD, GATE, GATE_OPEN, GRASS, PATH, SAND, SCREE, SNOWG, SOIL, STONE, TS, WATER } from './constants.js';
+import {
+  BED,
+  FENCE,
+  FORD,
+  GATE,
+  GATE_OPEN,
+  GRASS,
+  PATH,
+  SAND,
+  SCREE,
+  SNOWG,
+  SOIL,
+  STONE,
+  TS,
+  WATER,
+} from './constants.js';
 
 /** É uma peça de cerca (reta, poste ou portão)? */
 export const isFenceCode = (o) => o === FENCE || o === GATE || o === GATE_OPEN;
@@ -66,7 +81,8 @@ export function entityTouchesTile(x, y, tx, ty, pad = 0) {
 export function checkBuildTile(w) {
   if (w.inside) return { ok: false, reason: 'Não dá para construir dentro de casa' };
   if (!w.inBounds) return { ok: false, reason: 'Fora do mapa' };
-  if (FORBIDDEN_GROUND.has(w.ground) || !BUILDABLE_GROUND.has(w.ground)) return { ok: false, reason: 'Não dá para construir aqui (água ou terreno impróprio)' };
+  if (FORBIDDEN_GROUND.has(w.ground) || !BUILDABLE_GROUND.has(w.ground))
+    return { ok: false, reason: 'Não dá para construir aqui (água ou terreno impróprio)' };
   if (w.obj !== 0) return { ok: false, reason: 'Já há algo neste tile' };
   if (w.hasCrop) return { ok: false, reason: 'Há uma plantação neste tile' };
   if (w.hasSapling) return { ok: false, reason: 'Há uma muda neste tile' };

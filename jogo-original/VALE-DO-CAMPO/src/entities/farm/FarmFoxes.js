@@ -111,7 +111,13 @@ const updateFox = extensible(function updateFox(dt) {
       } else if (dP < 11) {
         if (f.bgap <= 0) {
           f.bgap = 1.2;
-          hurtPlayer({ dmg: 6, from: f, label: '🦊 A raposa da fazenda te mordeu!', kick: 100, source: 'A raposa da fazenda' });
+          hurtPlayer({
+            dmg: 6,
+            from: f,
+            label: '🦊 A raposa da fazenda te mordeu!',
+            kick: 100,
+            source: 'A raposa da fazenda',
+          });
         }
       } else {
         tg = { x: S.px, y: S.py };

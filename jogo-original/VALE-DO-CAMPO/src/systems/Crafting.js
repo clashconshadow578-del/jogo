@@ -14,10 +14,7 @@ export function recipeById(id) {
 
 /** Texto "faltam 2 madeira e 1 fibra vegetal" a partir da lista de materiais faltantes. */
 export function missingText(missing) {
-  return (
-    'Faltam ' +
-    missing.map((m) => `${m.need - m.have} ${MATERIAL_NAMES[m.id] || m.id}`).join(' e ')
-  );
+  return 'Faltam ' + missing.map((m) => `${m.need - m.have} ${MATERIAL_NAMES[m.id] || m.id}`).join(' e ');
 }
 
 /**

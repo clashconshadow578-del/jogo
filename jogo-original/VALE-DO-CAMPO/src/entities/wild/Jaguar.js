@@ -186,7 +186,15 @@ function jagPrey(a, R, sport) {
   let best = null;
   for (const p of fauna) {
     const P = JG.prey[p.sp];
-    if (!P || p.state === 'dead' || p.state === 'fight' || p.state === 'fly' || p.state === 'land' || p.hunter || p.gone)
+    if (
+      !P ||
+      p.state === 'dead' ||
+      p.state === 'fight' ||
+      p.state === 'fly' ||
+      p.state === 'land' ||
+      p.hunter ||
+      p.gone
+    )
       continue;
     if (Math.abs(p.x - a.x) > R || Math.abs(p.y - a.y) > R) continue;
     if (crossesFence(a.x, a.y, p.x, p.y)) continue; // cerca intransponível: presa inacessível
@@ -202,7 +210,11 @@ function jagPrey(a, R, sport) {
       driveMul: sport ? 1.4 : 1,
     });
     if (!r) continue;
-    r.dec = huntDecision(r.ev, HUNT.jaguar, (Math.random() - 0.5) * 0.05 + ((a.bold == null ? 0.5 : a.bold) - 0.5) * 0.05);
+    r.dec = huntDecision(
+      r.ev,
+      HUNT.jaguar,
+      (Math.random() - 0.5) * 0.05 + ((a.bold == null ? 0.5 : a.bold) - 0.5) * 0.05,
+    );
     if (r.dec === 'skip') continue;
     r.rank = r.ev.score * P.w * (p.age < 150 ? 1.4 : 1) * (0.8 + Math.random() * 0.4);
     if (!best || r.rank > best.rank) best = r;
@@ -329,11 +341,18 @@ function faTrail(a) {
 function jagFear(a, f) {
   // raio-base de medo de cada presa: [passeando, à espreita, caçando]. O alcance REAL de detecção depende ainda de
   // linha de visão, atenção da presa, luz e movimento da onça (ver Perception.senseTarget).
-  const t = { deer: [60, 190, 160], hare: [46, 150, 140], grouse: [32, 100, 95], fox: [80, 130, 120], boar: [0, 130, 120] }[a.sp];
+  const t = {
+    deer: [60, 190, 160],
+    hare: [46, 150, 140],
+    grouse: [32, 100, 95],
+    fox: [80, 130, 120],
+    boar: [0, 130, 120],
+  }[a.sp];
   if (!t) return 0;
   const st = f.state;
   if (st === 'stalk' || st === 'pstalk' || st === 'observe' || st === 'pobserve') return t[1];
-  if (st === 'pounce' || st === 'chase' || st === 'pchase' || st === 'pattack' || st === 'drop' || st === 'charge') return t[2];
+  if (st === 'pounce' || st === 'chase' || st === 'pchase' || st === 'pattack' || st === 'drop' || st === 'charge')
+    return t[2];
   if (st === 'rest' || st === 'perch' || st === 'eat' || st === 'climb' || st === 'drag' || st === 'mate')
     return t[0] * 0.5;
   return t[0];
@@ -562,21 +581,37 @@ function jagTryMate(a) {
    oportunidade (a fome pesa, mas um predador saciado também pode observar/espreitar) e só então decide. */
 const PL_JAG = { pstalk: 1, pchase: 1, pattack: 1, pinvest: 1, pobserve: 1 };
 // estados em que a onça repara no jogador (os ocupados com presa/carcaça/filhotes ficam de fora)
-const JG_LOOK = { idle: 1, go: 1, rest: 1, drink: 1, swim: 1, watch: 1, track: 1, roar: 1, pant: 1, observe: 1, investigate: 1 };
+const JG_LOOK = {
+  idle: 1,
+  go: 1,
+  rest: 1,
+  drink: 1,
+  swim: 1,
+  watch: 1,
+  track: 1,
+  roar: 1,
+  pant: 1,
+  observe: 1,
+  investigate: 1,
+};
 
 function jagPlayerEval(a, h) {
   if (S.inside || a.age < JG.KID) return null;
   const H = HUNT.jaguar,
     spd = Math.hypot(S.vx || 0, S.vy || 0),
-    r = evalPrey(a, { isPlayer: true, state: 'idle', x: S.px, y: S.py }, {
-      hunt: H,
-      vPred: PLAYER_PREY.jaguar.burst,
-      vPrey: Math.max(60, spd),
-      value: 0.7,
-      counter: 0.12,
-      scanR: H.scanR,
-      driveMul: 0.5 + jagAct(h), // crepuscular/noturna: mais interessada ao anoitecer
-    });
+    r = evalPrey(
+      a,
+      { isPlayer: true, state: 'idle', x: S.px, y: S.py },
+      {
+        hunt: H,
+        vPred: PLAYER_PREY.jaguar.burst,
+        vPrey: Math.max(60, spd),
+        value: 0.7,
+        counter: 0.12,
+        scanR: H.scanR,
+        driveMul: 0.5 + jagAct(h), // crepuscular/noturna: mais interessada ao anoitecer
+      },
+    );
   if (!r) return null;
   r.dec = huntDecision(r.ev, H, (Math.random() - 0.5) * 0.05 + ((a.bold == null ? 0.5 : a.bold) - 0.5) * 0.05);
   return r;
@@ -891,7 +926,13 @@ function jagUpd(a, I, h, dt) {
     a.stT = 0;
   } else a.stT = (a.stT || 0) + dt; // há quanto tempo está neste estado
   if (!kid) jagWatchPlayer(a, dt, h); // o jogador também é uma presa possível: percepção → avaliação → decisão
-  if (!kid && (a.state === 'idle' || a.state === 'rest') && a.cd <= 0 && percTick(a, dt, 'o') && (a.oscan = (a.oscan || 0) + 1) % 2 === 0) {
+  if (
+    !kid &&
+    (a.state === 'idle' || a.state === 'rest') &&
+    a.cd <= 0 &&
+    percTick(a, dt, 'o') &&
+    (a.oscan = (a.oscan || 0) + 1) % 2 === 0
+  ) {
     // percepção oportunista: mesmo parada ou descansando, a onça nota a presa que passa à vista (a cada ~0,5 s, defasada)
     const sport = a.hun < 0.35,
       r = jagPrey(a, HUNT.jaguar.scanR, sport);

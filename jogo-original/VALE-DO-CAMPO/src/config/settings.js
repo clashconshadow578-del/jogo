@@ -6,7 +6,16 @@
 
 const FXKEY = 'valeDoCampo_graphics_v2';
 
-let gfx = { res: 'auto', quality: 'high', rays: true, particles: true, rainVol: 0.55, thunderVol: 0.65, flashes: true, chunks: false };
+let gfx = {
+  res: 'auto',
+  quality: 'high',
+  rays: true,
+  particles: true,
+  rainVol: 0.55,
+  thunderVol: 0.65,
+  flashes: true,
+  chunks: false,
+};
 
 let qDrop = 0;
 const Q = () => Math.max(0, ({ low: 0, medium: 1, high: 2, ultra: 3 }[gfx.quality] ?? 2) - qDrop);

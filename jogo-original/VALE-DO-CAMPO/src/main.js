@@ -10,6 +10,7 @@ import { loadWorldData } from './world/WorldData.js';
 import { boot } from './core/Game.js';
 import { installDebug } from './core/debug.js';
 import { initPixi, pixiExplicit } from './rendering/pixi/PixiBridge.js';
+import { pixiLayersInit } from './rendering/pixi/PixiLayers.js';
 import { toast } from './ui/Toast.js';
 import { benchRequested, startBench } from './core/Bench.js';
 
@@ -35,6 +36,7 @@ async function start() {
   boot();
   // liga o PixiJS (WebGL), o desenhista padrão (`?canvas` desliga); com `?pixi` avisa na tela se deu certo
   initPixi().then((info) => {
+    if (info) pixiLayersInit();
     if (pixiExplicit(location.search))
       toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
   });

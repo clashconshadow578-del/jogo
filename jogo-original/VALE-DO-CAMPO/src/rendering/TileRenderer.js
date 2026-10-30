@@ -229,7 +229,8 @@ function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
   if (!tex || !tex.ready || !idleGrassEnabled()) return null;
   if (!fuseBaked) bakeGrassFused(tex);
   const stamp = ++pixiCount;
-  const path = new Path2D();
+  const path = new Path2D(),
+    runs = []; // os mesmos retângulos do `path`, como números (x, y, largura): o contexto PixiJS não tem clip
   let n = 0;
   for (let ty = gy0; ty <= gy1; ty++) {
     let run = -1;
@@ -248,6 +249,7 @@ function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
         n++;
         if (run < 0) run = tx;
       } else if (run >= 0) {
+        runs.push(run * TS, ty * TS, (tx - run) * TS);
         path.rect(run * TS, ty * TS, (tx - run) * TS, TS); // sequência de tiles vizinhos na mesma linha = 1 retângulo
         run = -1;
       }
@@ -255,7 +257,7 @@ function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
   }
   if (!n) return null;
   pixiNow = stamp;
-  return { fuse: fuseLayer, path, n };
+  return { fuse: fuseLayer, path, runs, n };
 }
 
 /** Fim do laço de tiles do quadro: drawTile volta a desenhar tudo (cache do chão, interior...). */

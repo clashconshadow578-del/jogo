@@ -51,14 +51,110 @@ export const ATTN = {
    herdAlarm raio (px) em que o alarme se espalha · alertFor: tempo olhando a ameaça antes de decidir [min,max]
    calmAfter s sem ameaça para voltar à rotina · avoidFor/avoidR: tempo e raio em que evita o lugar onde viu o predador */
 export const ECO = {
-  deer: { sight: 215, nightMul: 0.55, hear: 60, vigil: 0.8, courage: 0.1, herdAlarm: 120, alertFor: [1.4, 2.8], calmAfter: 7, avoidFor: 30, avoidR: 90 },
-  hare: { sight: 135, nightMul: 0.6, hear: 75, vigil: 0.9, courage: 0.05, herdAlarm: 0, alertFor: [1.0, 2.2], calmAfter: 6, avoidFor: 24, avoidR: 80, freezeChance: 0.55, shelterR: 130 },
-  grouse: { sight: 115, nightMul: 0.45, hear: 55, vigil: 0.7, courage: 0.05, herdAlarm: 130, alertFor: [0.6, 1.4], calmAfter: 5, avoidFor: 20, avoidR: 70, display: 30, displayT: [3, 6], displayMaxHun: 0.55 },
-  chicken: { sight: 125, nightMul: 0.4, hear: 55, vigil: 0.8, courage: 0, herdAlarm: 85, alertFor: [0.4, 0.9], calmAfter: 5, avoidFor: 0, avoidR: 0 },
-  fox: { sight: 150, nightMul: 0.85, hear: 85, scent: 60, vigil: 0.6, courage: 0.4, herdAlarm: 0, alertFor: [0.8, 1.6], calmAfter: 6, avoidFor: 25, avoidR: 90 },
-  boar: { sight: 125, nightMul: 0.5, hear: 75, vigil: 0.6, courage: 0.6, herdAlarm: 140, alertFor: [1.2, 2.4], calmAfter: 8, avoidFor: 15, avoidR: 70 },
-  jaguar: { sight: 195, nightMul: 0.78, hear: 95, scent: 140, vigil: 0.7, courage: 0.9, herdAlarm: 0, alertFor: [1, 2], calmAfter: 6, avoidFor: 0, avoidR: 0 },
-  anaconda: { sight: 90, nightMul: 0.9, hear: 40, heat: 70, vigil: 0.5, courage: 0.3, herdAlarm: 0, alertFor: [1, 2], calmAfter: 8, avoidFor: 0, avoidR: 0 },
+  deer: {
+    sight: 215,
+    nightMul: 0.55,
+    hear: 60,
+    vigil: 0.8,
+    courage: 0.1,
+    herdAlarm: 120,
+    alertFor: [1.4, 2.8],
+    calmAfter: 7,
+    avoidFor: 30,
+    avoidR: 90,
+  },
+  hare: {
+    sight: 135,
+    nightMul: 0.6,
+    hear: 75,
+    vigil: 0.9,
+    courage: 0.05,
+    herdAlarm: 0,
+    alertFor: [1.0, 2.2],
+    calmAfter: 6,
+    avoidFor: 24,
+    avoidR: 80,
+    freezeChance: 0.55,
+    shelterR: 130,
+  },
+  grouse: {
+    sight: 115,
+    nightMul: 0.45,
+    hear: 55,
+    vigil: 0.7,
+    courage: 0.05,
+    herdAlarm: 130,
+    alertFor: [0.6, 1.4],
+    calmAfter: 5,
+    avoidFor: 20,
+    avoidR: 70,
+    display: 30,
+    displayT: [3, 6],
+    displayMaxHun: 0.55,
+  },
+  chicken: {
+    sight: 125,
+    nightMul: 0.4,
+    hear: 55,
+    vigil: 0.8,
+    courage: 0,
+    herdAlarm: 85,
+    alertFor: [0.4, 0.9],
+    calmAfter: 5,
+    avoidFor: 0,
+    avoidR: 0,
+  },
+  fox: {
+    sight: 150,
+    nightMul: 0.85,
+    hear: 85,
+    scent: 60,
+    vigil: 0.6,
+    courage: 0.4,
+    herdAlarm: 0,
+    alertFor: [0.8, 1.6],
+    calmAfter: 6,
+    avoidFor: 25,
+    avoidR: 90,
+  },
+  boar: {
+    sight: 125,
+    nightMul: 0.5,
+    hear: 75,
+    vigil: 0.6,
+    courage: 0.6,
+    herdAlarm: 140,
+    alertFor: [1.2, 2.4],
+    calmAfter: 8,
+    avoidFor: 15,
+    avoidR: 70,
+  },
+  jaguar: {
+    sight: 195,
+    nightMul: 0.78,
+    hear: 95,
+    scent: 140,
+    vigil: 0.7,
+    courage: 0.9,
+    herdAlarm: 0,
+    alertFor: [1, 2],
+    calmAfter: 6,
+    avoidFor: 0,
+    avoidR: 0,
+  },
+  anaconda: {
+    sight: 90,
+    nightMul: 0.9,
+    hear: 40,
+    heat: 70,
+    vigil: 0.5,
+    courage: 0.3,
+    herdAlarm: 0,
+    alertFor: [1, 2],
+    calmAfter: 8,
+    avoidFor: 0,
+    avoidR: 0,
+  },
 };
 
 /* ============ galinhas (bando da fazenda) ============
@@ -74,9 +170,39 @@ export const CHICKEN = { lookP: 0.09, lookT: [1, 2.2], callT: 1.4, callCd: 4, ne
    recoverT    descanso depois de uma tentativa frustrada · cool: intervalo mínimo entre tentativas (s)
    riskAv      aversão a risco (presa que revida custa mais) */
 export const HUNT = {
-  fox: { drive: 0.14, commitMin: 0.14, observeMin: 0.05, giveUp: 7, loseT: 4, recoverT: 3.5, cool: 14, riskAv: 0.9, scanR: 190 },
-  jaguar: { drive: 0.16, commitMin: 0.16, observeMin: 0.06, giveUp: 6, loseT: 7, recoverT: 4, cool: 22, riskAv: 0.55, scanR: 320 },
-  anaconda: { drive: 0.08, commitMin: 0.2, observeMin: 0.08, giveUp: 30, loseT: 10, recoverT: 6, cool: 40, riskAv: 0.8, scanR: 70 },
+  fox: {
+    drive: 0.14,
+    commitMin: 0.14,
+    observeMin: 0.05,
+    giveUp: 7,
+    loseT: 4,
+    recoverT: 3.5,
+    cool: 14,
+    riskAv: 0.9,
+    scanR: 190,
+  },
+  jaguar: {
+    drive: 0.16,
+    commitMin: 0.16,
+    observeMin: 0.06,
+    giveUp: 6,
+    loseT: 7,
+    recoverT: 4,
+    cool: 22,
+    riskAv: 0.55,
+    scanR: 320,
+  },
+  anaconda: {
+    drive: 0.08,
+    commitMin: 0.2,
+    observeMin: 0.08,
+    giveUp: 30,
+    loseT: 10,
+    recoverT: 6,
+    cool: 40,
+    riskAv: 0.8,
+    scanR: 70,
+  },
 };
 
 /* ============ o jogador como presa ============
@@ -139,10 +265,30 @@ export const PLAYER_PREY = {
 };
 
 /* ============ camuflagem da sucuri ============ */
-export const CAMO = { water: 0.88, grassMax: 0.7, grassMin: 0.3, soil: 0.35, sand: 0.1, path: 0.12, stone: 0.1, other: 0.2, nightBonus: 0.1, moveMul: 0.7, exposeT: 6 };
+export const CAMO = {
+  water: 0.88,
+  grassMax: 0.7,
+  grassMin: 0.3,
+  soil: 0.35,
+  sand: 0.1,
+  path: 0.12,
+  stone: 0.1,
+  other: 0.2,
+  nightBonus: 0.1,
+  moveMul: 0.7,
+  exposeT: 6,
+};
 
 /** Cor do ambiente (RGB) em que a sucuri se mistura, por tipo de chão. */
-export const CAMO_RGB = { water: [52, 108, 118], grass: [72, 120, 52], soil: [104, 74, 48], sand: [196, 178, 124], path: [138, 112, 74], stone: [118, 118, 112], other: [72, 120, 52] };
+export const CAMO_RGB = {
+  water: [52, 108, 118],
+  grass: [72, 120, 52],
+  soil: [104, 74, 48],
+  sand: [196, 178, 124],
+  path: [138, 112, 74],
+  stone: [118, 118, 112],
+  other: [72, 120, 52],
+};
 
 /**
  * Camuflagem (0..1) de uma sucuri. 0 = totalmente à vista, 1 = confundida com o ambiente.
@@ -222,7 +368,11 @@ export function huntOpportunity(o) {
     edge = clamp((o.vPred - o.vPrey) / Math.max(1, o.vPred), -1, 1),
     alert = clamp(o.alert || 0),
     stamina = o.stamina == null ? 1 : clamp(o.stamina);
-  const pCatch = clamp(0.4 + 0.45 * edge + 0.22 * (1 - alert) - 0.3 * d + 0.12 * clamp(o.cover || 0) + 0.1 * stamina - 0.1, 0.02, 0.97);
+  const pCatch = clamp(
+    0.4 + 0.45 * edge + 0.22 * (1 - alert) - 0.3 * d + 0.12 * clamp(o.cover || 0) + 0.1 * stamina - 0.1,
+    0.02,
+    0.97,
+  );
   const need = clamp(o.need),
     value = o.value == null ? 0.5 : o.value;
   const benefit = value * (0.18 + 0.82 * need) + (o.drive || 0) + (o.fleeing ? 0.1 : 0);

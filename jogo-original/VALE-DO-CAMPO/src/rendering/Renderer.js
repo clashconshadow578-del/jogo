@@ -123,9 +123,14 @@ const layerWater = extensible(function layerWater(v) {
 });
 
 /** Passe 1: fundo + chão (tiles, trilhas, hidrologia), relevo, pegadas e a água que fica sobre o chão, nesta ordem. */
-const passGround = extensible(function passGround(v) {
+/** Camada: o chão por inteiro (terreno + relevo e pegadas) numa só etapa: o PixiJS desenha as duas juntas, sem canvas no meio. */
+const layerBase = extensible(function layerBase(v) {
   layerTerrain(v);
   layerRelief(v);
+});
+
+const passGround = extensible(function passGround(v) {
+  layerBase(v);
   layerWater(v);
 });
 
@@ -249,6 +254,7 @@ function render() {
 }
 
 export {
+  layerBase,
   layerEntities,
   layerRelief,
   layerShadows,

@@ -201,7 +201,8 @@ function chxMoveToward(c, tx, ty, step) {
 }
 
 /** Livre de sólidos num corredor de 6px (usado para suavizar caminhos: a galinha não raspa em quinas). */
-const chxWide = (x, y) => chxWalkOK(x - 3, y - 3) && chxWalkOK(x + 3, y - 3) && chxWalkOK(x - 3, y + 3) && chxWalkOK(x + 3, y + 3);
+const chxWide = (x, y) =>
+  chxWalkOK(x - 3, y - 3) && chxWalkOK(x + 3, y - 3) && chxWalkOK(x - 3, y + 3) && chxWalkOK(x + 3, y + 3);
 
 /** Anda em direção à posição de atração (em linha reta se der, senão por caminho entre os tiles livres). */
 function chxLureMove(c, dt, px, py) {

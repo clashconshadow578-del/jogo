@@ -894,7 +894,14 @@ function anaUpd0(a, I, h, dt) {
       if (near) toast('🐍 A sucuri terminou de digerir e voltou ao normal');
     }
   }
-  if (st === 'strike' || st === 'constrict' || st === 'swallow' || st === 'coil' || st === 'pstrike' || st === 'phold') {
+  if (
+    st === 'strike' ||
+    st === 'constrict' ||
+    st === 'swallow' ||
+    st === 'coil' ||
+    st === 'pstrike' ||
+    st === 'phold'
+  ) {
   } else {
     if (dP < PA.defendR && a.pcd <= 0 && st !== 'dead' && st !== 'pcrawl' && !S.inside) {
       a.pcd = 16;
@@ -1140,9 +1147,7 @@ function anaUpd0(a, I, h, dt) {
       const arr = aStep(a, a.aimX, a.aimY, PA.dash, dt, true),
         d = Math.hypot(S.px - a.x, S.py - a.y);
       if (d < PA.hitR && !S.inside) {
-        if (
-          hurtPlayer({ dmg: PA.bite, from: a, label: '🐍 A sucuri te laçou!', kick: PA.kick, source: 'A sucuri' })
-        ) {
+        if (hurtPlayer({ dmg: PA.bite, from: a, label: '🐍 A sucuri te laçou!', kick: PA.kick, source: 'A sucuri' })) {
           playerFx.snareUntil = ecoNow() + PA.holdT;
           playerFx.snareSlow = PA.holdSlow;
           a.state = 'phold';
@@ -1177,7 +1182,9 @@ function anaUpd0(a, I, h, dt) {
       if (dP <= PA.hitR + 4 && a.bgap <= 0) {
         a.bgap = PA.holdEvery;
         a.mv = false;
-        if (hurtPlayer({ dmg: PA.holdBite, from: a, label: '🐍 A sucuri te prendeu!', kick: PA.kick, source: 'A sucuri' })) {
+        if (
+          hurtPlayer({ dmg: PA.holdBite, from: a, label: '🐍 A sucuri te prendeu!', kick: PA.kick, source: 'A sucuri' })
+        ) {
           playerFx.snareUntil = ecoNow() + PA.holdT; // preso: anda mais devagar, mas ainda consegue escapar
           playerFx.snareSlow = PA.holdSlow;
         }
@@ -1361,7 +1368,8 @@ function drawAna(a) {
   }
   const camo = st !== 'dead' ? a.camo || 0 : 0; // escondida na água também se mistura à cor da água
   if (camo > 0.12) anaTintDraw(im, fr, rr_, ox, oy, a.kind, camo);
-  else ctx.drawImage(im, fr * F, rr_ * F, F, F, ox, oy + (st === 'coil' ? Math.round(Math.sin(now * 70) * 0.8) : 0), F, F);
+  else
+    ctx.drawImage(im, fr * F, rr_ * F, F, F, ox, oy + (st === 'coil' ? Math.round(Math.sin(now * 70) * 0.8) : 0), F, F);
   if (!hide && kind !== 'idle' && a.bk > 0.02 && st !== 'dead') anaBulge(ctx, P, ox, oy, a.bk, a.bp);
   ctx.restore();
   if (a.sw && (a.mv || hide)) {
@@ -1388,7 +1396,16 @@ export function loadAnacondaSprite() {
 }
 
 export function registerAnacondaStates() {
-  Object.assign(FA_ST, { ambush: '🫧', stalk: '🎯', strike: '💥', constrict: '🐍', swallow: '🍖', bask: '☀️', pstrike: '💥', phold: '🐍' });
+  Object.assign(FA_ST, {
+    ambush: '🫧',
+    stalk: '🎯',
+    strike: '💥',
+    constrict: '🐍',
+    swallow: '🍖',
+    bask: '☀️',
+    pstrike: '💥',
+    phold: '🐍',
+  });
 }
 
 export { anaInit, anaInitA, anaSpawnAt, anaUpd, drawAna };

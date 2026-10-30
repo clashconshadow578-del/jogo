@@ -11,7 +11,15 @@
  */
 
 import { FENCE, GATE, GATE_OPEN, MH, MW, TS, VH, VW } from '../config/constants.js';
-import { checkBuildTile, entityTouchesTile, fenceFrame, FRAME, FRAME_ART, isFenceCode, isGateCode } from '../config/fences.js';
+import {
+  checkBuildTile,
+  entityTouchesTile,
+  fenceFrame,
+  FRAME,
+  FRAME_ART,
+  isFenceCode,
+  isGateCode,
+} from '../config/fences.js';
 import { S } from '../core/GameState.js';
 import { herd } from '../entities/cow/Herd.js';
 import { chx } from '../entities/farm/Chickens.js';
@@ -101,7 +109,8 @@ export function heldId() {
 /** Todas as criaturas que ocupam espaço no mundo, com o tipo (para a folga certa). */
 function* bodies() {
   if (!S.inside) yield { x: S.px, y: S.py, pad: PAD.player, what: 'você' };
-  for (const q of herd) yield { x: q.x, y: q.y, pad: q.calf ? PAD.calf : PAD.cow, what: q.calf ? 'um bezerro' : 'uma vaca' };
+  for (const q of herd)
+    yield { x: q.x, y: q.y, pad: q.calf ? PAD.calf : PAD.cow, what: q.calf ? 'um bezerro' : 'uma vaca' };
   for (const c of chx) if (!c.holder) yield { x: c.x, y: c.y, pad: PAD.chicken, what: 'uma galinha' };
   for (const f of fox) yield { x: f.x, y: f.y, pad: PAD.fox, what: 'uma raposa' };
   if (npc && !npc.inside) {

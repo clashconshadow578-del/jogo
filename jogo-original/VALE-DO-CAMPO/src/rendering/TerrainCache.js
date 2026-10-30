@@ -222,8 +222,8 @@ function terrainDraw(x0, x1, y0, y1, frame) {
       }
   }
   // copia a parte visível: uma cópia por bloco que cruza a tela (~20)
-  for (let cy = (y0 / CHT) | 0; cy <= (y1 / CHT) | 0; cy++)
-    for (let cx = (x0 / CHT) | 0; cx <= (x1 / CHT) | 0; cx++) {
+  for (let cy = (y0 / CHT) | 0; (cy <= y1 / CHT) | 0; cy++)
+    for (let cx = (x0 / CHT) | 0; (cx <= x1 / CHT) | 0; cx++) {
       const c = chunks[cy * CWN + cx];
       if (!c) continue;
       const tx0 = Math.max(x0, cx * CHT),

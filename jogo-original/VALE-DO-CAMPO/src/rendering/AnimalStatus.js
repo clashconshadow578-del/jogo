@@ -66,7 +66,8 @@ function drawIcon(g, pat, x, y, col) {
 
 /** Bloco: [ícone fome | barra] / [ícone sede | barra] / idade. Retorna { cv, w, h } em px lógicos. */
 function block(wh, wt, hunCrit, thiCrit, ageTxt, stage, k) {
-  const key = wh + '|' + wt + '|' + (hunCrit ? 1 : 0) + (thiCrit ? 1 : 0) + '|' + ageTxt + '|' + stage + '|' + k + '|' + RS;
+  const key =
+    wh + '|' + wt + '|' + (hunCrit ? 1 : 0) + (thiCrit ? 1 : 0) + '|' + ageTxt + '|' + stage + '|' + k + '|' + RS;
   let b = cache.get(key);
   if (b) return b;
   const f = RS * k; // px de dispositivo por px lógico do bloco
@@ -193,7 +194,8 @@ function* subjects() {
 
 /* ---------------- slots (anti-sobreposição) ---------------- */
 function hit(r, list) {
-  for (const q of list) if (r.x < q.x + q.w + 1 && r.x + r.w + 1 > q.x && r.y < q.y + q.h + 1 && r.y + r.h + 1 > q.y) return true;
+  for (const q of list)
+    if (r.x < q.x + q.w + 1 && r.x + r.w + 1 > q.x && r.y < q.y + q.h + 1 && r.y + r.h + 1 > q.y) return true;
   return false;
 }
 

@@ -86,7 +86,11 @@
   text-align: center;
   font: bold 9px monospace;
   color: #fff;
-  text-shadow: 0 1px 0 #000, 1px 0 #000, -1px 0 #000, 0 -1px #000;
+  text-shadow:
+    0 1px 0 #000,
+    1px 0 #000,
+    -1px 0 #000,
+    0 -1px #000;
 }
 #stam.low .f {
   background: linear-gradient(180deg, #ff9a6a, #b5452a);
@@ -119,7 +123,7 @@
   font-size: 0;
 }
 #menuBtn::after {
-  content: "";
+  content: '';
   display: block;
   width: 22px;
   height: 22px;
@@ -360,7 +364,9 @@
 .fxText {
   position: absolute;
   transform: translate(-50%, 0);
-  font: bold 15px system-ui, sans-serif;
+  font:
+    bold 15px system-ui,
+    sans-serif;
   white-space: nowrap;
   text-shadow:
     0 1px 0 #000,
@@ -393,7 +399,9 @@
   position: absolute;
   left: 3px;
   bottom: 0;
-  font: bold 12px/12px system-ui, sans-serif;
+  font:
+    bold 12px/12px system-ui,
+    sans-serif;
   font-style: normal;
   text-shadow:
     0 1px 0 #000,
