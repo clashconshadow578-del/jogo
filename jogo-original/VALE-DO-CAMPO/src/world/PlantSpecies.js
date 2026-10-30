@@ -7,7 +7,7 @@
  */
 
 import { HN, MH, MW, TREE } from '../config/constants.js';
-import { HEL, PLANTS, SAM, plantStage } from '../config/plants.js';
+import { HEL, NUT_PISO, PLANTS, SAM, plantStage } from '../config/plants.js';
 import { TRAMPLE, regressTo } from '../config/trampling.js';
 import { hash2 } from '../utils/MathUtils.js';
 import { mato, nut, sm, wl } from './hydrology/Hydrology.js';
@@ -40,6 +40,7 @@ function fit(p, canopy, wet, rich, flood) {
 }
 
 function pick(i) {
+  if (nut[i] < PLANTS[HEL].nutrienteMin) return SAM; // solo pobre não sustenta helicônia
   const h = fit(PLANTS[HEL], canopyAt(i), sm[i], nut[i], wl[i]),
     s = fit(PLANTS[SAM], canopyAt(i), sm[i], nut[i], wl[i]);
   return hash2((i % MW) * 3 + 7, ((i / MW) | 0) * 5 + 1) < h / (h + s) ? HEL : SAM;
@@ -57,6 +58,16 @@ export function speciesAt(i) {
 /** Fase 0-4 do mato do tile (0 = nada para desenhar). */
 export function stageAt(i) {
   return plantStage(mato[i]);
+}
+
+/**
+ * O solo do tile sustenta o mato? 0 = pobre demais (a planta definha e nada nasce), 1 = sustenta. É o fator do teto de mato
+ * (world/hydrology/Hydrology.js): sobe de 0 a 1 nos 0,1 de nutrientes acima do mínimo da espécie (ou do piso geral, se ainda não há planta).
+ */
+export function siteFactor(i) {
+  const p = PLANTS[plantSp[i]],
+    min = p ? p.nutrienteMin : NUT_PISO;
+  return Math.max(0, Math.min(1, (nut[i] - min) / 0.1));
 }
 
 /** Multiplicador do crescimento do mato do tile conforme a espécie (1 enquanto ainda não há mato). */

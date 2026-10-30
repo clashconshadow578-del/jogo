@@ -44,6 +44,7 @@ export const PLANTS = {
     umidade: 0.7, // umidade do solo (0-1) em que rende mais
     aguaParada: 1.5, // multiplicador quando há água parada no tile (várzea): ela gosta
     nutrientes: 0.75, // nutrientes (0-1) em que rende mais
+    nutrienteMin: 0.35, // abaixo disto o solo não sustenta a helicônia (exige húmus e serrapilheira): ela nem nasce nem se mantém
     ritmo: 1.35, // multiplicador do crescimento do mato (rápida)
     palatavel: 1, // quanto a vaca e os herbívoros gostam (1 = normal)
     // Ao florescer (fase 4) o caule morre: com esta chance por dia o mato volta DESCE para a fase 3 e rebrota do rizoma.
@@ -75,12 +76,16 @@ export const PLANTS = {
     umidade: 0.55,
     aguaParada: 0.25,
     nutrientes: 0.6,
+    nutrienteMin: 0.2, // a samambaia aguenta solo mais pobre, mas abaixo disto também morre à míngua
     ritmo: 0.7,
     palatavel: 0.35,
     florescerMorre: 0,
     florescerQueda: 0,
   },
 };
+
+/** Nutrientes mínimos do solo para qualquer planta do mato (o piso da samambaia; ver `nutrienteMin` de cada espécie). */
+export const NUT_PISO = 0.2;
 
 /** Fase 0-4 (0 = sem planta visível) para a quantidade de mato (0-255). */
 export function plantStage(m) {

@@ -13,7 +13,7 @@ mudou é **o que se vê e que cada espécie se comporta de um jeito**.
 
 A fase 4 só é alcançada em solo rico: o mato nunca passa de `255 × (0,3 + 0,7 × nutrientes)`, então precisa de nutrientes acima de ~0,5.
 
-**Começo do jogo:** o mato inicial nasce em manchas de 45 a 145 (fases 1 a 3), não numa camada única de brotos; assim as plantas já aparecem no primeiro minuto. Num save antigo o mato é o que já estava salvo.
+**Começo do jogo:** o jogo novo começa **sem plantas visíveis** (mato 4). Elas nascem e crescem conforme o solo: precisa de umidade (acima de 0,3 a 0,4) e de nutrientes. O teto de mato é `255 × (0,3 + 0,7 × nutrientes)`, e abaixo do mínimo da espécie o solo não sustenta a planta (teto 0): helicônia pede nutrientes ≥ 0,35 (senão o tile só pode ser samambaia) e samambaia ≥ 0,2. Tiles pobres ficam pelados; os ricos e úmidos enchem primeiro. Num save antigo o mato é o que já estava salvo.
 
 **Água e plantas:** a planta aparece sempre que há mato, não importa o nível de água do tile (antes sumia e voltava na borda de poças e rios). As poças de escoamento deixaram de ser desenhadas (a água continua simulada).
 

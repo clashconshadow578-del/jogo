@@ -6,6 +6,21 @@ import { launch, run, ok, failures } from './lib.mjs';
 
 const { p, close, errs } = await launch({ width: 960, height: 540 });
 
+// 0) o jogo novo começa SEM plantas visíveis (elas nascem conforme o solo)
+const ini = JSON.parse(await run(p, `(() => { let n = 0, t = 0; for (let i = 0; i < HN; i++) if (ground[i] === GRASS) { t++; if (stageAt(i) > 0) n++; } return JSON.stringify({ n, t }); })()`));
+ok(ini.t > 1000 && ini.n === 0, 'início sem plantas visíveis (' + ini.n + ' de ' + ini.t + ' tiles de grama)');
+
+// 0b) solo pobre não sustenta: o teto de mato é 0 abaixo do mínimo e helicônia não nasce em solo pobre
+const sol = JSON.parse(await run(p, `(() => {
+  const i = (Math.floor(S.py / 16) + 12) * MW + Math.floor(S.px / 16), r = {}; ground[i] = GRASS; obj[i] = 0;
+  nut[i] = 0.1; mato[i] = 4; r.pobre = siteFactor(i);
+  nut[i] = 0.5; r.rico = siteFactor(i);
+  let hel = 0; for (let k = 0; k < 400; k++) { const j = (Math.floor(S.py / 16) + 14) * MW + (Math.floor(S.px / 16) - 20 + (k % 40)) + ((k / 40) | 0) * MW; ground[j] = GRASS; obj[j] = 0; nut[j] = 0.25; mato[j] = 100; if (speciesAt(j) === 1) hel++; }
+  r.helEmSoloPobre = hel; return JSON.stringify(r);
+})()`));
+ok(sol.pobre === 0 && sol.rico === 1, 'solo pobre sustenta 0, solo rico sustenta 1 (' + sol.pobre + ', ' + sol.rico + ')');
+ok(sol.helEmSoloPobre === 0, 'helicônia não nasce em solo com nutrientes abaixo do mínimo (' + sol.helEmSoloPobre + ' de 400)');
+
 // 1) campo de teste: 10 tiles de grama livres ao lado do jogador, cada um com uma fase
 const setup = await run(p, `(() => {
   const tx = Math.floor(S.px / 16), ty = Math.floor(S.py / 16), out = [];

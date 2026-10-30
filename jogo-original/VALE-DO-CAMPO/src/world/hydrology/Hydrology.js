@@ -27,7 +27,7 @@ import { INST } from '../Instances.js';
 import { shroom, shroomRoll } from '../Mushrooms.js';
 import { seasonPhase, SEASONS, seasonUpdate, TINT, TINTSTR } from '../Seasons.js';
 import { TRAMPLE } from '../../config/trampling.js';
-import { growthRate, plantDaily, plantTrampled } from '../PlantSpecies.js';
+import { growthRate, plantDaily, plantTrampled, siteFactor } from '../PlantSpecies.js';
 import { crowd, drawSapling, treeDrop, treeFree } from '../Vegetation.js';
 import { climate, clouds, rainAt } from '../WeatherSystem.js';
 import { crops, ground, obj, wet } from '../World.js';
@@ -126,8 +126,7 @@ const hydroInit = extensible(function hydroInit() {
       shade[i] = Math.max(-0.5, Math.min(0.5, elev[i + MW + 1] - elev[i - MW - 1]));
     } // relevo iluminado a noroeste
   shroom.fill(0);
-  // mato inicial em manchas (fases 1 a 3 das plantas), não uma camada única de brotos: o jogo já começa com mato de vários tamanhos
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) mato[y * MW + x] = 45 + vnoise(x + wx0, y + wy0, 7, 2) * 100;
+  mato.fill(4); // o jogo começa SEM plantas visíveis: elas nascem e crescem conforme o solo (umidade, nutrientes, espécie)
   seedAge.fill(0);
   sapl.fill(0);
   wl.fill(0);
@@ -437,7 +436,7 @@ const hydroStep = extensible(function hydroStep() {
           mato[i] = Math.max(
             0,
             Math.min(
-              255 * (0.3 + 0.7 * nut[i]),
+              255 * (0.3 + 0.7 * nut[i]) * siteFactor(i), // solo pobre não sustenta a planta: o teto cai a zero
               mato[i] + (g > 0 ? g * (0.25 + 1.5 * nut[i]) * growthRate(i) : g * (1.4 - nut[i])), // helicônia rápida, samambaia lenta
             ),
           );
@@ -696,7 +695,7 @@ const hydroDaily = extensible(function hydroDaily() {
       mato[i] = Math.max(
         0,
         Math.min(
-          255 * (0.3 + 0.7 * nut[i]),
+          255 * (0.3 + 0.7 * nut[i]) * siteFactor(i),
           mato[i] +
             (sm[i] > 0.3
               ? 28 * sg * (0.4 + sm[i]) * el * (0.25 + 1.5 * nut[i]) * growthRate(i) * (1 - cmpT[i] * TRAMPLE.compactaCresce)
