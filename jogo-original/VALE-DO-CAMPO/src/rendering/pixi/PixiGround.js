@@ -36,6 +36,7 @@ export function pixiGroundDraw(g, plan, gx0, gx1, gy0, gy1) {
     g.drawImage(plan.fuse, gx0 * TS, gy0 * TS, w, h, gx0 * TS, gy0 * TS, w, h);
     g.restore();
     px.groundFrames = (px.groundFrames || 0) + 1;
+    px.coveredTiles = plan.n;
     return true;
   }
   if (plan.fuse !== boundSrc) {
@@ -53,5 +54,6 @@ export function pixiGroundDraw(g, plan, gx0, gx1, gy0, gy1) {
   g.drawImage(app.canvas, 0, 0, w, h, gx0 * TS, gy0 * TS, w, h);
   g.restore();
   px.groundFrames = (px.groundFrames || 0) + 1; // contador para os testes
+  px.coveredTiles = plan.n; // mostrado no contador ?fps
   return true;
 }

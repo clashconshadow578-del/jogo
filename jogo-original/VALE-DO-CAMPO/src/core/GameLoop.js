@@ -6,6 +6,7 @@
 
 import { gfx, Q, qDrop, setQDrop } from '../config/settings.js';
 import { update } from './GameUpdate.js';
+import { FPS_ON, fpsSample } from './FpsMeter.js';
 import { applyRes, ctx, RS, VIG } from '../rendering/Canvas.js';
 import { render } from '../rendering/Renderer.js';
 import { updHome } from '../ui/HomeArrow.js';
@@ -71,7 +72,9 @@ function frame(now) {
     }
   }
   update(dt);
+  const tFps = FPS_ON ? performance.now() : 0; // só com ?fps (FpsMeter.js)
   render();
+  if (FPS_ON) fpsSample(performance.now() - tFps);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;

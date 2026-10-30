@@ -196,17 +196,31 @@ const pixiStamp = new Uint32Array(MW * MH);
 let pixiNow = 0,
   pixiCount = 0;
 
+// "Este tile está parado?" (tileStill) calculado UMA vez por tile e por quadro: o plano consulta cada tile e seus vizinhos.
+// Dentro do plano idleGrassTile(tx, ty) == tileStill(tx, ty), porque o modo parado já foi confirmado ligado (idleGrassEnabled).
+const stillStamp = new Uint32Array(MW * MH),
+  stillVal = new Uint8Array(MW * MH);
+
+function stillOnce(tx, ty, i) {
+  if (stillStamp[i] !== pixiCount) {
+    stillStamp[i] = pixiCount;
+    stillVal[i] = tileStill(tx, ty) ? 1 : 0;
+  }
+  return stillVal[i] === 1;
+}
+
+// O tile vizinho j (desenhado antes) pode deixar algo passar para dentro do tile seguinte? (muda/semente, ou grama com marcas)
+function spills(j) {
+  return sapl[j] > 0 || seedAge[j] > 0 || (ground[j] === GRASS && !stillOnce(j % MW, (j / MW) | 0, j));
+}
+
 function spillFree(tx, ty, i) {
   if (tx <= 0 || ty <= 0 || tx >= MW - 1) return false;
-  for (const j of [i - 1, i - MW - 1, i - MW, i - MW + 1]) {
-    if (sapl[j] > 0 || seedAge[j] > 0) return false;
-    if (ground[j] === GRASS && !tileStill(j % MW, (j / MW) | 0)) return false;
-  }
-  return true;
+  return !(spills(i - 1) || spills(i - MW - 1) || spills(i - MW) || spills(i - MW + 1));
 }
 
 /**
- * Devolve { fuse, path } (a imagem pronta e o recorte dos tiles cobertos) ou null se nada será coberto.
+ * Devolve { fuse, path, n } (a imagem pronta, o recorte e a quantidade de tiles cobertos) ou null se nada será coberto.
  * `served` (opcional) marca os tiles que o cache do chão já entregou neste quadro (com umidade/poças dentro): esses ficam de fora.
  */
 function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
@@ -225,9 +239,9 @@ function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
         tx <= gx1 &&
         ground[i] === GRASS &&
         WTc[i] !== 9 &&
-        noWaterAround(tx, ty) &&
         !(served && served[i]) &&
-        idleGrassTile(tx, ty) &&
+        stillOnce(tx, ty, i) &&
+        noWaterAround(tx, ty) &&
         spillFree(tx, ty, i);
       if (ok) {
         pixiStamp[i] = stamp;
@@ -241,7 +255,7 @@ function pixiPlanTiles(gx0, gx1, gy0, gy1, served) {
   }
   if (!n) return null;
   pixiNow = stamp;
-  return { fuse: fuseLayer, path };
+  return { fuse: fuseLayer, path, n };
 }
 
 /** Fim do laço de tiles do quadro: drawTile volta a desenhar tudo (cache do chão, interior...). */
