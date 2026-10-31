@@ -89,7 +89,7 @@ Observação: a folha original traz flores vermelhas na fase 4 das duas linhas.
 Árvores (comuns e as grandes da Amazônia) e plantas do mato que estão **na frente** do personagem (desenhadas depois dele na ordem Y) **não ficam
 translúcidas por inteiro**: só um círculo ao redor do tronco do personagem fica, com a borda em degradê (máscara em `smoothstep`; no centro some
 78% do desenho, na borda 0%). Os números ficam em `src/config/occlusion.js` (`raio` 26 px, `nucleo` 8 px, `forca` 0,78, `centroY` 11 px acima
-dos pés, `margem` 16 px).
+dos pés).
 
 Como funciona (igual no PixiJS e em `?canvas`, que não têm "apagar com máscara"): `rendering/Renderer.js` liga o círculo (`occLigar`) logo depois de
 desenhar o personagem; `drawMato`, `drawTree` (`TreeRenderer.js`) e a `drawTree` da Amazônia (`AmazonRender.js`) pedem o contexto com

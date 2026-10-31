@@ -1,5 +1,5 @@
 /**
- * Árvores: sprites por bioma (campo, musgo, pomar, florida, outono) e escolha do modelo por região. O desenho (balanço ao vento)
+ * Árvores: sprites por bioma (campo, musgo, pomar, florida, outono) e escolha do modelo por região. O desenho (um sprite só, parado)
  * fica em rendering/TreeRenderer.js.
  *
  * Origem: Vale_do_Campo_V64.html (s02)

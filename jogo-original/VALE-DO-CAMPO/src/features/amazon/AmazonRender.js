@@ -8,7 +8,6 @@ import { MW, TS, VH, VW } from '../../config/constants.js';
 import { S } from '../../core/GameState.js';
 import { sunInfo } from '../../core/TimeManager.js';
 import { amzDrops, amzSp, BOLT, clamp, FALL, M, PT, SPN } from './AmazonTrees.js';
-import { OCLUSAO } from '../../config/occlusion.js';
 import { ctx } from '../../rendering/Canvas.js';
 import { occBegin, occEnd } from '../../rendering/Occlusion.js';
 import { vcam } from '../../rendering/Renderer.js';
@@ -20,7 +19,6 @@ import { drawPrints } from '../../world/GrassSystem.js';
 import { drawTree } from '../../rendering/TreeRenderer.js';
 import { treeModel } from '../../world/Trees.js';
 import { drawSapling } from '../../world/Vegetation.js';
-import { climate, windNow } from '../../world/WeatherSystem.js';
 
 const amzHPmax = function (i) {
   const a = ecoTrees.get(i);
@@ -77,50 +75,18 @@ export function installAmazonRender() {
         if (!a || !a.amz) return _dtree.apply(this, arguments);
         const m = a.model();
         if (!m || !m.ready) return _dtree.apply(this, arguments);
-        const t = performance.now() / 1000,
-          w = windNow(),
-          stormK = climate.kind >= 4 ? 0.55 : climate.kind >= 3 ? 0.25 : 0,
-          sp = a.sp;
-        const H = m.h,
-          top = H * 0.015 * sp.flex * (0.3 + 1.15 * w + stormK); // deslocamento do topo em px (cresce com a altura e a velocidade do vento)
-        const f0 = 0.95 / Math.sqrt(Math.max(1, H / 40)); // árvore mais alta balança mais devagar
-        const ph = t * f0 * 6.283 - tx * 0.45 + ty * 0.08; // rajada: a frente de vento atravessa o mapa de oeste p/ leste
-        const gust = Math.sin(ph) * 0.55 + Math.sin(ph * 2.3 + 1.3) * 0.22 + 0.45 + w * 0.25; // média positiva: copa inclina para leste
+        // A árvore fica parada (sem balanço do vento): um desenho só, o sprite inteiro.
         const dx = Math.round(x - m.w / 2),
-          dy = Math.round(y - m.h + 2),
-          step = H > 150 ? 3 : H > 70 ? 2 : 1;
+          dy = Math.round(y - m.h + 2);
         /* se o jogador está atrás da árvore, só um círculo ao redor dele fica translúcido (rendering/Occlusion.js) */
-        const mg = OCLUSAO.margem,
-          g = occBegin(dx - mg, dy, m.w + 2 * mg, m.h);
-        const flutter = (sp.flut || 0) * (0.25 + w * 1.2),
-          cbRow = m.cbRow || H * 0.5,
-          rw = m.rw,
-          mw = m.mw || m.w;
-        let rs = -1,
-          rO = 0;
-        for (let r = 0; r < H; r += step) {
-          const f = 1 - (r + step * 0.5) / H; // 0 base … 1 topo
-          let o = top * gust * Math.pow(f, sp.pw);
-          if (flutter && rw && r < cbRow)
-            o += Math.sin(t * 5.2 + r * 0.33 + ph) * flutter * (rw[r] / mw) * 1.4; // frondes do buriti vibram
-          else if (w > 0.5) o += Math.sin(t * 6 + r * 0.45 + ph) * 0.35 * f * (w - 0.35); // folhas farfalham
-          const ro = Math.round(o),
-            sh = Math.min(step, H - r);
-          if (rs < 0) {
-            rs = r;
-            rO = ro;
-          } else if (ro !== rO) {
-            g.drawImage(m.img, 0, rs, m.w, r - rs, dx + rO, dy + rs, m.w, r - rs);
-            rs = r;
-            rO = ro;
-          } // junta fatias com mesmo deslocamento
-        }
-        if (rs >= 0) g.drawImage(m.img, 0, rs, m.w, H - rs, dx + rO, dy + rs, m.w, H - rs);
+        const g = occBegin(dx, dy, m.w, m.h);
+        g.drawImage(m.img, dx, dy);
         if (a.burn) {
-          g.globalAlpha = 0.35;
+          const al = g.globalAlpha;
+          g.globalAlpha = al * 0.35;
           g.fillStyle = '#120a05';
           g.fillRect(dx, dy, m.w, m.h);
-          g.globalAlpha = 1;
+          g.globalAlpha = al;
         }
         occEnd(g);
       },
