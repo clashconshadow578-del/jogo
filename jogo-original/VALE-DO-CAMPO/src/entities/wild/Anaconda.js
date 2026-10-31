@@ -962,12 +962,38 @@ function anaPaint(g, o, ox, oy) {
   } else g.drawImage(ANA_CV, o.fr * F, o.row * F, F, F, ox, oy, F, F);
 }
 
-/** A pose da sucuri neste quadro (qual quadro da folha, para onde gira, quanto estica). `dir`: 0 baixo, 1 cima, 2 esquerda, 3 direita. */
-function anaPose(a, st, dir, now) {
+const ANA_PASSO = Math.PI / 8; // o corpo gira em passos de 22,5 graus (16 direções, com as diagonais): pixel art girada num ângulo qualquer tremeria
+
+/**
+ * Para onde a sucuri aponta, em radianos (0 direita, PI/2 baixo), em passos de ANA_PASSO. Só muda de passo quando `a.dir` passa bem do meio entre dois
+ * passos (histerese de 25%), para não ficar piscando entre dois quando ela segue quase na linha entre eles.
+ */
+function anaAngle(a) {
+  const d = a.dir || 0,
+    atual = a.wA;
+  if (atual !== undefined && Math.abs(Math.atan2(Math.sin(d - atual), Math.cos(d - atual))) <= ANA_PASSO * 0.75)
+    return atual;
+  const q = Math.round(d / ANA_PASSO) * ANA_PASSO;
+  return (a.wA = Math.atan2(Math.sin(q), Math.cos(q)));
+}
+
+/**
+ * A pose da sucuri neste quadro (qual quadro da folha, para onde gira, quanto estica). `dir`: 0 baixo, 1 cima, 2 esquerda, 3 direita (decide a
+ * enrolada). `ang` (opcional, de anaAngle): o ângulo de verdade, para a pose que desliza apontar também nas diagonais; sem ele vale só `dir`.
+ */
+function anaPose(a, st, dir, now, ang) {
   const o = { row: 0, fr: 0, rot: 0, flip: false, ls: 1, cs: 1, hide: false, swim: false, stretch: false, shake: 0 };
   const desliza = (fr) => {
-    o.row = dir === 2 || dir === 1 ? ANA.ROW.L : ANA.ROW.R; // cima e baixo: o mesmo quadro, girado 90 graus (a cabeça fica na âncora)
-    o.rot = dir < 2 ? Math.PI / 2 : 0;
+    if (ang === undefined) {
+      o.row = dir === 2 || dir === 1 ? ANA.ROW.L : ANA.ROW.R; // cima e baixo: o mesmo quadro, girado 90 graus (a cabeça fica na âncora)
+      o.rot = dir < 2 ? Math.PI / 2 : 0;
+    } else if (Math.cos(ang) >= -1e-9) {
+      o.row = ANA.ROW.R; // aponta para a direita (ou reto para cima/baixo): o quadro da direita, girado até o ângulo
+      o.rot = ang;
+    } else {
+      o.row = ANA.ROW.L; // aponta para a esquerda: o quadro da esquerda, girado a partir do eixo horizontal
+      o.rot = ang - Math.PI * Math.sign(ang);
+    }
     o.fr = fr;
   };
   const enrola = (row, fr) => {
@@ -1009,11 +1035,13 @@ function drawAna(a) {
   const F = ANA.F,
     now = performance.now() / 1000,
     st = a.state,
-    o = anaPose(a, st, faRow(a), now),
+    o = anaPose(a, st, faRow(a), now, anaAngle(a)),
     hx = o.row === 0 ? ANA.HEAD : o.row === 1 ? F - 1 - ANA.HEAD : F / 2, // âncora no quadro: a ponta da cabeça (deslizando) ou o centro (enrolada)
     hy = F / 2,
     camo = st !== 'dead' ? a.camo || 0 : 0, // escondida na água também se mistura à cor da água
-    wk = o.row <= 1 && o.ls === 1 && !o.hide ? anaWave(a, now, !!a.mv) : 0; // intensidade da ondulação do corpo
+    wk = o.row <= 1 && o.ls === 1 && !o.hide ? anaWave(a, now, !!a.mv) : 0, // intensidade da ondulação do corpo
+    // no Canvas 2D, fatias de 2 px inclinadas deixam emendas finas entre si: aí o corpo ondulado é montado reto num canvas auxiliar e girado de uma vez (o PixiJS não tem emendas)
+    emenda = wk > 0.04 && Math.abs(Math.sin(2 * o.rot)) > 1e-6 && !ctx.isPixiCtx;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (st === 'dead' && a.t < 2) ctx.globalAlpha = Math.max(0, a.t / 2);
@@ -1025,7 +1053,7 @@ function drawAna(a) {
   ctx.translate(Math.round(a.x), Math.round(a.y) + o.shake);
   if (o.rot) ctx.rotate(o.rot);
   if (o.flip) ctx.scale(-1, 1);
-  if (!o.stretch && !o.swim && camo <= 0.12) {
+  if (!o.stretch && !o.swim && camo <= 0.12 && !emenda) {
     if (wk > 0.04) anaWaveStrips(ctx, ANA_CV, o.fr * F, o.row * F, -hx, -hy, o.row, o.fr, wk, a.wS);
     else anaPaint(ctx, o, -hx, -hy);
   } else {
@@ -1152,6 +1180,7 @@ export function registerAnacondaStates() {
 
 export {
   ANA_WAVE,
+  anaAngle,
   anaDemo,
   anaInit,
   anaInitA,

@@ -144,6 +144,46 @@ const pose = (state, dir, extra = {}) =>
   ok(morta.stretch === false && morta.cs === 1, 'morta: sem barriga');
 }
 
+// 3b) as diagonais: o corpo gira até o ângulo de verdade do movimento (anaPose com `ang`, de anaAngle, em passos de 22,5 graus)
+{
+  const P = Math.PI,
+    pa = (ang) => J(`anaPose({ t0: 0, bk: 0, dg: 0, hide: false, sw: false, mv: true, stT: 0, gsp: 1 }, 'go', 3, 1.7, ${ang})`);
+  // [nome, ângulo (0 direita, PI/2 baixo), linha esperada, giro esperado]
+  const casos = [
+    ['direita', 0, 1, 0], ['baixo-direita', P / 4, 1, P / 4], ['baixo', P / 2, 1, P / 2], ['baixo-esquerda', (3 * P) / 4, 0, -P / 4],
+    ['esquerda', P, 0, 0], ['cima-esquerda', (-3 * P) / 4, 0, P / 4], ['cima', -P / 2, 1, -P / 2], ['cima-direita', -P / 4, 1, -P / 4],
+  ];
+  const falhas = [];
+  for (const [nome, ang, row, rot] of casos) {
+    const o = await pa(ang);
+    if (o.row !== row || Math.abs(o.rot - rot) > 1e-9) falhas.push(`${nome}: linha ${o.row} giro ${o.rot.toFixed(3)} (esperado ${row} e ${rot.toFixed(3)})`);
+  }
+  ok(falhas.length === 0, 'as 8 direções (com as 4 diagonais) usam a linha certa e giram até o ângulo' + (falhas.length ? ': ' + falhas.join('; ') : ''));
+  // o rosto da cobra aponta mesmo para o ângulo pedido: a cabeça do quadro girado cai na direção (cos, sen) do ângulo
+  const aponta = await J(`(() => {
+    const r = [];
+    for (const [ang] of ${JSON.stringify(casos)}) {
+      const o = anaPose({ t0: 0, bk: 0, dg: 0, hide: false, sw: false, mv: true, stT: 0, gsp: 1 }, 'go', 3, 1.7, ang);
+      const dx = o.row === 1 ? 1 : -1; // a cabeça do quadro da direita olha para +x, a do da esquerda para -x
+      const x = dx * Math.cos(o.rot), y = dx * Math.sin(o.rot);
+      r.push(Math.hypot(x - Math.cos(ang), y - Math.sin(ang)));
+    }
+    return r;
+  })()`);
+  ok(aponta.every((e) => e < 1e-9), 'a cabeça aponta para o ângulo do movimento nas 8 direções');
+  // anaAngle: passos de 22,5 graus com histerese (não pisca entre dois passos)
+  const q = await J(`(() => {
+    const a = { dir: 0.1 }, r = [];
+    r.push(anaAngle(a)); a.dir = 0.275; r.push(anaAngle(a)); a.dir = 0.31; r.push(anaAngle(a));
+    a.dir = Math.PI / 8 - 0.2; r.push(anaAngle(a)); a.dir = Math.PI / 2 + 0.05; r.push(anaAngle(a));
+    a.dir = -3 * Math.PI / 4 + 0.05; const b = { dir: 3.2 }; r.push(anaAngle(b));
+    return r;
+  })()`);
+  const p8 = Math.PI / 8;
+  ok(q[0] === 0 && q[1] === 0 && Math.abs(q[2] - p8) < 1e-9 && Math.abs(q[3] - p8) < 1e-9 && Math.abs(q[4] - Math.PI / 2) < 1e-9, `anaAngle gira em passos de 22,5 graus e só muda de passo passando bem do meio (${q.slice(0, 5).map((v) => v.toFixed(2)).join(', ')})`);
+  ok(Math.abs(q[5] - Math.PI) < 1e-9, `um ângulo além de PI (3,2 rad) cai no passo mais próximo, que é o de 180 graus (${q[5].toFixed(3)}), dentro de -PI a PI`);
+}
+
 // 4) desenhar cada pose no jogo (Canvas) não dá erro e é rápido
 const t = await J(`(() => {
   const f = { x: 300, y: 300, dir: 0, state: 'go', mv: false, sw: false, hide: false, t0: 0, bk: 0, bp: 0.4, dg: 0, camo: 0, kind: 'grass', stT: 0, t: 5, gsp: 1 };
