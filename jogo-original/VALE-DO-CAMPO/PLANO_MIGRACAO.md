@@ -437,3 +437,11 @@ dele** fica translúcido, com a borda em degradê, e não a árvore inteira (ant
 `rendering/Occlusion.js` desenha a planta ou árvore num canvas auxiliar, fura com uma máscara em degradê e a coloca na cena (funciona igual no PixiJS e em `?canvas`);
 o canvas auxiliar fica fora do atlas (`__dyn`, `PixiCtx.js`). Números em `config/occlusion.js` e `ESCALA_FASE` em `config/plants.js`. Teste novo: `tests/browser/oclusao.mjs`
 (compara o quadro com e sem o círculo: muda só dentro do raio) e `tests/assets/plants.test.js`.
+
+## 29. Sucuri com a folha nova e barriga que estica (feito)
+
+Pedido do dono: usar a folha de sprites da sucuri que ele mandou no lugar da antiga, adaptada aos movimentos que a sucuri já tem, e fazer a sprite **esticar** (ficar maior, mais
+longa) quando ela engole um animal, com um jeito de ver isso no jogo. Folha nova (`tools/anaconda/make-anaconda.py`), 460 linhas de caminhos do corpo da folha antiga removidas de
+`Anaconda.js`, poses por estado e giro de 90 graus para cima e para baixo, barriga por colunas esticadas (`anaStretch`, guardada por sucuri), `?sucuri` na URL e `anaDemo()`.
+Canvases auxiliares compartilhados com o círculo translúcido em `rendering/DynPool.js`. Detalhes em `docs/ECOSSISTEMA_VIVO.md`. Teste novo: `tests/browser/sucuri.mjs`.
+Limites: só há 2 quadros de deslizar por lado (a animação é um vaivém curto) e a folha não traz nadando nem bote, que são feitos por tintura e esticamento do mesmo quadro.

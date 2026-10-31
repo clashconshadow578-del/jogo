@@ -126,3 +126,26 @@ As simulações são estatísticas (várias repetições por semente) e **não**
 - A âncora do bloco fica 6–14 px acima do sprite para onça, sucuri e vaca.
 - Javali e onça territorial mantêm o comportamento original de não desmaiar o jogador.
 - Jogo real não foi jogado nem o `vite build` / `test:regression` rodados (sem rede / Vite ausente).
+
+## A sucuri com a folha nova e a barriga que estica
+
+A sucuri é desenhada com a folha de sprites que o dono do jogo mandou (`tools/anaconda/folha-sucuri.jpg`, de onde `python3 tools/anaconda/make-anaconda.py` tira
+`public/assets/sprites/animals/anaconda.webp`: xadrez, sombras e o risco roxo das legendas saem, e a cobra é reduzida a 128 px). A folha traz **deslizando para a esquerda e para a
+direita** (2 quadros cada), **enrolada de frente** e **enrolada com a cabeça levantada** (4 quadros cada). O jogo (`entities/wild/Anaconda.js`, `anaPose`) escolhe a pose pelo estado:
+
+| Estado | Pose |
+|---|---|
+| anda, engole, digere (meio da digestão) | deslizando; para cima e para baixo o mesmo quadro **gira 90 graus** em volta da cabeça |
+| parada, apertando o jogador | enrolada de frente (virada para a direita é o quadro espelhado) |
+| `coil` (aviso do bote) | enrolada com a cabeça levantada, tremendo |
+| bote | levantada, depois o corpo estica em 3 passos (55%, 90%, 100% do comprimento) |
+| nadando | deslizando com a cor da água por cima; escondida: só a cabeça (círculo de 9 px) |
+| fim da digestão | enrolada, a cobra inteira 1 + 0,35 x barriga maior |
+
+**Barriga que estica:** em vez de círculos pintados por cima do corpo (como era), o próprio desenho é cortado em colunas (`anaStretch`) e as colunas ao redor da presa ficam
+mais altas e mais largas: o corpo **engrossa até 2x e alonga até ~13 px** com a presa maior (queixada), as manchas esticam junto e a pele fica um pouco mais clara.
+`a.bk` (0 a 1) é o tamanho da presa e `a.bp` a posição da barriga (fração do corpo a partir da cabeça: 0,06 ao começar a engolir, até 0,36 ao terminar, e
+0,34 a 0,61 enquanto digere). O desenho esticado é guardado por sucuri e só refeito quando o tamanho, a posição da barriga ou o quadro mudam; desenhar uma sucuri esticada custa ~0,2 ms no navegador de teste (Canvas, sem GPU).
+
+**Para ver:** abra o jogo com `?sucuri` no fim do endereço. Uma sucuri aparece na frente do jogador e engole uma presa depois da outra, sem camuflagem. Com `?debug`, `anaDemo()`
+no console faz o mesmo. Teste: `tests/browser/sucuri.mjs`.

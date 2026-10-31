@@ -493,6 +493,7 @@ Acrescente no fim do endereço do jogo (ex.: `http://localhost:5173/?fps`; para 
 | `?canvas` | desliga o PixiJS e desenha tudo em Canvas 2D (plano B; o PixiJS é o desenhista padrão) |
 | `?copia` | copia o quadro do PixiJS para o canvas do jogo (só para testes que leem pixels) |
 | `?pixi` | só mostra um aviso na tela dizendo se o PixiJS ligou |
+| `?sucuri` | depois de 2,5 s põe uma sucuri engolindo uma presa bem na frente do jogador (da menor para a maior: galinha, lebre, cervo, bezerro, queixada) para ver o corpo esticando; repete sem parar |
 | `?cpu` | todos os canvases 2D desenham na CPU e não na placa de vídeo (experimental; pode ser melhor ou pior, compare com o `?fps`) |
 | `?safe` | desliga as otimizações opcionais (chão parado, fluxo do rio, camadas da atmosfera) |
 | `?cache` / `?nocache` | liga / desliga o cache do chão (desligado por padrão: piscava em algumas placas de vídeo) |

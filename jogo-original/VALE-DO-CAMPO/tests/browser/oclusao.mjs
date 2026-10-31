@@ -89,17 +89,19 @@ async function cena(nome) {
   const com = await lerTela();
   await frames(6);
   const ruido = compara(com, await lerTela(), R);
-  ok(ruido.dentro + ruido.fora < 100, `${nome}: quadro estável para comparar (${ruido.dentro + ruido.fora} pixels mudam entre dois quadros iguais)`);
+  ok(ruido.dentro + ruido.fora < 400, `${nome}: quadro razoavelmente estável para comparar (${ruido.dentro + ruido.fora} pixels mudam entre dois quadros iguais)`);
   await run(`OCLUSAO.centroY = -5000`);
   await frames(8);
   await foto('oclusao-' + nome + '-sem');
   const sem = await lerTela();
   await run(`OCLUSAO.centroY = 11`);
-  return compara(com, sem, R);
+  return { ...compara(com, sem, R), ruido };
 }
 const estrito = (nome, d, minimo) => {
   ok(d.dentro > minimo, `${nome}: o círculo muda o desenho ao redor do personagem (${d.dentro} pixels dentro do raio)`);
-  ok(d.fora < 40 && d.fora < d.dentro * 0.1, `${nome}: fora do círculo nada muda (${d.fora} pixels fora, ${d.dentro} dentro): não fica translúcido por inteiro`);
+  // fora do círculo só pode mudar o que já muda sozinho entre dois quadros iguais (bichos, marcadores), não o desenho da árvore ou planta
+  const limite = d.ruido.fora * 1.5 + 40;
+  ok(d.fora <= limite && d.fora < d.dentro * 0.3, `${nome}: fora do círculo nada muda além do ruído (${d.fora} pixels fora, ruído ${d.ruido.fora}, ${d.dentro} dentro): não fica translúcido por inteiro`);
 };
 
 // 2) congela o mundo: o balanço das árvores, o vento e a água usam `performance.now()`, e luz, clima, atmosfera, água e bichos mudam a

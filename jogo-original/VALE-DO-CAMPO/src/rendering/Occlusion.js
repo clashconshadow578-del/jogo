@@ -9,15 +9,13 @@
  */
 import { OCLUSAO } from '../config/occlusion.js';
 import { ctx } from './Canvas.js';
+import { dynFrame, dynGet } from './DynPool.js';
 
 const R = OCLUSAO.raio;
 let on = false,
   hx = 0,
   hy = 0,
   mask = null;
-// canvases auxiliares por tamanho exato (o PixiJS não aceita um canvas que muda de tamanho); cada um é usado no máximo uma vez por quadro
-const pool = new Map();
-let quadro = 0;
 
 /** A máscara: alfa 0..forca no centro, caindo em suavização (smoothstep) até 0 na borda. Feita uma vez. */
 function getMask() {
@@ -41,7 +39,7 @@ function getMask() {
 /** Começo de cada quadro: o círculo fica desligado até o personagem ser desenhado. */
 export function occReset() {
   on = false;
-  quadro++;
+  dynFrame();
 }
 
 /** Chamado logo depois de desenhar o personagem (feet = pés em x, y do mundo): o que for desenhado a seguir está na frente dele. */
@@ -52,26 +50,6 @@ export function occLigar(x, y) {
 }
 
 export const occAtivo = () => on;
-
-function pegar(w, h) {
-  const key = w + 'x' + h;
-  let e = pool.get(key);
-  if (!e) pool.set(key, (e = { list: [], q: -1, n: 0 }));
-  if (e.q !== quadro) {
-    e.q = quadro;
-    e.n = 0;
-  }
-  let it = e.list[e.n];
-  if (!it) {
-    const cv = document.createElement('canvas');
-    cv.width = w;
-    cv.height = h;
-    cv.__dyn = true; // muda todo quadro: fica fora do atlas do PixiJS (rendering/pixi/PixiCtx.js)
-    it = e.list[e.n] = { cv, k: cv.getContext('2d') };
-  }
-  e.n++;
-  return it;
-}
 
 let atual = null;
 
@@ -85,7 +63,7 @@ export function occBegin(x, y, w, h) {
   const dx = Math.max(x - hx, 0, hx - (x + w)),
     dy = Math.max(y - hy, 0, hy - (y + h));
   if (dx * dx + dy * dy >= R * R) return ctx;
-  const it = pegar(w, h),
+  const it = dynGet(w, h),
     k = it.k;
   k.setTransform(1, 0, 0, 1, 0, 0);
   k.globalCompositeOperation = 'source-over';

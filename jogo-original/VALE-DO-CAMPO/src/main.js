@@ -13,6 +13,7 @@ import { initPixi, pixiExplicit } from './rendering/pixi/PixiBridge.js';
 import { pixiLayersInit } from './rendering/pixi/PixiLayers.js';
 import { toast } from './ui/Toast.js';
 import { benchRequested, startBench } from './core/Bench.js';
+import { anaDemo } from './entities/wild/Anaconda.js';
 
 function showFatalError(err) {
   console.error('[Vale do Campo] falha ao iniciar:', err);
@@ -41,6 +42,7 @@ async function start() {
       toast(info ? 'PixiJS ligado (WebGL)' : 'PixiJS indisponível: usando Canvas', info ? '#9be29b' : '#ffb4a8');
   });
   if (benchRequested(location.search)) startBench(); // só com ?bench: teste de desempenho automático (core/Bench.js)
+  if (/[?&]sucuri\b/.test(location.search)) setTimeout(anaDemo, 2500); // só com ?sucuri: uma sucuri engolindo uma presa na frente do jogador
   const env = import.meta.env || {};
   if (env.DEV || /[?&]debug\b/.test(location.search)) installDebug();
 }
