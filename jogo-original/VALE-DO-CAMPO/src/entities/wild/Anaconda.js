@@ -903,6 +903,47 @@ function anaStretched(a, o) {
   return e.cv;
 }
 
+/**
+ * Ondulação ao andar: o corpo é desenhado em fatias de `w` px e cada fatia sobe ou desce seguindo uma onda que corre da cabeça para a cauda. A fase
+ * avança com a DISTÂNCIA percorrida (e não com o relógio), então o corpo desenha na mesma trilha por onde a cabeça passou, como uma cobra de verdade,
+ * e não "patina". A cabeça não se mexe (a amplitude cresce do zero na cabeça até `amp` depois de `rampa` px). Vale para as 4 direções (cima e baixo
+ * giram o desenho todo, e a onda gira junto).
+ */
+const ANA_WAVE = { lam: 58, amp: 5, rampa: 26, w: 2 };
+
+/** Atualiza (por sucuri) a fase da onda e a intensidade (0 parada, 1 andando, suavizada); devolve a intensidade. */
+function anaWave(a, now, moving) {
+  const dt = Math.min(0.1, Math.max(0, now - (a.wT ?? now))),
+    d = Math.hypot(a.x - (a.wX ?? a.x), a.y - (a.wY ?? a.y));
+  a.wT = now;
+  a.wX = a.x;
+  a.wY = a.y;
+  a.wS = ((a.wS || 0) + (d * 6.2832) / ANA_WAVE.lam) % 6.2832;
+  a.wK = (a.wK || 0) + ((moving ? 1 : 0) - (a.wK || 0)) * Math.min(1, dt * 6);
+  return a.wK;
+}
+
+/**
+ * Desenha em `g` o quadro (da linha `row`, de `src` a partir de (sx, sy), F x F) em fatias ondulando; o canto do quadro vai para (ox, oy).
+ * `k` (0 a 1) é a intensidade e `s` a fase (anaWave). Com k = 0 sai igual ao quadro inteiro.
+ */
+function anaWaveStrips(g, src, sx, sy, ox, oy, row, fr, k, s) {
+  const F = ANA.F,
+    W = ANA_WAVE.w,
+    hc = row === 0 ? ANA.HEAD : F - 1 - ANA.HEAD,
+    n = anaProf()[row][fr].n + 20, // o desenho esticado pode ser até ~13 px mais longo
+    lo = Math.max(0, row === 0 ? hc - 2 : hc - n),
+    hi = Math.min(F, row === 0 ? hc + n : hc + 3);
+  g.imageSmoothingEnabled = false;
+  for (let x = lo - (lo % W); x < hi; x += W) {
+    const c = x + W / 2,
+      d = row === 0 ? c - hc : hc - c, // distância da cabeça, para o lado do corpo
+      amp = d > 0 ? Math.min(1, (d - 3) / ANA_WAVE.rampa) : 0,
+      dy = amp > 0 ? Math.round(ANA_WAVE.amp * k * amp * Math.sin(s - (6.2832 * d) / ANA_WAVE.lam)) : 0;
+    g.drawImage(src, sx + x, sy, W, F, ox + x, oy + dy, W, F);
+  }
+}
+
 /** Pinta a pose `o` (linha, quadro, esticada do bote `ls`, escala da enrolada `cs`) em `g`, com o canto do quadro em (ox, oy). */
 function anaPaint(g, o, ox, oy) {
   const F = ANA.F,
@@ -950,9 +991,9 @@ function anaPose(a, st, dir, now) {
     desliza(Math.floor(now * 2 + a.t0) % 2);
     o.hide = true;
   } else if (a.sw) {
-    desliza(a.mv ? Math.floor(now * (st === 'go' && a.gsp > 1.5 ? 6 : 3) + a.t0) % 2 : 0);
+    desliza(0); // andando, quem anima é a ondulação do corpo (anaWave); parada, o quadro 0
     o.swim = true;
-  } else if (a.mv) desliza(Math.floor(now * 3 + a.t0) % 2);
+  } else if (a.mv) desliza(0);
   else if (a.dg > 0.04 || st === 'swallow') desliza(Math.floor(now * 0.9 + a.t0) % 2);
   else enrola(ANA.ROW.rest, Math.floor(now * 2.2 + a.t0) % 4);
   if (st !== 'dead' && a.bk > 0.02 && !o.hide) {
@@ -971,7 +1012,8 @@ function drawAna(a) {
     o = anaPose(a, st, faRow(a), now),
     hx = o.row === 0 ? ANA.HEAD : o.row === 1 ? F - 1 - ANA.HEAD : F / 2, // âncora no quadro: a ponta da cabeça (deslizando) ou o centro (enrolada)
     hy = F / 2,
-    camo = st !== 'dead' ? a.camo || 0 : 0; // escondida na água também se mistura à cor da água
+    camo = st !== 'dead' ? a.camo || 0 : 0, // escondida na água também se mistura à cor da água
+    wk = o.row <= 1 && o.ls === 1 && !o.hide ? anaWave(a, now, !!a.mv) : 0; // intensidade da ondulação do corpo
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (st === 'dead' && a.t < 2) ctx.globalAlpha = Math.max(0, a.t / 2);
@@ -983,8 +1025,10 @@ function drawAna(a) {
   ctx.translate(Math.round(a.x), Math.round(a.y) + o.shake);
   if (o.rot) ctx.rotate(o.rot);
   if (o.flip) ctx.scale(-1, 1);
-  if (!o.stretch && !o.swim && camo <= 0.12) anaPaint(ctx, o, -hx, -hy);
-  else {
+  if (!o.stretch && !o.swim && camo <= 0.12) {
+    if (wk > 0.04) anaWaveStrips(ctx, ANA_CV, o.fr * F, o.row * F, -hx, -hy, o.row, o.fr, wk, a.wS);
+    else anaPaint(ctx, o, -hx, -hy);
+  } else {
     // o corpo esticado, a cor da água (nadando) e a camuflagem são feitos num canvas auxiliar e colocados de uma vez
     const T = dynGet(F, F),
       g = T.k;
@@ -992,7 +1036,10 @@ function drawAna(a) {
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = 1;
     g.clearRect(0, 0, F, F);
-    if (o.stretch) g.drawImage(anaStretched(a, o), 0, 0);
+    if (o.stretch) {
+      if (wk > 0.04) anaWaveStrips(g, anaStretched(a, o), 0, 0, 0, 0, o.row, o.fr, wk, a.wS);
+      else g.drawImage(anaStretched(a, o), 0, 0);
+    } else if (wk > 0.04) anaWaveStrips(g, ANA_CV, o.fr * F, o.row * F, 0, 0, o.row, o.fr, wk, a.wS);
     else anaPaint(g, o, 0, 0);
     g.globalCompositeOperation = 'source-atop';
     if (o.swim) {
@@ -1103,4 +1150,16 @@ export function registerAnacondaStates() {
   });
 }
 
-export { anaDemo, anaInit, anaInitA, anaPose, anaSpawnAt, anaStretch, anaUpd, drawAna };
+export {
+  ANA_WAVE,
+  anaDemo,
+  anaInit,
+  anaInitA,
+  anaPose,
+  anaSpawnAt,
+  anaStretch,
+  anaUpd,
+  anaWave,
+  anaWaveStrips,
+  drawAna,
+};

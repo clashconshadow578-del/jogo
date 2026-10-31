@@ -445,3 +445,9 @@ longa) quando ela engole um animal, com um jeito de ver isso no jogo. Folha nova
 `Anaconda.js`, poses por estado e giro de 90 graus para cima e para baixo, barriga por colunas esticadas (`anaStretch`, guardada por sucuri), `?sucuri` na URL e `anaDemo()`.
 Canvases auxiliares compartilhados com o círculo translúcido em `rendering/DynPool.js`. Detalhes em `docs/ECOSSISTEMA_VIVO.md`. Teste novo: `tests/browser/sucuri.mjs`.
 Limites: só há 2 quadros de deslizar por lado (a animação é um vaivém curto) e a folha não traz nadando nem bote, que são feitos por tintura e esticamento do mesmo quadro.
+
+## 30. Sucuri ondulando ao andar (feito)
+
+Pedido do dono: a sucuri andando em linha reta para baixo ficava estranha (uma haste dura: quadro deitado girado em 90 graus, só 2 quadros, ritmo fixo). Agora o corpo ondula em fatias, com a fase da onda ligada à distância percorrida
+(`anaWave`/`anaWaveStrips` em `Anaconda.js`, `ANA_WAVE`); andando usa um quadro só e a ondulação é a animação. Teste: `tests/browser/sucuri.mjs` (sem intensidade sai igual ao quadro, a cabeça não se mexe, a fase anda com a distância).
+Limite: a aparência de "vista de lado girada" parada em pé só se resolve com arte própria de frente e de costas.

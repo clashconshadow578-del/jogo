@@ -78,6 +78,50 @@ for (const [k, v] of Object.entries(E)) {
   ok(v.longe.area >= v.zero.area * 1.25, `quadro ${k}: a barriga na posição mais distante que o jogo usa (60% do corpo) também engrossa (área ${v.zero.area} -> ${v.longe.area})`);
 }
 
+// 2b) a ondulação ao andar (anaWaveStrips / anaWave): sem intensidade sai igual ao quadro; a cabeça não se mexe; o corpo muda com a fase
+await p.evaluate(async () => {
+  const im = new Image();
+  im.src = new URL('assets/sprites/animals/anaconda.webp', location.href).href;
+  await im.decode();
+  const c = document.createElement('canvas');
+  c.width = im.width;
+  c.height = im.height;
+  c.getContext('2d').drawImage(im, 0, 0);
+  window.__folha = c;
+});
+const W = await J(`(() => {
+  const F = 160, r = {};
+  const ler = (g) => g.getImageData(0, 0, F, F).data;
+  const novo = () => { const T = document.createElement('canvas'); T.width = T.height = F; return T.getContext('2d', { willReadFrequently: true }); };
+  const quadro = (row, fr, k, s) => { const g = novo(); anaWaveStrips(g, window.__folha, fr * F, row * F, 0, 0, row, fr, k, s); return ler(g); };
+  const original = (row, fr) => { const g = novo(); g.drawImage(window.__folha, fr * F, row * F, F, F, 0, 0, F, F); return ler(g); };
+  const difer = (a, b, x0, x1) => { let n = 0; for (let y = 0; y < F; y++) for (let x = x0; x < x1; x++) for (let c = 0; c < 4; c++) if (a[(y * F + x) * 4 + c] !== b[(y * F + x) * 4 + c]) { n++; break; } return n; };
+  for (const row of [0, 1]) for (const fr of [0, 1]) {
+    const o = original(row, fr), zero = quadro(row, fr, 0, 1.3), a = quadro(row, fr, 1, 0), b = quadro(row, fr, 1, 2.5);
+    const hc = row === 0 ? 10 : F - 1 - 10;
+    const [h0, h1] = row === 0 ? [hc - 2, hc + 6] : [hc - 5, hc + 3]; // as colunas da cabeça: a amplitude cresce do zero a partir dela
+    r[row + '_' + fr] = { semOnda: difer(zero, o, 0, F), mudaComFase: difer(a, b, 0, F), cabeca: difer(a, o, h0, h1) };
+  }
+  // a fase anda com a distância e a intensidade acompanha o movimento
+  const f = { x: 100, y: 100 }, k0 = anaWave(f, 10, false), fase0 = f.wS;
+  f.x = 100 + ANA_WAVE.lam / 2; anaWave(f, 10.016, true);
+  const meia = f.wS;
+  for (let i = 0; i < 40; i++) { f.x += 1; anaWave(f, 10.016 + i * 0.016, true); }
+  const anda = f.wK;
+  const fase1 = f.wS;
+  for (let i = 0; i < 60; i++) anaWave(f, 11 + i * 0.016, false);
+  const parou = f.wK, fase2 = f.wS;
+  return { quadros: r, fase0, meia, k0, anda, parou, parada: fase1 === fase2 };
+})()`);
+for (const [k, v] of Object.entries(W.quadros)) {
+  ok(v.semOnda === 0, `quadro ${k}: sem intensidade a ondulação sai igual ao quadro da folha`);
+  ok(v.mudaComFase > 150, `quadro ${k}: o corpo muda com a fase da onda (${v.mudaComFase} colunas-pixel diferentes)`);
+  ok(v.cabeca === 0, `quadro ${k}: a cabeça não se mexe`);
+}
+ok(Math.abs(W.meia - Math.PI) < 0.05, `a fase anda com a distância: meio comprimento de onda andado = meia volta (${W.meia.toFixed(2)} rad)`);
+ok(W.k0 === 0 && W.anda > 0.9 && W.parou < 0.05, `a intensidade acompanha o movimento (parada ${W.k0}, andando ${W.anda.toFixed(2)}, parou ${W.parou.toFixed(3)})`);
+ok(W.parada, 'parada, a fase não anda');
+
 // 3) as poses por estado e direção (faRow: 0 baixo, 1 cima, 2 esquerda, 3 direita)
 const pose = (state, dir, extra = {}) =>
   J(`anaPose(Object.assign({ t0: 0, bk: 0, dg: 0, hide: false, sw: false, mv: false, stT: 0, gsp: 1 }, ${JSON.stringify(extra)}), '${state}', ${dir}, 1.7)`);

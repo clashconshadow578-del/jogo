@@ -142,6 +142,11 @@ direita** (2 quadros cada), **enrolada de frente** e **enrolada com a cabeça le
 | nadando | deslizando com a cor da água por cima; escondida: só a cabeça (círculo de 9 px) |
 | fim da digestão | enrolada, a cobra inteira 1 + 0,35 x barriga maior |
 
+**Ondulação ao andar:** a folha só tem 2 quadros de deslizar por lado, então andar só alternando os quadros deixava a sucuri uma haste dura (pior para cima e para baixo, que são o quadro girado). Agora, andando, o corpo é desenhado em fatias de 2 px
+e cada fatia sobe ou desce seguindo uma onda que corre da cabeça para a cauda (`anaWave` e `anaWaveStrips`, números em `ANA_WAVE`: comprimento de onda 58 px, amplitude 5 px, a cabeça fixa e a amplitude crescendo ao longo de 26 px).
+**A fase da onda avança com a distância percorrida**, não com o relógio: o corpo desenha a mesma trilha por onde a cabeça passou e não "patina". A intensidade entra e sai suavemente quando ela começa e para de andar. Vale nas 4 direções e
+junto com a barriga esticada. As fatias saem direto do desenho (no PixiJS são partículas, sem canvas auxiliar); só quando a sucuri está nadando, esticada ou camuflada elas vão para o canvas auxiliar, como antes.
+
 **Barriga que estica:** em vez de círculos pintados por cima do corpo (como era), o próprio desenho é cortado em colunas (`anaStretch`) e as colunas ao redor da presa ficam
 mais altas e mais largas: o corpo **engrossa até 2x e alonga até ~13 px** com a presa maior (queixada), as manchas esticam junto e a pele fica um pouco mais clara.
 `a.bk` (0 a 1) é o tamanho da presa e `a.bp` a posição da barriga (fração do corpo a partir da cabeça: 0,06 ao começar a engolir, até 0,36 ao terminar, e
