@@ -33,8 +33,8 @@ CONFIG = os.path.join(AQUI, '..', '..', 'src', 'config', 'harpiaSprites.js')
 FOLHAS = [
     ('andar', 'folha-andando.jpg', 6, 3, 18, 0.5, 'pe'),       # andando no chão
     ('parada', 'folha-parada.jpg', 6, 4, 23, 0.5, 'pe'),       # pousada: observando, piscando
-    ('voo', 'folha-voo.jpg', 4, 3, 12, 0.75, 'corpo'),         # voando (bater de asas)
-    ('razante', 'folha-razante.jpg', 3, 4, 12, 0.75, 'corpo'),  # razante: asas recolhidas e garras à frente
+    ('voo', 'folha-voo.jpg', 4, 3, 12, 0.65, 'corpo'),         # voando (bater de asas)
+    ('razante', 'folha-razante.jpg', 3, 4, 12, 0.45, 'corpo'),  # razante: asas recolhidas e garras à frente
 ]
 FOLGA = 10      # px nativos a mais em volta da célula ao procurar a ave (as asas passam um pouco da célula)
 BURACO = 70     # buracos de até ~este tamanho (px nativos) fecham

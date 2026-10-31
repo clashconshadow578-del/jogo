@@ -75,7 +75,7 @@ vem do lado onde ela está (estéreo) e passa por um barramento de **dois ecos**
 ## Sprites
 
 4 folhas em `public/assets/sprites/animals/harpy/` (andar, parada, voo, razante), geradas de `tools/harpia/folha-*.jpg` por `python3 tools/harpia/make-harpia.py`: a ferramenta acha a grade do pixel art
-original (6,25 px por pixel nas três primeiras, 5 px na última), lê uma cor por pixel (nítido), tira o xadrez, a calça de penas quadriculada e as peças soltas, e reduz a 50% (em pé) ou 75% (voando).
+original (6,25 px por pixel nas três primeiras, 5 px na última), lê uma cor por pixel (nítido), tira o xadrez, a calça de penas quadriculada e as peças soltas, e reduz cada folha para que a ave tenha o mesmo tamanho (cabeça de ~13 px) pousada, andando, voando e no razante: 50% (em pé), 65% (voo) e 45% (razante, desenhado bem maior).
 Tamanhos e âncoras ficam em `src/config/harpiaSprites.js` (gerado). Todas olham para a direita (a esquerda é espelho).
 
 ## Testes e para ver no jogo
