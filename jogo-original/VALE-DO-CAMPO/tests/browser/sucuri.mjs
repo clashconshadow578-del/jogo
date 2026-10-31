@@ -1,12 +1,22 @@
 /**
  * Sucuri com a folha nova (public/assets/sprites/animals/anaconda.webp, gerada por tools/anaconda/make-anaconda.py): a folha em si, as poses
- * por estado e direção, e o corpo que estica ao redor da presa engolida (anaStretch). Sem PixiJS (o desenho é o mesmo nos dois).
+ * por estado e direção, e o corpo que estica ao redor da presa engolida (anaBody). Sem PixiJS (o desenho é o mesmo nos dois).
  * Uso: NODE_PATH=$(npm root -g) node tests/browser/sucuri.mjs
  */
 import { launch, run, ok, failures } from './lib.mjs';
 
 const { p, close, errs } = await launch({ width: 960, height: 540 });
 const J = async (code) => JSON.parse(await run(p, `JSON.stringify(${code})`));
+await p.evaluate(async () => {
+  const im = new Image();
+  im.src = new URL('assets/sprites/animals/anaconda.webp', location.href).href;
+  await im.decode();
+  const c = document.createElement('canvas');
+  c.width = im.width;
+  c.height = im.height;
+  c.getContext('2d').drawImage(im, 0, 0);
+  window.__folha = c;
+});
 
 // 1) a folha: 640x640, alfa só 0/255, os 12 quadros com cobra, a cabeça na âncora e nada fora do quadro
 await p.waitForFunction(() => window.VDC.run(`(() => { try { anaProf(); return true; } catch (e) { return false; } })()`), null, { timeout: 30000 }).catch(() => {});
@@ -51,7 +61,7 @@ const E = await J(`(() => {
   const F = 160, medir = (row, fr, bk, bp) => {
     const T = document.createElement('canvas'); T.width = T.height = F;
     const g = T.getContext('2d', { willReadFrequently: true });
-    anaStretch(g, row, fr, bk, bp);
+    anaBody(g, window.__folha, fr * F, row * F, 0, 0, row, fr, 0, 0, bk, bp);
     const d = g.getImageData(0, 0, F, F).data, sg = row === 0 ? 1 : -1, hc = row === 0 ? 10 : F - 1 - 10;
     let maxH = 0, cauda = 0, hash = 0, area = 0;
     for (let x = 0; x < F; x++) {
@@ -78,22 +88,12 @@ for (const [k, v] of Object.entries(E)) {
   ok(v.longe.area >= v.zero.area * 1.25, `quadro ${k}: a barriga na posição mais distante que o jogo usa (60% do corpo) também engrossa (área ${v.zero.area} -> ${v.longe.area})`);
 }
 
-// 2b) a ondulação ao andar (anaWaveStrips / anaWave): sem intensidade sai igual ao quadro; a cabeça não se mexe; o corpo muda com a fase
-await p.evaluate(async () => {
-  const im = new Image();
-  im.src = new URL('assets/sprites/animals/anaconda.webp', location.href).href;
-  await im.decode();
-  const c = document.createElement('canvas');
-  c.width = im.width;
-  c.height = im.height;
-  c.getContext('2d').drawImage(im, 0, 0);
-  window.__folha = c;
-});
+// 2b) a ondulação ao andar (anaBody / anaWave): sem intensidade sai igual ao quadro; a cabeça não se mexe; o corpo muda com a fase
 const W = await J(`(() => {
   const F = 160, r = {};
   const ler = (g) => g.getImageData(0, 0, F, F).data;
   const novo = () => { const T = document.createElement('canvas'); T.width = T.height = F; return T.getContext('2d', { willReadFrequently: true }); };
-  const quadro = (row, fr, k, s) => { const g = novo(); anaWaveStrips(g, window.__folha, fr * F, row * F, 0, 0, row, fr, k, s); return ler(g); };
+  const quadro = (row, fr, k, s) => { const g = novo(); anaBody(g, window.__folha, fr * F, row * F, 0, 0, row, fr, k, s, 0, 0.3); return ler(g); };
   const original = (row, fr) => { const g = novo(); g.drawImage(window.__folha, fr * F, row * F, F, F, 0, 0, F, F); return ler(g); };
   const difer = (a, b, x0, x1) => { let n = 0; for (let y = 0; y < F; y++) for (let x = x0; x < x1; x++) for (let c = 0; c < 4; c++) if (a[(y * F + x) * 4 + c] !== b[(y * F + x) * 4 + c]) { n++; break; } return n; };
   for (const row of [0, 1]) for (const fr of [0, 1]) {

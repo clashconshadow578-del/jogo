@@ -793,7 +793,7 @@ function anaGrab(a, p, near) {
 
 let ANA_PROF = null;
 /**
- * Lido do alfa da folha, para cada quadro que desliza (linhas 0 e 1, quadros 0 e 1): `n` colunas da cabeça até a cauda, `cy[i]` a altura do meio
+ * Lido do alfa da folha, para cada quadro que desliza (linhas 0 e 1, quadros 0 e 1): `n` colunas da cabeça até o fim da cauda, `cy[i]` a altura do meio
  * do corpo na coluna i (contada a partir da cabeça) e `s[i]` o comprimento do corpo até ali, que serve para achar onde fica a barriga
  * (`a.bp` é uma fração do comprimento do corpo, da cabeça à cauda).
  */
@@ -809,7 +809,8 @@ function anaProf() {
         hc = row === 0 ? ANA.HEAD : F - 1 - ANA.HEAD,
         cy = [],
         s = [];
-      let acc = 0;
+      let acc = 0,
+        n = 0;
       for (let i = 0; i < F; i++) {
         const x = hc + sg * i;
         if (x < 0 || x >= F) break;
@@ -820,94 +821,22 @@ function anaProf() {
             if (top < 0) top = y;
             bot = y;
           }
-        if (top < 0) break;
-        const c = (top + bot) / 2;
+        const c = top < 0 ? (i ? cy[i - 1] : F / 2) : (top + bot) / 2; // coluna vazia (ponta fina da cauda): segue a anterior
         if (i) acc += Math.hypot(1, c - cy[i - 1]);
         cy.push(c);
         s.push(acc);
+        if (top >= 0) n = i + 1;
       }
-      out[row][fr] = { n: cy.length, cy, s, total: acc };
+      out[row][fr] = { n, cy, s, total: acc };
     }
   return (ANA_PROF = out);
 }
 
 /**
- * Desenha em `g` (um canvas F x F) o quadro `fr` da linha que desliza `row` (0 esquerda, 1 direita) com o corpo ESTICADO ao redor da presa: o
- * próprio desenho da cobra é cortado em colunas e as colunas perto da barriga (`bp`, fração do corpo a partir da cabeça) ficam mais altas e mais
- * largas, então o corpo engrossa e se alonga de verdade (as manchas esticam junto) e a cauda é empurrada para trás. `bk` (0 a 1) é o tamanho da presa.
- */
-function anaStretch(g, row, fr, bk, bp) {
-  const F = ANA.F,
-    P = anaProf()[row][fr],
-    sg = row === 0 ? 1 : -1,
-    hc = row === 0 ? ANA.HEAD : F - 1 - ANA.HEAD,
-    lim = row === 0 ? F - hc : hc + 1; // colunas disponíveis da cabeça até a borda do quadro
-  let ci = 0;
-  const alvo = bp * P.total;
-  while (ci < P.n - 1 && P.s[ci] < alvo) ci++;
-  const w = 5 + 9 * bk, // meia-largura da barriga (px do corpo)
-    A = 1.05 * bk, // quanto engrossa (1 = dobra)
-    B = 0.5 * A, // quanto alonga
-    i0 = Math.max(1, Math.floor(ci - 2.4 * w)),
-    i1 = Math.min(P.n, Math.ceil(ci + 2.4 * w));
-  // bloco de colunas ia..ib-1 (distância da cabeça) copiado sem mudar, para a distância `pos` da cabeça
-  const copia = (ia, ib, pos) => {
-    const n = ib - ia;
-    if (n <= 0) return;
-    const sx = sg > 0 ? hc + ia : hc - ib + 1,
-      dx = sg > 0 ? hc + pos : hc - pos - n + 1;
-    g.drawImage(ANA_CV, fr * F + sx, row * F, n, F, dx, 0, n, F);
-  };
-  g.imageSmoothingEnabled = false;
-  copia(0, i0, 0);
-  let e = 0; // quanto o corpo já alongou até esta coluna
-  for (let i = i0; i < i1; i++) {
-    const k = Math.exp(-(((i - ci) / w) ** 2)),
-      sy = 1 + A * k,
-      d0 = Math.round(i + e),
-      d1 = Math.round(i + 1 + e + B * k),
-      wd = d1 - d0,
-      dx = sg > 0 ? hc + d0 : hc - d1 + 1;
-    e += B * k;
-    g.drawImage(ANA_CV, fr * F + hc + sg * i, row * F, 1, F, dx, P.cy[i] * (1 - sy), wd, F * sy);
-    if (k > 0.08) {
-      // a pele esticada fica mais clara
-      g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = 'rgba(226,208,140,' + (0.22 * k * Math.min(1, bk * 1.5)).toFixed(3) + ')';
-      g.fillRect(dx, 0, wd, F);
-      g.globalCompositeOperation = 'source-over';
-    }
-  }
-  copia(i1, lim, Math.round(i1 + e));
-}
-
-const ANA_ST = new WeakMap(); // sucuri -> { cv, key }: o corpo esticado já pronto
-/**
- * O corpo esticado de `a` na pose `o`, num canvas F x F que é só dela. Recortar a cobra em dezenas de colunas a cada quadro seria um desperdício
- * (principalmente no celular): o tamanho da barriga e a posição dela mudam devagar, então o desenho só é refeito quando um deles (em passos
- * pequenos demais para o olho notar) ou o quadro da folha muda.
- */
-function anaStretched(a, o) {
-  const key = o.row + '_' + o.fr + '_' + Math.round(a.bk * 60) + '_' + Math.round(a.bp * 160);
-  let e = ANA_ST.get(a);
-  if (!e) {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = ANA.F;
-    ANA_ST.set(a, (e = { cv, k: cv.getContext('2d'), key: '' }));
-  }
-  if (e.key !== key) {
-    e.key = key;
-    e.k.clearRect(0, 0, ANA.F, ANA.F);
-    anaStretch(e.k, o.row, o.fr, a.bk, a.bp);
-  }
-  return e.cv;
-}
-
-/**
  * Ondulação ao andar: o corpo é desenhado em fatias de `w` px e cada fatia sobe ou desce seguindo uma onda que corre da cabeça para a cauda. A fase
  * avança com a DISTÂNCIA percorrida (e não com o relógio), então o corpo desenha na mesma trilha por onde a cabeça passou, como uma cobra de verdade,
- * e não "patina". A cabeça não se mexe (a amplitude cresce do zero na cabeça até `amp` depois de `rampa` px). Vale para as 4 direções (cima e baixo
- * giram o desenho todo, e a onda gira junto).
+ * e não "patina". A cabeça não se mexe (a amplitude cresce do zero na cabeça até `amp` depois de `rampa` px). Vale para todos os ângulos (o desenho
+ * todo gira e a onda gira junto).
  */
 const ANA_WAVE = { lam: 58, amp: 5, rampa: 26, w: 2 };
 
@@ -923,24 +852,88 @@ function anaWave(a, now, moving) {
   return a.wK;
 }
 
+const SEG = []; // fatias do corpo deste quadro (reaproveitadas: nada é criado por quadro)
+
 /**
- * Desenha em `g` o quadro (da linha `row`, de `src` a partir de (sx, sy), F x F) em fatias ondulando; o canto do quadro vai para (ox, oy).
- * `k` (0 a 1) é a intensidade e `s` a fase (anaWave). Com k = 0 sai igual ao quadro inteiro.
+ * O corpo da sucuri em fatias, direto em `g` (o contexto da cena, no PixiJS e no Canvas, ou um canvas qualquer): o quadro `fr` da linha que desliza `row`,
+ * lido de `src` a partir de (sx, sy), com o canto do quadro indo para (ox, oy). Cada fatia pode (1) ondular, `k` (0 a 1) a intensidade e `s` a fase
+ * (anaWave), e (2) esticar ao redor da presa engolida: as colunas perto da barriga (`bp`, fração do corpo a partir da cabeça) ficam mais altas e mais
+ * largas, então o corpo engrossa (até 2x) e alonga (~13 px) de verdade, com as manchas esticando junto, e a cauda é empurrada para trás; `bk` (0 a 1) é o
+ * tamanho da presa e a pele esticada fica um pouco mais clara. Sem onda e sem presa (k = 0, bk = 0) sai igual ao quadro da folha.
  */
-function anaWaveStrips(g, src, sx, sy, ox, oy, row, fr, k, s) {
+function anaBody(g, src, sx, sy, ox, oy, row, fr, k, s, bk, bp) {
   const F = ANA.F,
+    P = anaProf()[row][fr],
     W = ANA_WAVE.w,
+    sg = row === 0 ? 1 : -1,
     hc = row === 0 ? ANA.HEAD : F - 1 - ANA.HEAD,
-    n = anaProf()[row][fr].n + 20, // o desenho esticado pode ser até ~13 px mais longo
-    lo = Math.max(0, row === 0 ? hc - 2 : hc - n),
-    hi = Math.min(F, row === 0 ? hc + n : hc + 3);
+    lim = Math.min(row === 0 ? F - hc : hc + 1, P.n + 2); // colunas da cabeça até o fim do desenho
+  let ci = 0,
+    w = 1,
+    A = 0,
+    B = 0,
+    i0 = lim,
+    i1 = lim;
+  if (bk > 0.02) {
+    const alvo = bp * P.total;
+    while (ci < P.n - 1 && P.s[ci] < alvo) ci++;
+    w = 5 + 9 * bk; // meia-largura da barriga (px do corpo)
+    A = 1.05 * bk; // quanto engrossa (1 = dobra)
+    B = 0.5 * A; // quanto alonga
+    i0 = Math.max(1, Math.floor(ci - 2.4 * w));
+    i1 = Math.min(P.n, Math.ceil(ci + 2.4 * w));
+  }
+  // 1) as fatias: 2 px de largura, e 1 px dentro da barriga (onde a altura muda coluna a coluna)
+  let m = 0,
+    e = 0, // quanto o corpo já alongou até esta fatia
+    clara = false;
+  for (let i = -2; i < lim; ) {
+    const zona = i >= i0 && i < i1,
+      n = Math.min(zona ? 1 : W, lim - i),
+      kk = zona ? Math.exp(-(((i + 0.5 - ci) / w) ** 2)) : 0,
+      sy_ = 1 + A * kk,
+      ext = B * kk * n,
+      d0 = Math.round(i + e),
+      d1 = Math.round(i + n + e + ext),
+      dist = (d0 + d1) / 2, // distância da cabeça no desenho
+      amp = dist > 3 ? Math.min(1, (dist - 3) / ANA_WAVE.rampa) : 0,
+      dyw = amp > 0 && k > 0 ? Math.round(ANA_WAVE.amp * k * amp * Math.sin(s - (6.2832 * dist) / ANA_WAVE.lam)) : 0,
+      cyc = i >= 0 && i < P.n ? P.cy[i] : F / 2;
+    if (d1 > d0) {
+      const sc = sg > 0 ? hc + i : hc - (i + n - 1);
+      const t = SEG[m] || (SEG[m] = new Array(7));
+      t[0] = sx + sc; // coluna(s) de origem
+      t[1] = n;
+      t[2] = ox + (sg > 0 ? hc + d0 : hc - d1 + 1); // posição e largura no desenho
+      t[3] = d1 - d0;
+      t[4] = oy + dyw + cyc * (1 - sy_); // altura: a fatia estica em volta do meio do corpo
+      t[5] = F * sy_;
+      t[6] = kk;
+      m++;
+      if (kk > 0.08) clara = true;
+    }
+    e += ext;
+    i += n;
+  }
   g.imageSmoothingEnabled = false;
-  for (let x = lo - (lo % W); x < hi; x += W) {
-    const c = x + W / 2,
-      d = row === 0 ? c - hc : hc - c, // distância da cabeça, para o lado do corpo
-      amp = d > 0 ? Math.min(1, (d - 3) / ANA_WAVE.rampa) : 0,
-      dy = amp > 0 ? Math.round(ANA_WAVE.amp * k * amp * Math.sin(s - (6.2832 * d) / ANA_WAVE.lam)) : 0;
-    g.drawImage(src, sx + x, sy, W, F, ox + x, oy + dy, W, F);
+  for (let q = 0; q < m; q++) {
+    const t = SEG[q];
+    g.drawImage(src, t[0], sy, t[1], F, t[2], t[4], t[3], t[5]);
+  }
+  // 2) a pele esticada fica mais clara: as fatias da barriga de novo, somando luz (numa passada só, para não trocar de mistura a cada fatia)
+  if (clara) {
+    const al = g.globalAlpha,
+      op = g.globalCompositeOperation,
+      f = 0.22 * Math.min(1, bk * 1.5);
+    g.globalCompositeOperation = 'lighter';
+    for (let q = 0; q < m; q++) {
+      const t = SEG[q];
+      if (t[6] <= 0.08) continue;
+      g.globalAlpha = al * f * t[6];
+      g.drawImage(src, t[0], sy, t[1], F, t[2], t[4], t[3], t[5]);
+    }
+    g.globalAlpha = al;
+    g.globalCompositeOperation = op;
   }
 }
 
@@ -1030,6 +1023,50 @@ function anaPose(a, st, dir, now, ang) {
   return o;
 }
 
+/** Pinta a pose `o` de `a` em `g`: o corpo em fatias (onda `wk` e/ou barriga) quando deslizando, ou o quadro inteiro nas outras poses. */
+function anaPintar(g, o, a, wk, ox, oy) {
+  const F = ANA.F;
+  if (o.stretch || wk > 0.04)
+    anaBody(
+      g,
+      ANA_CV,
+      o.fr * F,
+      o.row * F,
+      ox,
+      oy,
+      o.row,
+      o.fr,
+      wk > 0.04 ? wk : 0,
+      a.wS || 0,
+      o.stretch ? a.bk : 0,
+      a.bp,
+    );
+  else anaPaint(g, o, ox, oy);
+}
+
+/**
+ * Cor (0xRRGGBB, que o PixiJS multiplica pela sprite) da cobra nadando e camuflada: um azul-esverdeado na água e, camuflada, um pouco da cor do terreno
+ * (a translucidez faz o resto: o terreno aparece por baixo). Só o PixiJS usa; no Canvas 2D a cor é misturada num canvas auxiliar.
+ */
+function anaTint(a, o, camo) {
+  let r = 1,
+    g = 1,
+    b = 1;
+  if (o.swim) {
+    r *= 0.66;
+    g *= 0.8;
+    b *= 0.87;
+  }
+  if (camo > 0.12) {
+    const c = CAMO_RGB[a.kind] || CAMO_RGB.other,
+      f = 0.55 * camo;
+    r *= 1 - f * (1 - c[0] / 255);
+    g *= 1 - f * (1 - c[1] / 255);
+    b *= 1 - f * (1 - c[2] / 255);
+  }
+  return (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
+}
+
 function drawAna(a) {
   if (!ANA_CV) return;
   const F = ANA.F,
@@ -1040,8 +1077,10 @@ function drawAna(a) {
     hy = F / 2,
     camo = st !== 'dead' ? a.camo || 0 : 0, // escondida na água também se mistura à cor da água
     wk = o.row <= 1 && o.ls === 1 && !o.hide ? anaWave(a, now, !!a.mv) : 0, // intensidade da ondulação do corpo
-    // no Canvas 2D, fatias de 2 px inclinadas deixam emendas finas entre si: aí o corpo ondulado é montado reto num canvas auxiliar e girado de uma vez (o PixiJS não tem emendas)
-    emenda = wk > 0.04 && Math.abs(Math.sin(2 * o.rot)) > 1e-6 && !ctx.isPixiCtx;
+    pixi = !!ctx.isPixiCtx,
+    // O PixiJS desenha tudo direto (fatias, cor da água, camuflagem). No Canvas 2D (plano B) a cor da água e a camuflagem dependem de pintar "por cima do desenho
+    // só onde há cobra" e fatias inclinadas deixam emendas finas entre si: aí o corpo é montado reto num canvas auxiliar e colocado girado de uma vez.
+    aux = !pixi && (o.swim || camo > 0.12 || ((o.stretch || wk > 0.04) && Math.abs(Math.sin(2 * o.rot)) > 1e-6));
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (st === 'dead' && a.t < 2) ctx.globalAlpha = Math.max(0, a.t / 2);
@@ -1053,22 +1092,26 @@ function drawAna(a) {
   ctx.translate(Math.round(a.x), Math.round(a.y) + o.shake);
   if (o.rot) ctx.rotate(o.rot);
   if (o.flip) ctx.scale(-1, 1);
-  if (!o.stretch && !o.swim && camo <= 0.12 && !emenda) {
-    if (wk > 0.04) anaWaveStrips(ctx, ANA_CV, o.fr * F, o.row * F, -hx, -hy, o.row, o.fr, wk, a.wS);
-    else anaPaint(ctx, o, -hx, -hy);
+  if (!aux) {
+    const al = ctx.globalAlpha,
+      tinta = pixi && (o.swim || camo > 0.12);
+    if (tinta) {
+      ctx.tint = anaTint(a, o, camo);
+      ctx.globalAlpha = al * (1 - 0.5 * camo) * (o.swim ? 0.9 : 1);
+    }
+    anaPintar(ctx, o, a, wk, -hx, -hy);
+    if (tinta) {
+      ctx.tint = 0xffffff;
+      ctx.globalAlpha = al;
+    }
   } else {
-    // o corpo esticado, a cor da água (nadando) e a camuflagem são feitos num canvas auxiliar e colocados de uma vez
     const T = dynGet(F, F),
       g = T.k;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'source-over';
     g.globalAlpha = 1;
     g.clearRect(0, 0, F, F);
-    if (o.stretch) {
-      if (wk > 0.04) anaWaveStrips(g, anaStretched(a, o), 0, 0, 0, 0, o.row, o.fr, wk, a.wS);
-      else g.drawImage(anaStretched(a, o), 0, 0);
-    } else if (wk > 0.04) anaWaveStrips(g, ANA_CV, o.fr * F, o.row * F, 0, 0, o.row, o.fr, wk, a.wS);
-    else anaPaint(g, o, 0, 0);
+    anaPintar(g, o, a, wk, 0, 0);
     g.globalCompositeOperation = 'source-atop';
     if (o.swim) {
       g.fillStyle = 'rgba(50,100,125,0.4)';
@@ -1178,17 +1221,4 @@ export function registerAnacondaStates() {
   });
 }
 
-export {
-  ANA_WAVE,
-  anaAngle,
-  anaDemo,
-  anaInit,
-  anaInitA,
-  anaPose,
-  anaSpawnAt,
-  anaStretch,
-  anaUpd,
-  anaWave,
-  anaWaveStrips,
-  drawAna,
-};
+export { ANA_WAVE, anaAngle, anaBody, anaDemo, anaInit, anaInitA, anaPose, anaSpawnAt, anaUpd, anaWave, drawAna };

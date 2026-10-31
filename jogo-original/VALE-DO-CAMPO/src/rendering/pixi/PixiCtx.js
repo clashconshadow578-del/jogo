@@ -418,6 +418,7 @@ class PixiCtx {
     this.isPixiCtx = true;
     this.fillStyle = '#000';
     this.globalAlpha = 1;
+    this.tint = 0xffffff; // cor (0xRRGGBB) multiplicada pelas imagens desenhadas com drawImage; quem muda precisa devolver 0xffffff
     this.imageSmoothingEnabled = false;
     this.imageSmoothingQuality = 'low';
     this.globalCompositeOperation = 'source-over';
@@ -845,7 +846,7 @@ class PixiCtx {
       this.bad = 'recorte fora da imagem';
       return;
     }
-    this.quad(dyn(img, sx, sy, sw, sh), dx, dy, dw, dh, 0xffffff, this.globalAlpha);
+    this.quad(dyn(img, sx, sy, sw, sh), dx, dy, dw, dh, this.tint, this.globalAlpha);
   }
 }
 
