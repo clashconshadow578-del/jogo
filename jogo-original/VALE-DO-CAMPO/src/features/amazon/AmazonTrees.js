@@ -13,6 +13,8 @@
    ============================================================================ */
 
 import { GRASS, HN, MH, MW, TREE, TS, WATER } from '../../config/constants.js';
+import { SUMAUMA_GIGANTE } from '../../config/sumaumaGigante.js';
+import { bakeScaled } from '../../rendering/SpriteUtils.js';
 import { S } from '../../core/GameState.js';
 import { assetUrl } from '../../utils/assets.js';
 import { hash2 } from '../../utils/MathUtils.js';
@@ -146,6 +148,59 @@ const ALP_ST = [0, 0.15, 0.25, 0.4, 0.6, 0.85, 1, 1]; // potência aleloquímica
 /* ---------------- sprites → modelos ---------------- */
 const M = {};
 
+/**
+ * O modelo (sprite e medidas) da sumaúma gigante a partir do modelo normal da mesma fase: o desenho é ampliado sem suavização (pixel art nítida)
+ * e todas as medidas que dependem do tamanho (altura, copa, tronco, sombra, alcance) crescem juntas. Feito uma vez por fase e guardado em `m.gigante`.
+ */
+function modeloGigante(m) {
+  if (m.gigante) return m.gigante;
+  const k = SUMAUMA_GIGANTE.escala,
+    img = bakeScaled(m.img, k),
+    w = img.width,
+    h = img.height,
+    g = img.getContext('2d'),
+    id = g.getImageData(0, 0, w, h).data,
+    rw = new Uint16Array(h);
+  for (let y = 0; y < h; y++) {
+    let n = 0;
+    for (let x = 0; x < w; x++) if (id[(y * w + x) * 4 + 3] > 0) n++;
+    rw[y] = n;
+  }
+  const sil = document.createElement('canvas');
+  sil.width = w;
+  sil.height = h;
+  const sg = sil.getContext('2d');
+  sg.drawImage(img, 0, 0);
+  sg.globalCompositeOperation = 'source-in';
+  sg.fillStyle = '#000';
+  sg.fillRect(0, 0, w, h);
+  const cbRow = Math.round(m.cbRow * k),
+    silC = document.createElement('canvas');
+  silC.width = w;
+  silC.height = cbRow + 2;
+  silC.getContext('2d').drawImage(sil, 0, 0, w, cbRow + 2, 0, 0, w, cbRow + 2);
+  return (m.gigante = {
+    ...m,
+    w,
+    h,
+    bw: Math.round(m.bw * k),
+    mw: Math.round(m.mw * k),
+    tw: Math.round(m.tw * k),
+    hm: Math.round(m.hm * k * 100) / 100,
+    img,
+    sil,
+    silC,
+    rw,
+    cbRow,
+    big: true,
+    gig: true,
+    cr: Math.max(0.5, m.cr * k),
+    cw: Math.max(8, m.cw * k),
+    rh: Math.min(60, Math.max(14, h * 0.3)),
+    reach: Math.round(h * 1.4),
+  });
+}
+
 /* ---------------- estado global do módulo ---------------- */
 const amzSp = new Uint8Array(HN); // espécie da semente/muda no tile (1..3)
 
@@ -168,6 +223,8 @@ class AmzArvore extends ArvoreRealista {
     super(x, y, esp);
     this.amz = true;
     this.sp = SP[esp];
+    // 5% das sumaúmas são gigantes (30% maiores). Sorteio pela posição (hash): é sempre o mesmo no mesmo tile, então não precisa ir para o save.
+    this.gig = esp === 'sumauma' && hash2(x * 31 + 7, y * 17 + 3) < SUMAUMA_GIGANTE.chance;
     this.g = 0;
     this.st = 1;
     this.fr = 0;
@@ -199,7 +256,8 @@ class AmzArvore extends ArvoreRealista {
     return this.y * MW + this.x;
   }
   model() {
-    return M[this.especie][this.st];
+    const m = M[this.especie][this.st];
+    return this.gig && this.st >= SUMAUMA_GIGANTE.estagioMin && m && m.ready ? modeloGigante(m) : m;
   }
   height() {
     const m = this.model();
@@ -653,7 +711,7 @@ function amzBorn(i) {
 }
 
 /* ---------------- renderização ---------------- */
-const amzPad = () => ({ x: 9, up: 8, dn: 14 });
+const amzPad = () => ({ x: 10, up: 8, dn: 17 }); // `dn`: a copa de uma sumaúma gigante (~15 tiles de altura) ainda aparece com a base 17 tiles abaixo da tela
 
 const amzBig = (tx, ty) => {
   const a = ecoTrees.get(ty * MW + tx);

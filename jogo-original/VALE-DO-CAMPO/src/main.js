@@ -14,6 +14,7 @@ import { pixiLayersInit } from './rendering/pixi/PixiLayers.js';
 import { toast } from './ui/Toast.js';
 import { benchRequested, startBench } from './core/Bench.js';
 import { anaDemo } from './entities/wild/Anaconda.js';
+import { harpyDemo, harpyIntruder } from './entities/wild/Harpy.js';
 
 function showFatalError(err) {
   console.error('[Vale do Campo] falha ao iniciar:', err);
@@ -43,6 +44,11 @@ async function start() {
   });
   if (benchRequested(location.search)) startBench(); // só com ?bench: teste de desempenho automático (core/Bench.js)
   if (/[?&]sucuri\b/.test(location.search)) setTimeout(anaDemo, 2500); // só com ?sucuri: uma sucuri engolindo uma presa na frente do jogador
+  if (/[?&]harpia\b/.test(location.search))
+    setTimeout(() => {
+      harpyDemo(); // só com ?harpia: leva o jogador até a árvore-ninho do casal de harpias; com &intrusa, uma harpia de fora chega e a disputa territorial começa
+      if (/[?&]intrusa\b/.test(location.search)) setTimeout(harpyIntruder, 4000);
+    }, 3500);
   const env = import.meta.env || {};
   if (env.DEV || /[?&]debug\b/.test(location.search)) installDebug();
 }

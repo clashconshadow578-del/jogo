@@ -24,7 +24,7 @@ export const TRAMPLE = {
   caminhoTrilha: 0.5, // custo de um tile de trilha batida: 1 - 0,5 (prefere andar por ela)
   caminhoMato: [1, 1, 1, 1.4, 2.2], // custo do tile por fase do mato (0-4): contorna mato fechado
   // ---- fauna selvagem: peso do pisoteio por espécie (0 = não pisoteia) ----
-  peso: { deer: 1, boar: 1.1, jaguar: 0.9, fox: 0.3, hare: 0.1, grouse: 0.1, anaconda: 0 },
+  peso: { deer: 1, boar: 1.1, jaguar: 0.9, fox: 0.3, hare: 0.1, grouse: 0.1, anaconda: 0, harpy: 0 },
   // ---- competição: broto ou planta jovem ao lado de helicônia adulta perde isto por dia (falta de luz) ----
   sombraDaHelikonia: 4,
 };

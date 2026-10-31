@@ -105,6 +105,11 @@ import * as mPlantsCfg from '../config/plants.js';
 import * as mOcclCfg from '../config/occlusion.js';
 import * as mOcclusion from '../rendering/Occlusion.js';
 import * as mDynPool from '../rendering/DynPool.js';
+import * as mSumGig from '../config/sumaumaGigante.js';
+import * as mHarpy from '../entities/wild/Harpy.js';
+import * as mHarpySom from '../systems/audio/HarpySounds.js';
+import * as mHarpiaCfg from '../config/harpia.js';
+import * as mHarpiaSpr from '../config/harpiaSprites.js';
 import * as mTrails from '../world/Trails.js';
 import * as mFarmPrey from '../entities/farm/FarmPrey.js';
 import * as mTrampling from '../config/trampling.js';
@@ -249,6 +254,11 @@ const MODULES = {
   'config/occlusion': mOcclCfg,
   'rendering/Occlusion': mOcclusion,
   'rendering/DynPool': mDynPool,
+  'config/sumaumaGigante': mSumGig,
+  'entities/wild/Harpy': mHarpy,
+  'systems/audio/HarpySounds': mHarpySom,
+  'config/harpia': mHarpiaCfg,
+  'config/harpiaSprites': mHarpiaSpr,
   'world/Trails': mTrails,
   'entities/farm/FarmPrey': mFarmPrey,
   'config/trampling': mTrampling,

@@ -20,7 +20,7 @@ export async function launch(viewport = { width: 1000, height: 600 }) {
   const ctxt = await b.newContext({ viewport });
   const p = await ctxt.newPage();
   const errs = [];
-  p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
+  p.on('pageerror', (e) => errs.push('pageerror: ' + e.message + (e.stack ? ' @ ' + e.stack.split('\n').slice(1, 4).map((l) => l.trim().replace(/http:\/\/[^/]+\/src\//, '')).join(' < ') : '')));
   p.on('console', (m) => {
     if (m.type() === 'error') errs.push('console: ' + m.text());
   });

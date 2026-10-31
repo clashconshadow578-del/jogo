@@ -33,6 +33,7 @@ import { dropFeces } from '../../world/Feces.js';
 import { carcassDone, carcassFx, carcT, carcUpd, FA_LF, faDie } from '../Carcass.js';
 import { plAct } from '../PlayerSprite.js';
 import { anaInit, anaInitA, anaSpawnAt, anaUpd } from './Anaconda.js';
+import { harpyInit, harpyUpd } from './Harpy.js';
 import { FA_WATER, faCrossPick, faCurrent, faMove, faWadeSpot } from './FaunaWater.js';
 import { faTrail, FTT, jagFear, jagSeed, jagUpd, JG, setFTT, TRAILS } from './Jaguar.js';
 import { faEatDrop, faFruitAt } from '../../features/amazon/AmazonEcology.js';
@@ -189,6 +190,21 @@ const FA_SP = {
     col: '#ff9d78',
     tip: 'caça lebres e aves ao anoitecer e foge de pessoas',
   },
+  harpy: {
+    n: 'Harpia',
+    e: '🦅',
+    role: 'predador de topo (aéreo)',
+    diet: 'carnívoro',
+    sc: 1,
+    sw: 14,
+    hh: 30,
+    walk: 20,
+    run: 62,
+    fear: 60,
+    stam: 9,
+    col: '#ffb4a0',
+    tip: 'Harpia harpyja · pousa na copa das sumaúmas (as gigantes são as preferidas) e passa a maior parte do dia parada, observando · caça animais da mata de um poleiro: rastreia, se posiciona e dá o razante com as garras · só ataca quem chega perto do ninho, depois de avisar levantando a crista e gritando · evita onças no chão e expulsa outras harpias da sua árvore',
+  },
   boar: {
     n: 'Queixada',
     e: '🐗',
@@ -316,6 +332,7 @@ function boarMates(a, r) {
 const fauna = [];
 let faId = 1,
   faMgr = 0,
+  harpyTent = 0, // quantas vezes já tentou criar o casal de harpias (as árvores adultas podem demorar a existir)
   faInitDone = false;
 const faSeen = {};
 let faShoreL = [],
@@ -539,6 +556,11 @@ function faInit() {
   } catch (e) {
     console.error('anaInit', e);
   }
+  try {
+    harpyInit(); // o casal de harpias na sumaúma adulta (se as árvores ainda não existem, faManage tenta de novo)
+  } catch (e) {
+    console.error('harpyInit', e);
+  }
   if (INST.cx === HOMEC.x && INST.cy === HOMEC.y) {
     if (!S.jagDone) jagSeed();
   } // casal fundador de onças no mapa inicial
@@ -592,6 +614,11 @@ function faManage(dt) {
       } catch (e) {}
     }
   } // raramente chega uma sucuri nova
+  if (!(cnt.harpy > 0) && (harpyTent++ < 40 || Math.random() < 0.02)) {
+    try {
+      harpyInit(); // as árvores amazônicas adultas só existem depois do começo do jogo: tenta de novo; depois, raramente chega um novo casal
+    } catch (e) {}
+  }
   const jc = cnt.jaguar || 0; // onças: reprodução é interna; só chega um indivíduo novo de vez em quando, se houver presas
   if (S.jagDone && jc < 2 && (cnt.deer || 0) + (cnt.boar || 0) >= 3 && Math.random() < 0.04) {
     const ad = fauna.filter((a) => a.sp === 'jaguar' && a.state !== 'dead' && a.age >= JG.KID);
@@ -736,6 +763,13 @@ function foxGiveUp(a, H, rest) {
 /* raio-base de medo (px) de lebre e galo-lira diante da raposa, conforme o que ela faz */
 const FOX_FEAR = { hare: { walk: 38, stalk: 85, chase: 125 }, grouse: { walk: 24, stalk: 50, chase: 72 } };
 const ANA_FEAR = 60;
+// raio-base de medo (px) diante da harpia: passeando, rastreando, no razante
+const HARPY_FEAR = {
+  hare: { walk: 45, stalk: 95, stoop: 190 },
+  grouse: { walk: 40, stalk: 80, stoop: 170 },
+  deer: { walk: 0, stalk: 0, stoop: 60 },
+  boar: { walk: 0, stalk: 0, stoop: 60 },
+};
 const FOX_HUNTING = { stalk: 1, chase: 1, observe: 1, investigate: 1 };
 
 /**
@@ -784,6 +818,10 @@ function faSense(a, I, dt, withPlayer) {
       take('fox', f.id, f.x, f.y, senseTarget(a, animalTarget(f), r0 * k));
     } else if (f.sp === 'anaconda' && a.sp !== 'anaconda' && f.state !== 'dead') {
       take('anaconda', f.id, f.x, f.y, senseTarget(a, animalTarget(f), ANA_FEAR * k));
+    } else if (f.sp === 'harpy' && HARPY_FEAR[a.sp]) {
+      // a sombra e o grito de uma ave de rapina: quem é presa dela (lebre, galo-lira, filhotes) a percebe de longe, mais ainda no razante
+      const F = HARPY_FEAR[a.sp];
+      take('harpy', f.id, f.x, f.y, senseTarget(a, animalTarget(f), (f.state === 'hstoop' || f.state === 'hdefend' ? F.stoop : f.state === 'htrack' || f.state === 'hprep' ? F.stalk : F.walk) * k));
     }
   }
   if (th) {
@@ -1142,7 +1180,7 @@ function faUpd(a, dt) {
     faSeen[a.sp] = 1;
     toast(I.e + ' ' + I.n + ' — ' + I.role + ' (' + I.diet + '): ' + I.tip + '.');
   }
-  if (a.z > 0 && a.state !== 'fly' && a.sp !== 'jaguar') a.z = Math.max(0, a.z - 60 * dt);
+  if (a.z > 0 && a.state !== 'fly' && a.sp !== 'jaguar' && a.sp !== 'harpy') a.z = Math.max(0, a.z - 60 * dt);
   if (dungTimer(a, dt, 70, 140) && a.state !== 'fly') {
     dropFeces(a.x, a.y, a.sz, a.sp); // fezes no chão (com moscas por cima)
     if (ti >= 0 && ti < HN && ground[ti] !== WATER) om[ti] = Math.min(1, om[ti] + 0.04); // esterco -> solo
@@ -1154,6 +1192,10 @@ function faUpd(a, dt) {
   }
   if (a.sp === 'anaconda') {
     anaUpd(a, I, h, dt);
+    return;
+  }
+  if (a.sp === 'harpy') {
+    harpyUpd(a, I, h, dt);
     return;
   }
   const th0 = faSense(a, I, dt, a.sp !== 'boar'); // percepção (visão, audição, memória): só reage ao que detecta
@@ -1647,7 +1689,7 @@ function updateFauna(dt) {
     const a = fauna[i];
     faUpd(a, dt);
     faCurrent(a, dt);
-    if (a.mv && a.sp !== 'jaguar' && a.state !== 'dead') faTrail(a);
+    if (a.mv && a.sp !== 'jaguar' && a.sp !== 'harpy' && a.state !== 'dead') faTrail(a);
     if (a.gone) {
       const ti = Math.floor(a.y / TS) * MW + Math.floor(a.x / TS);
       if (ti >= 0 && ti < HN) om[ti] = Math.min(1, om[ti] + 0.25);

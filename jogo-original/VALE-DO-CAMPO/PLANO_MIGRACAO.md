@@ -458,3 +458,15 @@ Pedido do dono: árvores sem efeito de vento, então deixam de ser cortadas em f
 grandes da Amazônia (`features/amazon/AmazonRender.js`) agora desenham a árvore com **um único `drawImage`** (antes eram dezenas, uma por grupo de linhas com o mesmo deslocamento); a árvore de reserva
 (`drawTreeOld`) também ficou parada. O tremor ao bater com o machado (`treeShake`) continua. O balanço do mato e das plantas já era só pelo pisoteio. O vento continua existindo no jogo (chuva, névoa, folhas e paina
 voando, som), só não mexe mais nas copas. A margem de 16 px que o círculo translúcido reservava para a copa balançar (`OCLUSAO.margem`) saiu.
+
+## 32. Sumaúma gigante (feito)
+
+Pedido do dono: 5% das sumaúmas 30% maiores, e as harpias preferem essas. `config/sumaumaGigante.js` (chance 5%, escala 1,3, a partir da fase 3), `AmzArvore.gig` (sorteio pela posição do tile: sempre o mesmo, não vai para o save)
+e `modeloGigante` em `features/amazon/AmazonTrees.js`: o modelo ampliado sem suavização (desenho, sombra, copa, alcance) é feito uma vez por fase. A folga de desenho `amzPad.dn` subiu para 17 tiles. Teste: `tests/browser/sumauma-gigante.mjs`.
+
+## 33. Harpia, etapa 1: a ave adulta (feito)
+
+Pedido do dono: harpia com sprites andando, parada, voando e em razante, e o comportamento do texto de biologia. Feito: casal raro na copa de uma sumaúma adulta (gigantes preferidas), 11 estados, caça às presas que existem no jogo
+(lebre, galo-lira, galinha, filhotes de cervo e de queixada), defesa do ninho só perto dele e depois de avisar, expulsão de outra harpia, fuga da onça, som alto e com eco. Detalhes, números e a tabela de presas e predadores em `docs/HARPIA.md`;
+teste `tests/browser/harpia.mjs`. Folhas de sprites por `tools/harpia/make-harpia.py` (acha a grade do pixel art original e lê um pixel por bloco: bem mais nítido que reduzir a imagem).
+**Falta (etapa 2):** o ninho na copa (desenho do ninho com ovos que aparecem), acasalamento, 2 ovos e incubação, filhote, cainismo, primeiro voo, e macacos e preguiças como presas se o dono mandar a arte.

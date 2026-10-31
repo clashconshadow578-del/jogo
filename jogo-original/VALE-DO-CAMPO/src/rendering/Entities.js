@@ -20,6 +20,7 @@ import { drawVillager, npc, npcPos } from '../entities/NPC.js';
 import { drawPlayer } from '../entities/Player.js';
 import { wolfEnt } from '../entities/Werewolf.js';
 import { drawAna } from '../entities/wild/Anaconda.js';
+import { drawHarpy } from '../entities/wild/Harpy.js';
 import { drawFauna, FA_SP, fauna } from '../entities/wild/Fauna.js';
 import { drawJag } from '../entities/wild/Jaguar.js';
 import { amzBig, amzPad } from '../features/amazon/AmazonTrees.js';
@@ -101,16 +102,26 @@ function collectTiles(ents, v) {
 function collectFauna(ents, v) {
   const { camX, camY } = v;
   for (const a of fauna) {
-    const mg = a.sp === 'anaconda' ? 150 : 40;
-    if (a.x < camX - mg || a.x > camX + VW + mg || a.y < camY - mg || a.y > camY + VH + mg + 20 || !inAct(a.x, a.y))
+    const mg = a.sp === 'anaconda' ? 150 : 40,
+      ay = a.sp === 'harpy' ? a.y - a.z : a.y; // a harpia pousada na copa aparece bem acima da base da árvore
+    if (a.x < camX - mg || a.x > camX + VW + mg || ay < camY - mg || ay > camY + VH + mg + 20 || !inAct(a.x, a.y))
       continue;
+    const alta = a.sp === 'harpy' && a.z > 12; // no ar (ou na copa): desenhada por cima das árvores
     ents.push({
-      k: a.z > 6 ? a.y + 32 : a.y,
-      sh:
-        a.sw || a.sp === 'anaconda' || (a.sp === 'jaguar' && a.z > 6)
+      k: alta ? a.y + 600 : a.z > 6 ? a.y + 32 : a.y,
+      sh: alta
+        ? [a.x, a.y, Math.max(5, 16 - a.z * 0.05), Math.max(2, 4 - a.z * 0.012)] // sombra no chão, menor e mais fraca quanto mais alto
+        : a.sw || a.sp === 'anaconda' || (a.sp === 'jaguar' && a.z > 6)
           ? [a.x, a.y, 1, 1]
           : [a.x, a.y, FA_SP[a.sp].sw, FA_SP[a.sp].hh],
-      draw: () => (a.sp === 'jaguar' ? drawJag(a) : a.sp === 'anaconda' ? drawAna(a) : drawFauna(a)),
+      draw: () =>
+        a.sp === 'jaguar'
+          ? drawJag(a)
+          : a.sp === 'anaconda'
+            ? drawAna(a)
+            : a.sp === 'harpy'
+              ? drawHarpy(a)
+              : drawFauna(a),
     });
   }
 }

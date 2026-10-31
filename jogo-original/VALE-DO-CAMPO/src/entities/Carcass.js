@@ -17,7 +17,7 @@ import { ground } from '../world/World.js';
 /* Decomposição e Revitalização Ambiental */
 const CARC = [],
   ZONES = [],
-  FA_LF = { deer: 1.2, hare: 0.6, grouse: 0.7, fox: 1, boar: 1.2, jaguar: 1.7, anaconda: 4 },
+  FA_LF = { deer: 1.2, hare: 0.6, grouse: 0.7, fox: 1, boar: 1.2, jaguar: 1.7, anaconda: 4, harpy: 8 },
   FA_NM = {
     deer: 'Um cervo',
     hare: 'Uma lebre',
@@ -26,6 +26,7 @@ const CARC = [],
     boar: 'Uma queixada',
     anaconda: 'Uma sucuri',
     jaguar: 'Uma onça-pintada',
+    harpy: 'Uma harpia',
   };
 
 let cbSpd = 1,

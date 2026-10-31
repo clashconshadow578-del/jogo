@@ -23,6 +23,7 @@ import { loadLegacyPlayerSprite } from '../entities/Player.js';
 import { installTerrainSpeed } from '../entities/PlayerMovement.js';
 import { installActionAnimations, loadPlayerSprite } from '../entities/PlayerSprite.js';
 import { loadAnacondaSprite, registerAnacondaStates } from '../entities/wild/Anaconda.js';
+import { loadHarpySprites, registerHarpyStates } from '../entities/wild/Harpy.js';
 import { loadFaunaSprites } from '../entities/wild/Fauna.js';
 import { loadJaguarSprite } from '../entities/wild/Jaguar.js';
 import { bootAmazon } from '../features/amazon/AmazonBoot.js';
@@ -96,6 +97,8 @@ export function boot() {
   loadJaguarSprite();
   loadAnacondaSprite();
   registerAnacondaStates();
+  loadHarpySprites();
+  registerHarpyStates();
   initFounderCow();
   initGestationBadge();
   initJoystick();

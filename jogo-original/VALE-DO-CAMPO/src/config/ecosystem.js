@@ -42,6 +42,18 @@ export const ATTN = {
   vigia: 1.25,
   // galo-lira em exibição
   display: 1,
+  // harpia (entities/wild/Harpy.js): pousada quieta enxerga menos; observando e preparando o bote, mais
+  hrest: 0.5,
+  hwatch: 1.3,
+  htrack: 1.45,
+  hprep: 1.5,
+  hstoop: 1.2,
+  hfeed: 0.6,
+  hroam: 1,
+  hwarn: 1.4,
+  hdefend: 1.2,
+  havoid: 1,
+  hchase: 1.2,
 };
 
 /* ============ parâmetros por espécie ============
@@ -151,6 +163,18 @@ export const ECO = {
     avoidFor: 0,
     avoidR: 0,
   },
+  harpy: {
+    sight: 260, // enxerga muito longe, de dia, lá de cima
+    nightMul: 0.25, // diurna: à noite quase não vê
+    hear: 90,
+    vigil: 0.9,
+    courage: 0.6,
+    herdAlarm: 0,
+    alertFor: [1, 2],
+    calmAfter: 8,
+    avoidFor: 0,
+    avoidR: 0,
+  },
   anaconda: {
     sight: 90,
     nightMul: 0.9,
@@ -225,7 +249,8 @@ export const FARM_PREY = {
 };
 export const FARM_FEAR = {
   // como o cervo e a lebre: percebem uma onça visível de longe e fogem cedo (a camuflagem no mato alto é que decide a emboscada)
-  chicken: { jaguar: [110, 200, 170], fox: [40, 70, 60], anaconda: [45, 60, 60] }, // raposa: a galinha só repara de bem perto (a raposa chega esgueirando)
+  // raposa: a galinha só repara de bem perto (a raposa chega esgueirando) · harpia: ave de rapina, as galinhas a avistam de longe
+  chicken: { jaguar: [110, 200, 170], fox: [40, 70, 60], anaconda: [45, 60, 60], harpy: [80, 150, 210] },
   calf: { jaguar: [150, 260, 220], anaconda: [45, 70, 70] },
   cow: { jaguar: [140, 240, 200] },
 };

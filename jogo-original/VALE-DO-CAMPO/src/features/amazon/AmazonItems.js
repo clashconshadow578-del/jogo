@@ -6,6 +6,7 @@
 
 import { PRICE } from '../../config/balance.js';
 import { GRASS, MH, MW, TREE } from '../../config/constants.js';
+import { SUMAUMA_GIGANTE } from '../../config/sumaumaGigante.js';
 import { S, sleeping } from '../../core/GameState.js';
 import { herd } from '../../entities/cow/Herd.js';
 import { spend } from '../../entities/Player.js';
@@ -86,7 +87,7 @@ function inspect(a) {
       'Vagens racham na primavera (seco) e a paina voa com o vento levando as sementes. Em ADULTAS, bata nas sapopemas (raízes tabulares): o som viaja quilômetros.';
   }
   showPanel(`<b>${sp.icon} ${sp.nome}</b> <i style="opacity:.7">${sp.cient}</i>${a.especie === 'buriti' ? ` · ${a.sx === 'f' ? '♀ fêmea' : '♂ macho'}` : ''}<br>
- Fase ${st}/7 · ${STAGE_NM[st]} · ${m ? m.hm : '?'} m · ${idadeAnos} ano(s) de jogo${nextD ? ` · próxima fase em ~${nextD} dias` : ''}<br>
+ Fase ${st}/7 · ${STAGE_NM[st]}${a.gig && st >= SUMAUMA_GIGANTE.estagioMin ? ' · 🌟 GIGANTE (+30%)' : ''} · ${m ? m.hm : '?'} m · ${idadeAnos} ano(s) de jogo${nextD ? ` · próxima fase em ~${nextD} dias` : ''}<br>
  Saúde ${bar(a.saude / 100, '#6fd16a')} Vigor ${bar(a.vig, '#e2c24a')} Luz ${bar(a.luz, '#ffe28a')}<br>
  Alelopatia no solo ${bar(al, '#b06ad0')} ${Math.round(al * 100)}%<br>${fr}<br><span style="opacity:.82">${tip}</span>`);
 }

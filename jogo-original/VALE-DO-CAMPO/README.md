@@ -37,6 +37,8 @@ O mato (helicônia e samambaia: dados da vida real, regras de jogo, como inspeci
 
 Pisoteio, trilhas de fauna e mato fechado: [`docs/PISOTEIO.md`](docs/PISOTEIO.md).
 
+A harpia (comportamento, presas e predadores, defesa do ninho, disputa territorial, som, sumaúma gigante): [`docs/HARPIA.md`](docs/HARPIA.md).
+
 Documentação técnica da migração (auditoria, inventário de funcionalidades, decisões e evidências):
 [`docs/AUDITORIA_E_MIGRACAO.md`](docs/AUDITORIA_E_MIGRACAO.md).
 
@@ -493,6 +495,7 @@ Acrescente no fim do endereço do jogo (ex.: `http://localhost:5173/?fps`; para 
 | `?canvas` | desliga o PixiJS e desenha tudo em Canvas 2D (plano B; o PixiJS é o desenhista padrão) |
 | `?copia` | copia o quadro do PixiJS para o canvas do jogo (só para testes que leem pixels) |
 | `?pixi` | só mostra um aviso na tela dizendo se o PixiJS ligou |
+| `?harpia` | depois de 3,5 s leva o jogador até a árvore-ninho do casal de harpias (de dia), onde ela pousa na copa; com `&intrusa` uma segunda harpia chega 4 s depois e a disputa territorial começa |
 | `?sucuri` | depois de 2,5 s põe uma sucuri engolindo uma presa bem na frente do jogador (da menor para a maior: galinha, lebre, cervo, bezerro, queixada) para ver o corpo esticando; repete sem parar |
 | `?cpu` | todos os canvases 2D desenham na CPU e não na placa de vídeo (experimental; pode ser melhor ou pior, compare com o `?fps`) |
 | `?safe` | desliga as otimizações opcionais (chão parado, fluxo do rio, camadas da atmosfera) |

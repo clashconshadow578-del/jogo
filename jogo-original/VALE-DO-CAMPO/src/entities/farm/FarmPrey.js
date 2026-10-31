@@ -124,7 +124,7 @@ function realDie(p) {
   dying.push(p);
 }
 
-const THREATS = { jaguar: 1, fox: 1, anaconda: 1 };
+const THREATS = { jaguar: 1, fox: 1, anaconda: 1, harpy: 1 };
 
 /** O animal da fazenda percebe um predador? Devolve o predador mais ameaçador percebido ou null. */
 function sense(p) {
@@ -141,9 +141,9 @@ function sense(p) {
     if (Math.abs(dx) > 220 || Math.abs(dy) > 220) continue;
     const st = f.state,
       hunting =
-        st === 'pounce' || st === 'chase' || st === 'pchase' || st === 'charge' || st === 'drop' || st === 'strike'
+        st === 'pounce' || st === 'chase' || st === 'pchase' || st === 'charge' || st === 'drop' || st === 'strike' || st === 'hstoop' || st === 'hdefend'
           ? 2
-          : st === 'stalk' || st === 'pstalk' || st === 'observe' || st === 'investigate' || st === 'ambush'
+          : st === 'stalk' || st === 'pstalk' || st === 'observe' || st === 'investigate' || st === 'ambush' || st === 'htrack' || st === 'hprep'
             ? 1
             : 0,
       r0 = t[hunting] * (p.state === 'rest' ? 0.7 : 1),
